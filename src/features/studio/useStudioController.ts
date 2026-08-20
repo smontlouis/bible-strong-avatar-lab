@@ -65,6 +65,10 @@ import {
   type StudioAvatar,
 } from '@/features/avatar/avatars'
 import {
+  isAvatarDefinitionSource,
+  studioAvatarFromDefinition,
+} from '@/features/avatar/importAvatarDefinition'
+import {
   bodyPrimitiveTypes,
   createBodyNode,
   duplicateBodyNode,
@@ -207,9 +211,11 @@ export function useStudioController() {
   const [pendingProjectImport, setPendingProjectImport] = useState<{
     document: StudioDocument
     fileName: string
+    kind: 'project' | 'avatar'
   } | null>(null)
   const [projectImportError, setProjectImportError] = useState<string | null>(null)
   const projectImportRef = useRef<HTMLInputElement>(null)
+  const avatarImportRef = useRef<HTMLInputElement>(null)
   const [statePlayerExpanded, setStatePlayerExpanded] = useState(false)
   const [activeExpression, setActiveExpression] = useState<number | null>(null)
   const [editing, setEditing] = useState<{ index: number | null; draft: Expression } | null>(null)
@@ -1809,19 +1815,41 @@ export function useStudioController() {
     setProjectImportError(null)
     if (file.size > 10_000_000) {
       setProjectImportError(
-        t('Ce fichier ne contient pas un projet Avatar Studio valide et compatible.')
+        t('Ce fichier n’est ni un avatar .avatar.json ni un projet Avatar Studio valide.')
       )
       return
     }
     file
       .text()
       .then(source => {
+        // One picker, two formats: a `.avatar.json` definition adds a single avatar
+        // to the current library, a studio project replaces the whole document.
+        const parsed: unknown = JSON.parse(source)
+        if (isAvatarDefinitionSource(parsed)) {
+          const { avatar } = studioAvatarFromDefinition(parsed)
+          const document = currentStudioDocument()
+          setPendingProjectImport({
+            document: {
+              ...document,
+              library: {
+                activeAvatarId: avatar.id,
+                avatars: [
+                  ...document.library.avatars.filter(existing => existing.id !== avatar.id),
+                  avatar,
+                ],
+              },
+            },
+            fileName: file.name,
+            kind: 'avatar',
+          })
+          return
+        }
         const imported = parseImportedStudioDocument(source, currentStudioDocument())
-        setPendingProjectImport({ document: imported, fileName: file.name })
+        setPendingProjectImport({ document: imported, fileName: file.name, kind: 'project' })
       })
       .catch(() => {
         setProjectImportError(
-          t('Ce fichier ne contient pas un projet Avatar Studio valide et compatible.')
+          t('Ce fichier n’est ni un avatar .avatar.json ni un projet Avatar Studio valide.')
         )
       })
   }
@@ -1995,6 +2023,7 @@ export function useStudioController() {
     previewSelectedBodyNode,
     previewStateMove,
     projectImportError,
+    avatarImportRef,
     projectImportRef,
     reduceMotion,
     renameActiveAvatar,

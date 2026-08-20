@@ -352,8 +352,13 @@ export const chinese: Record<string, string> = {
     '将所有头像、表情和动画传输到另一个浏览器。',
   'Télécharger le projet JSON': '下载 JSON 项目',
   'Importer un projet JSON': '导入 JSON 项目',
-  'Ce fichier ne contient pas un projet Avatar Studio valide et compatible.':
-    '此文件不包含有效且兼容的头像工作室项目。',
+  'Ce fichier n’est ni un avatar .avatar.json ni un projet Avatar Studio valide.':
+    '此文件既不是 .avatar.json 头像，也不是有效的头像工作室项目。',
+  'Ajouter un avatar': '添加头像',
+  'Importer un .avatar.json': '导入 .avatar.json',
+  'Importer cet avatar ?': '导入此头像？',
+  'Cet avatar sera ajouté à ta bibliothèque avec ses expressions et animations, puis sélectionné. Les autres avatars sont conservés.':
+    '该头像及其表情和动画将被添加到你的库中并选中，其他头像会保留。',
   'Importer ce projet ?': '导入此项目？',
   'Le projet local actuel sera remplacé par les avatars, expressions, animations et état de lecture de ce fichier.':
     '当前本地项目将被此文件中的头像、表情、动画和播放状态替换。',

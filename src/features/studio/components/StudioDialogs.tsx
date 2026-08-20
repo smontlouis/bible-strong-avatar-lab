@@ -108,11 +108,19 @@ export function StudioDialogs({ controller }: { controller: StudioController }) 
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('Importer ce projet ?')}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {pendingProjectImport?.kind === 'avatar'
+                ? t('Importer cet avatar ?')
+                : t('Importer ce projet ?')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {t(
-                'Le projet local actuel sera remplacé par les avatars, expressions, animations et état de lecture de ce fichier.'
-              )}{' '}
+              {pendingProjectImport?.kind === 'avatar'
+                ? t(
+                    'Cet avatar sera ajouté à ta bibliothèque avec ses expressions et animations, puis sélectionné. Les autres avatars sont conservés.'
+                  )
+                : t(
+                    'Le projet local actuel sera remplacé par les avatars, expressions, animations et état de lecture de ce fichier.'
+                  )}{' '}
               {pendingProjectImport?.fileName}
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -1,7 +1,8 @@
-import { Copy, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Copy, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { motion } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/menu'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -24,12 +25,15 @@ export function AvatarPage({ controller }: { controller: StudioController }) {
     avatarsRef,
     cancelAvatarMove,
     commitAvatarMove,
+    avatarImportRef,
     createNewAvatar,
     draggedAvatarId,
     draggingAvatarId,
     duplicateAvatar,
     expressions,
+    prepareStudioProjectImport,
     previewAvatarMove,
+    projectImportError,
     reduceMotion,
     setDeleteAvatarOpen,
     setDraggingAvatarId,
@@ -133,15 +137,44 @@ export function AvatarPage({ controller }: { controller: StudioController }) {
               </ContextMenu>
             </motion.div>
           ))}
-          <Button
-            variant="outline"
-            className="avatar-add creation-card"
-            onClick={createNewAvatar}
-            aria-label={t('Nouvel avatar')}
-          >
-            <Plus />
-          </Button>
+          <Menu>
+            <MenuTrigger
+              render={
+                <Button
+                  variant="outline"
+                  className="avatar-add creation-card"
+                  aria-label={t('Ajouter un avatar')}
+                >
+                  <Plus />
+                </Button>
+              }
+            />
+            <MenuContent>
+              <MenuItem onClick={createNewAvatar}>
+                <Plus /> {t('Nouvel avatar')}
+              </MenuItem>
+              <MenuItem onClick={() => avatarImportRef.current?.click()}>
+                <Upload /> {t('Importer un .avatar.json')}
+              </MenuItem>
+            </MenuContent>
+          </Menu>
+          <input
+            ref={avatarImportRef}
+            className="project-import-input"
+            type="file"
+            accept="application/json,.json,.avatar.json"
+            aria-label={t('Importer un .avatar.json')}
+            onChange={event => {
+              prepareStudioProjectImport(event.currentTarget.files?.[0])
+              event.currentTarget.value = ''
+            }}
+          />
         </div>
+        {projectImportError && (
+          <p className="project-transfer-error" role="alert">
+            {projectImportError}
+          </p>
+        )}
       </section>
     </div>
   )

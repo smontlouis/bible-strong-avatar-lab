@@ -1065,6 +1065,17 @@ export function StudioInspector({ controller }: { controller: StudioController }
                     <Copy />
                     {t('Dupliquer')}
                   </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!runtimeDefinitionResult.ok}
+                    // downloadAvatarRuntimeDefinition is a no-op on an invalid
+                    // definition, so surface why the button is dead.
+                    title={runtimeExportErrors[0] ?? undefined}
+                    onClick={downloadAvatarRuntimeDefinition}
+                  >
+                    <Download />
+                    {t('Exporter')}
+                  </Button>
                 </div>
                 <Button onClick={saveAvatarEditing}>{t('Enregistrer')}</Button>
               </footer>
