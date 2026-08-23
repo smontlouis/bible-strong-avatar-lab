@@ -1,0 +1,176 @@
+@import url('https://fonts.bunny.net/css?family=fraunces:400,500,600|geist:400,500|geist-mono:400,500');
+
+:root {
+  --background: #fafcfd;
+  --foreground: #32404f;
+  --muted: #32404f95;
+  --accent-brand: #e65f2e;
+  --border: color-mix(in oklab, #32404f 12%, transparent);
+  --font-display: 'Fraunces', 'Tiempos', Georgia, serif;
+  --font-body: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(40px, 7vw, 96px) clamp(20px, 5vw, 64px) 96px;
+}
+
+header.masthead {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: clamp(40px, 6vw, 72px);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.brand svg {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-brand);
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(34px, 6vw, 68px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  margin: 0;
+  max-width: 18ch;
+}
+
+h1 em {
+  font-style: italic;
+  color: var(--accent-brand);
+}
+
+.lede {
+  max-width: 62ch;
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
+  gap: clamp(16px, 2vw, 28px);
+}
+
+.card {
+  --tile-tint: color-mix(in oklab, var(--accent) 12%, var(--background));
+  --tile-edge: color-mix(in oklab, var(--accent) 22%, var(--background));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: #ffffff;
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.4s ease;
+  will-change: transform;
+}
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 48px -28px color-mix(in oklab, var(--accent) 60%, transparent);
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--border));
+}
+
+.tile {
+  aspect-ratio: 1;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(120% 120% at 50% 18%, var(--tile-tint), var(--tile-edge));
+  overflow: hidden;
+}
+
+.avatar {
+  width: 78%;
+  height: 78%;
+  display: block;
+}
+
+.avatar svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 4px;
+}
+
+.meta h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.meta p {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+footer.colophon {
+  margin-top: clamp(48px, 7vw, 88px);
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  justify-content: space-between;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}

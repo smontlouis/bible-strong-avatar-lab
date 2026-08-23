@@ -106,6 +106,19 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@24.13.3)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(jiti@2.7.0)(yaml@2.9.0))
 
+  examples/portfolio-gallery:
+    dependencies:
+      '@bible-strong/avatar-web':
+        specifier: workspace:*
+        version: link:../../packages/avatar-web
+    devDependencies:
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.13
+        version: 8.2.1(@types/node@24.13.3)(jiti@2.7.0)(yaml@2.9.0)
+
   examples/react-vite-consumer:
     dependencies:
       '@bible-strong/avatar-core':

@@ -1,0 +1,114 @@
+@import './styles.css';
+
+/* Playground-specific layer: emote chips, label crossfade, staged entrance.
+   All motion follows surface-motion: transform/opacity only, ease
+   cubic-bezier(0.16,1,0.3,1), durations <=300ms, exits faster than entrances. */
+
+#grid {
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+}
+
+.now {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--accent) 70%, var(--foreground));
+  margin: 2px 4px 0;
+  transition:
+    opacity 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 2px 0;
+}
+
+.chip {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--accent) 6%, #ffffff);
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  padding: 5px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    transform 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.chip:hover {
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
+}
+
+/* Press feedback: subtle scale-down per surface-motion (0.96-0.98). */
+.chip:active {
+  transform: scale(0.97);
+}
+
+.chip:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 60%, var(--foreground));
+  outline-offset: 2px;
+}
+
+.chip[aria-pressed='true'] {
+  background: color-mix(in oklab, var(--accent) 88%, #ffffff);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+/* The signature emote carries a small dot so each character's hero is legible. */
+.chip.is-signature::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  margin-right: 5px;
+  vertical-align: middle;
+  background: var(--accent);
+}
+
+.chip.is-signature[aria-pressed='true']::before {
+  background: #ffffff;
+}
+
+/* Staged entrance: children cascade in (surface-motion staggered entrance).
+   Keyframe, because it runs once and is not interactive. */
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.show-card {
+  opacity: 0;
+  animation: card-enter 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .show-card {
+    animation: none;
+    opacity: 1;
+  }
+  .now,
+  .chip {
+    transition: none;
+  }
+}
