@@ -43,11 +43,12 @@ export type SurfaceDefinition<TType extends SurfaceType = SurfaceType> = {
   baseRoundness?: number
 }
 
-export type BodyNodeSurfaceType = Exclude<SurfaceType, 'mickey' | 'cursor'>
+export type BodyNodeSurfaceType = Exclude<SurfaceType, 'mickey' | 'cursor' | 'ghost'>
 export type PrimarySurfaceDefinition = SurfaceDefinition<SurfaceType>
 export type BodyNodeSurfaceDefinition = SurfaceDefinition<BodyNodeSurfaceType>
 
 export type AvatarBodyNodeDefinition = {
+  layer?: 'auto' | 'front' | 'back'
   surface: BodyNodeSurfaceDefinition
   position: [number, number, number]
   rotation: [number, number, number]

@@ -1,4 +1,4 @@
-import { createAvatar } from '@/features/avatar/avatars'
+import { createAvatar, defaultAvatarEyes } from '@/features/avatar/avatars'
 import { createInitialSequences } from '@/features/animation/sequences'
 import { initialExpressions } from '@/features/avatar/presets'
 import { createAvatarDefinition } from '@/features/avatar/avatarDefinition'
@@ -32,11 +32,64 @@ describe('Studio document', () => {
   it('loads the bundled Studio snapshot when no local project exists', () => {
     const document = loadStudioDocument(storage())
 
-    expect(document.library.avatars).toHaveLength(10)
+    expect(document.library.avatars).toHaveLength(12)
     expect(document.library.activeAvatarId).toBe(document.library.avatars[0].id)
-    expect(document.library.avatars[0].name).toBe('Strobi')
+    expect(document.library.avatars.map(avatar => avatar.name)).toEqual([
+      'Onee',
+      'Cubee',
+      'Nova',
+      'Citrus',
+      'Sphere',
+      'Cube',
+      'Capsule',
+      'Cylinder',
+      'Cone',
+      'Diamond',
+      'Memento',
+      'Willy',
+    ])
+    expect(
+      document.library.avatars.every(avatar => avatar.colors.body === avatar.colors.eyes)
+    ).toBe(true)
+    expect(document.library.avatars.slice(4).map(avatar => avatar.body.primary.type)).toEqual([
+      'sphere',
+      'cube',
+      'capsule',
+      'cylinder',
+      'cone',
+      'diamond',
+      'ghost',
+      'capsule',
+    ])
+    expect(document.library.avatars.at(-1)?.body.nodes).toHaveLength(3)
+    const memento = document.library.avatars.find(avatar => avatar.id === 'primitive-ghost')
+    expect(memento?.colors).toEqual({ body: '#ff9d45', eyes: '#ff9d45' })
+    expect(
+      document.library.avatars
+        .filter(avatar => avatar.id !== 'primitive-ghost')
+        .every(avatar => avatar.colors.body !== '#ff9d45')
+    ).toBe(true)
+    expect(memento?.eyes.positionYLeft).toBe(defaultAvatarEyes.positionYLeft - 20)
+    expect(memento?.eyes.positionYRight).toBe(defaultAvatarEyes.positionYRight - 20)
+    expect(
+      memento?.behavior?.expressions.every(
+        expression => !expression.bodyColor && !expression.eyeColor
+      )
+    ).toBe(true)
     expect(document.expressions).toHaveLength(27)
     expect(document.sequences).toHaveLength(23)
+    expect(document.sequences.find(sequence => sequence.id === 'angry')?.steps).toHaveLength(2)
+    expect(
+      document.sequences
+        .find(sequence => sequence.id === 'angry')
+        ?.steps.map(step => step.expressionId)
+    ).toEqual(['expression-07', 'expression-3d2bed26-f97c-477d-922f-77600cb10e92'])
+    expect(document.sequences.find(sequence => sequence.id === 'scared')?.steps).toHaveLength(2)
+    expect(
+      document.sequences
+        .find(sequence => sequence.id === 'scared')
+        ?.steps.map(step => step.expressionId)
+    ).toEqual(['expression-03', 'expression-5220eaee-32fe-4bd8-ad31-432189534cc8'])
     expect(document.expressions.every(expression => expression.semanticKey)).toBe(true)
     expect(document.sequences.every(sequence => sequence.semanticKey)).toBe(true)
     expect(document.playback).toEqual({ stateId: 'proud', playing: true })
@@ -53,6 +106,81 @@ describe('Studio document', () => {
     const localDocument = documentFixture()
 
     expect(loadStudioDocument(storage(JSON.stringify(localDocument)))).toEqual(localDocument)
+  })
+
+  it('restores standalone built-in animations from the temporary idle pairs', () => {
+    const fallback = loadStudioDocument(storage())
+    const pairedDocument: StudioDocument = {
+      ...fallback,
+      sequences: fallback.sequences.map(sequence =>
+        sequence.id === 'idle'
+          ? sequence
+          : {
+              ...sequence,
+              id: `idle-${sequence.id}`,
+              semanticKey: `idle-${sequence.id}`,
+              name: `idle + ${sequence.name}`,
+            }
+      ),
+      playback: { stateId: 'idle-proud', playing: true },
+    }
+
+    const restored = loadStudioDocument(storage(JSON.stringify(pairedDocument)))
+
+    expect(restored.sequences.map(sequence => sequence.id)).toEqual(
+      fallback.sequences.map(sequence => sequence.id)
+    )
+    expect(restored.playback).toEqual({ stateId: 'proud', playing: true })
+  })
+
+  it('removes retired bundled avatars from a locally saved project', () => {
+    const fallback = loadStudioDocument(storage())
+    const retired = createAvatar('Freddy')
+    retired.id = 'avatar-4fe2d1bd-cf46-4e5e-a62d-d6b60be519ed'
+    const localDocument: StudioDocument = {
+      ...fallback,
+      library: {
+        activeAvatarId: retired.id,
+        avatars: [retired, ...fallback.library.avatars],
+      },
+    }
+
+    const document = loadStudioDocument(storage(JSON.stringify(localDocument)))
+
+    expect(document.library.avatars.map(avatar => avatar.name)).toEqual([
+      'Onee',
+      'Cubee',
+      'Nova',
+      'Citrus',
+      'Sphere',
+      'Cube',
+      'Capsule',
+      'Cylinder',
+      'Cone',
+      'Diamond',
+      'Memento',
+      'Willy',
+    ])
+    expect(document.library.activeAvatarId).toBe(document.library.avatars[0].id)
+  })
+
+  it('renames the bundled ghost character in an existing local project', () => {
+    const fallback = loadStudioDocument(storage())
+    const legacy = structuredClone(fallback)
+    const character = legacy.library.avatars.find(avatar => avatar.id === 'primitive-ghost')
+    if (!character) throw new Error('Bundled ghost character not found')
+    character.name = 'Ghost'
+    character.eyes.positionYLeft = defaultAvatarEyes.positionYLeft
+    character.eyes.positionYRight = defaultAvatarEyes.positionYRight
+
+    const document = loadStudioDocument(storage(JSON.stringify(legacy)))
+
+    expect(document.library.avatars.find(avatar => avatar.id === 'primitive-ghost')?.name).toBe(
+      'Memento'
+    )
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-ghost')?.eyes.positionYLeft
+    ).toBe(defaultAvatarEyes.positionYLeft - 20)
   })
 
   it('restores bundled semantic keys in a legacy local project', () => {

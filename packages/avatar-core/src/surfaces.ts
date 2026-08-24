@@ -1,7 +1,7 @@
 import type { Point3 } from './geometry'
 
 export type SurfaceType =
-  'sphere' | 'mickey' | 'cursor' | 'cube' | 'capsule' | 'cylinder' | 'cone' | 'diamond'
+  'sphere' | 'mickey' | 'cursor' | 'cube' | 'capsule' | 'cylinder' | 'cone' | 'diamond' | 'ghost'
 
 export type SurfaceConfig = {
   type: SurfaceType
@@ -44,6 +44,7 @@ export const surfacePresets: Record<SurfaceType, SurfaceConfig> = {
     baseRoundness: 0.45,
   },
   diamond: { type: 'diamond', width: 235, height: 260, depth: 215, roundness: 0 },
+  ghost: { type: 'ghost', width: 250, height: 245, depth: 190, roundness: 1 },
 }
 
 export const surfaceLabels: Record<SurfaceType, string> = {
@@ -55,6 +56,7 @@ export const surfaceLabels: Record<SurfaceType, string> = {
   cylinder: 'Cylindre',
   cone: 'Cône',
   diamond: 'Diamant',
+  ghost: 'Ghost',
 }
 
 const signedPower = (value: number, exponent: number) =>
@@ -336,6 +338,7 @@ export const surfacePointAt = (
     case 'diamond':
       return diamond(config, longitude, latitude)
     case 'capsule':
+    case 'ghost':
       return capsule(config, longitude, latitude)
     case 'cone': {
       const progress = (latitude + Math.PI / 2) / Math.PI
@@ -534,7 +537,8 @@ export const surfaceFrontSampleAt = (
     case 'cube':
       return lpFrontSample(config, x, y, cubeExponent(config), cubeNormal)
 
-    case 'capsule': {
+    case 'capsule':
+    case 'ghost': {
       const capRadiusY = Math.min(radiusX, radiusY)
       const straightHalf = Math.max(0, radiusY - capRadiusY)
       const capCenterY = y < -straightHalf ? -straightHalf : y > straightHalf ? straightHalf : y

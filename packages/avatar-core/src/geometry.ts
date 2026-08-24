@@ -1117,6 +1117,87 @@ const projectedCapsulePath = (pose: AvatarPose, surface: SurfaceConfig) => {
   return smoothHullPath(convexHull([...ellipsePoints(top), ...ellipsePoints(bottom)]))
 }
 
+const projectedGhostPath = (pose: AvatarPose, surface: SurfaceConfig) => {
+  const halfWidth = surface.width / 2
+  const halfHeight = surface.height / 2
+  const notchCenter = surface.width / 6
+  const notchHalfWidth = surface.width * 0.018
+  const sideStartY = -halfHeight * 0.08
+  const lobeStartY = halfHeight * 0.5
+  const notchTopY = halfHeight * 0.4
+  const bottomY = halfHeight
+
+  const point = (x: number, y: number) => projectLocalPoint(pose, [x, y, 0])
+  const format = ([x, y]: Point3) => `${x.toFixed(2)} ${y.toFixed(2)}`
+  const move = (x: number, y: number) => `M${format(point(x, y))}`
+  const line = (x: number, y: number) => `L${format(point(x, y))}`
+  const cubicTo = (
+    firstX: number,
+    firstY: number,
+    secondX: number,
+    secondY: number,
+    endX: number,
+    endY: number
+  ) =>
+    `C${format(point(firstX, firstY))} ${format(point(secondX, secondY))} ${format(point(endX, endY))}`
+
+  return [
+    move(-halfWidth, sideStartY),
+    cubicTo(-halfWidth, -halfHeight * 0.62, -halfWidth * 0.56, -halfHeight, 0, -halfHeight),
+    cubicTo(halfWidth * 0.56, -halfHeight, halfWidth, -halfHeight * 0.62, halfWidth, sideStartY),
+    line(halfWidth, lobeStartY),
+    cubicTo(halfWidth, bottomY * 0.82, halfWidth * 0.82, bottomY, halfWidth * 0.66, bottomY),
+    cubicTo(
+      halfWidth * 0.49,
+      bottomY,
+      notchCenter + notchHalfWidth,
+      bottomY * 0.82,
+      notchCenter + notchHalfWidth,
+      lobeStartY
+    ),
+    line(notchCenter + notchHalfWidth, notchTopY),
+    cubicTo(
+      notchCenter + notchHalfWidth,
+      notchTopY - 6,
+      notchCenter - notchHalfWidth,
+      notchTopY - 6,
+      notchCenter - notchHalfWidth,
+      notchTopY
+    ),
+    line(notchCenter - notchHalfWidth, lobeStartY),
+    cubicTo(notchCenter - notchHalfWidth, bottomY * 0.82, halfWidth * 0.17, bottomY, 0, bottomY),
+    cubicTo(
+      -halfWidth * 0.17,
+      bottomY,
+      -notchCenter + notchHalfWidth,
+      bottomY * 0.82,
+      -notchCenter + notchHalfWidth,
+      lobeStartY
+    ),
+    line(-notchCenter + notchHalfWidth, notchTopY),
+    cubicTo(
+      -notchCenter + notchHalfWidth,
+      notchTopY - 6,
+      -notchCenter - notchHalfWidth,
+      notchTopY - 6,
+      -notchCenter - notchHalfWidth,
+      notchTopY
+    ),
+    line(-notchCenter - notchHalfWidth, lobeStartY),
+    cubicTo(
+      -notchCenter - notchHalfWidth,
+      bottomY * 0.82,
+      -halfWidth * 0.49,
+      bottomY,
+      -halfWidth * 0.66,
+      bottomY
+    ),
+    cubicTo(-halfWidth * 0.82, bottomY, -halfWidth, bottomY * 0.82, -halfWidth, lobeStartY),
+    line(-halfWidth, sideStartY),
+    'Z',
+  ].join('')
+}
+
 const headPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   if (surface.type === 'sphere' || surface.type === 'mickey') {
     const exactPath = projectedEllipsoidPath(pose, surface)
@@ -1133,6 +1214,7 @@ const headPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   if (surface.type === 'cone') return projectedConePath(pose, surface)
   if (surface.type === 'cube') return projectedCubePath(pose, surface)
   if (surface.type === 'diamond') return projectedDiamondPath(pose, surface)
+  if (surface.type === 'ghost') return projectedGhostPath(pose, surface)
 
   const key = surfaceCacheKey(surface)
   let localSamples = headSamplesCache.get(key)
@@ -1222,7 +1304,10 @@ const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[]) => {
         id: node.id,
         path: accessoryPath(pose, node),
         depth,
-        front: depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO,
+        front:
+          node.layer === 'front' ||
+          (node.layer !== 'back' &&
+            depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO),
       }
     })
     .sort((left, right) => left.depth - right.depth)
