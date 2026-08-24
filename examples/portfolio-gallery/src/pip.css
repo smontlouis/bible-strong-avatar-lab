@@ -1,0 +1,264 @@
+@import url('https://fonts.bunny.net/css?family=geist:400,500,600|geist-mono:400,500');
+
+/* The monochrome system in use on Paper page 3. No hue anywhere. */
+:root {
+  --v-000: #000000;
+  --v-0a: #0a0a0a; /* dark artboard ground */
+  --v-14: #141414;
+  --v-2a: #2a2a2a;
+  --v-4d: #4d4d4d;
+  --v-7a: #7a7a7a; /* workhorse gray */
+  --v-a8: #a8a8a8;
+  --v-b5: #b5b5b5;
+  --v-bc: #bcbcbc;
+  --v-e0: #e0e0e0;
+  --v-f2: #f2f2f2;
+  --v-f6: #f6f6f6; /* light artboard ground */
+  --v-fff: #ffffff;
+
+  --page: var(--v-f6);
+  --surface: var(--v-fff);
+  --ink: var(--v-0a);
+  --ink-muted: #7a7a7a;
+  --border: #0a0a0a14;
+  --font-body: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: clamp(40px, 6vw, 88px) clamp(20px, 4vw, 56px) 88px;
+}
+
+header.masthead {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-bottom: clamp(32px, 5vw, 60px);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.brand svg {
+  width: 15px;
+  height: 15px;
+  color: var(--v-0a);
+}
+
+h1 {
+  font-weight: 500;
+  font-size: clamp(30px, 4.6vw, 54px);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  margin: 0;
+  max-width: 22ch;
+}
+
+/* Emphasis carried by value, not hue. */
+h1 em {
+  font-style: normal;
+  color: var(--v-7a);
+}
+
+.lede {
+  max-width: 64ch;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+.lede code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+/* The source ramp, darkest to lightest. */
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 8px 3px 4px;
+}
+
+.swatch i {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--sw);
+  box-shadow: inset 0 0 0 1px #0000001f;
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: clamp(14px, 1.6vw, 22px);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 14px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition:
+    transform 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.card.is-dark {
+  background: var(--v-0a);
+  border-color: #ffffff1f;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 22px 44px -26px #0a0a0a5c;
+}
+
+.tile {
+  aspect-ratio: 1;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--ground);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px #0a0a0a0f;
+}
+
+.card.is-dark .tile {
+  box-shadow: inset 0 0 0 1px #ffffff14;
+}
+
+.avatar {
+  width: 76%;
+  height: 76%;
+  display: block;
+}
+
+.avatar svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 3px;
+}
+
+.meta h2 {
+  font-weight: 500;
+  font-size: 17px;
+  letter-spacing: -0.015em;
+  margin: 0;
+  color: var(--ink);
+}
+
+.card.is-dark .meta h2 {
+  color: var(--v-f2);
+}
+
+.token {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+.note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #0a0a0a8a;
+  margin: 2px 0 0;
+}
+
+.card.is-dark .note {
+  color: #f2f2f28a;
+}
+
+footer.colophon {
+  margin-top: clamp(40px, 6vw, 76px);
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  justify-content: space-between;
+}
+
+/* Staged entrance — runs once, so a keyframe is correct here. */
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.card {
+  opacity: 0;
+  animation: card-enter 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+    opacity: 1;
+    transition: none;
+  }
+}

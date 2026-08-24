@@ -1,0 +1,17 @@
+/* Reuses the monochrome Page 3 shell; only the tail-specific framing differs. */
+@import './pip.css';
+
+/* Tails reach well outside the head, so the avatar box is smaller here to keep
+   the whole silhouette inside its tile. */
+.avatar {
+  width: 58%;
+  height: 58%;
+}
+
+.meta {
+  gap: 5px;
+}
+
+.meta .note {
+  margin: 0;
+}

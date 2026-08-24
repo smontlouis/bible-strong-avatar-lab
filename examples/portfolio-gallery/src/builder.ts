@@ -140,6 +140,43 @@ export const pod = (
   rot: [number, number, number] = [0, 0, 0]
 ): BodyNode => nd(ns('capsule', w, h, Math.min(w, h), 1), [x, y, z], rot)
 
+// A tapering, curving chain of soft lobes — a ghost's tail.
+//
+// Lobes are sampled along a quadratic Bezier from `from` to `to`, with the
+// control point pushed `bow` units perpendicular to the chord (sign flips the
+// curve). Because every lobe carries the primary body colour, the chain merges
+// into one continuous wisp that tapers from `startSize` down to `endSize`.
+export const wisp = (opts: {
+  from: [number, number]
+  to: [number, number]
+  bow?: number
+  startSize: number
+  endSize: number
+  count?: number
+  z?: number
+}): BodyNode[] => {
+  const { from, to, bow = 0, startSize, endSize, count = 10, z = -8 } = opts
+  const [x0, y0] = from
+  const [x1, y1] = to
+  const dx = x1 - x0
+  const dy = y1 - y0
+  const len = Math.hypot(dx, dy) || 1
+  const cx = (x0 + x1) / 2 + (-dy / len) * bow
+  const cy = (y0 + y1) / 2 + (dx / len) * bow
+
+  const nodes: BodyNode[] = []
+  for (let i = 0; i < count; i += 1) {
+    const t = count === 1 ? 0 : i / (count - 1)
+    const mt = 1 - t
+    const x = mt * mt * x0 + 2 * mt * t * cx + t * t * x1
+    const y = mt * mt * y0 + 2 * mt * t * cy + t * t * y1
+    // Slightly eased taper: holds volume near the body, thins fast at the tip.
+    const size = startSize + (endSize - startSize) * Math.pow(t, 0.85)
+    nodes.push(lobe(Math.round(size), Math.round(x), Math.round(y), z))
+  }
+  return nodes
+}
+
 // --- Expression + animation generation ------------------------------------
 
 type EyeValue = { width: number; height: number; x: number; y: number; angle: number }
