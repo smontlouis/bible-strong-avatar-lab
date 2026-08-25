@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f6f6" />
+    <title>Tails - one smooth volume, two modes</title>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <h1>Tails <em>&mdash; one smooth volume, two modes</em></h1>
+        <p class="lede">
+          Ten tail iterations. Each tail is a single cone node whose wide, rounded base is buried
+          inside the head, so body and tail share one fill and read as one continuous silhouette
+          &mdash; no chain of spheres, no seam. Every ghost is generated twice from identical
+          geometry: light is the tonal inverse of dark, so the contrast relationships mirror exactly.
+        </p>
+
+        <div class="roles">
+          <div class="ramp" data-mode="light">
+            <h3>Light &mdash; bg 97 &middot; tile 79 &middot; muted 40 &middot; ink 15 &middot; accent 0</h3>
+            <div class="swatches">
+              <div class="swatch" style="background: var(--light-bg)"></div>
+              <div class="swatch" style="background: var(--light-tile)"></div>
+              <div class="swatch" style="background: var(--light-ink-muted)"></div>
+              <div class="swatch" style="background: var(--light-ink)"></div>
+              <div class="swatch" style="background: var(--light-accent)"></div>
+            </div>
+          </div>
+          <div class="ramp" data-mode="dark">
+            <h3>Dark &mdash; bg 3 &middot; tile 21 &middot; muted 60 &middot; ink 85 &middot; accent 100</h3>
+            <div class="swatches">
+              <div class="swatch" style="background: var(--dark-bg)"></div>
+              <div class="swatch" style="background: var(--dark-tile)"></div>
+              <div class="swatch" style="background: var(--dark-ink-muted)"></div>
+              <div class="swatch" style="background: var(--dark-ink)"></div>
+              <div class="swatch" style="background: var(--dark-accent)"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main id="grid"></main>
+
+      <footer>
+        <span>Rendered with @bible-strong/avatar-web</span>
+        <span>Design System 01 &middot; 7 roles &middot; 10 tails &middot; 20 avatars</span>
+      </footer>
+    </div>
+    <script type="module" src="/src/tails-main.ts"></script>
+  </body>
+</html>

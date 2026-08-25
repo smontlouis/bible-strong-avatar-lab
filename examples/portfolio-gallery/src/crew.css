@@ -1,0 +1,32 @@
+/* Reuses the Design System 01 shell from the tails page; only the framing that
+   this proportions study needs differs. */
+@import './tails.css';
+
+/* Bodies range from 150 to 210 units wide and arms reach past them, so the
+   avatar box is smaller here to keep every silhouette inside its tile. */
+.avatar {
+  width: 66%;
+  height: 66%;
+}
+
+.meta h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.ratio {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.meta .metrics {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}

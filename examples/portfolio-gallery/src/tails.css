@@ -1,0 +1,247 @@
+@import url('https://fonts.bunny.net/css?family=geist:400,500,600|geist-mono:400,500');
+
+/* Design System 01 — colour, two modes, one structure.
+   Seven roles per mode. Light is the tonal inverse of dark: L*(light) = 100 - L*(dark).
+   Alpha values are identical across modes and `tint` is shared. No per-mode exceptions. */
+:root {
+  --dark-bg: #0b0b0b; /* L* 3  */
+  --dark-tile: #323232; /* L* 21 */
+  --dark-ink: #d4d4d4; /* L* 85 */
+  --dark-ink-muted: #909090; /* L* 60 */
+  --dark-accent: #ffffff; /* L* 100 */
+  --dark-border: #ffffff1f; /* 12% */
+  --dark-tint: #80808050; /* shared */
+
+  --light-bg: #f6f6f6; /* L* 97 */
+  --light-tile: #c4c4c4; /* L* 79 */
+  --light-ink: #262626; /* L* 15 */
+  --light-ink-muted: #5e5e5e; /* L* 40 */
+  --light-accent: #000000; /* L* 0  */
+  --light-border: #0000001f; /* 12% */
+  --light-tint: #80808050; /* shared */
+
+  --font-sans: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+/* A mode is a scope, not a theme override: every role is bound in one place. */
+[data-mode='light'] {
+  --bg: var(--light-bg);
+  --tile: var(--light-tile);
+  --ink: var(--light-ink);
+  --ink-muted: var(--light-ink-muted);
+  --accent: var(--light-accent);
+  --border: var(--light-border);
+  --tint: var(--light-tint);
+}
+
+[data-mode='dark'] {
+  --bg: var(--dark-bg);
+  --tile: var(--dark-tile);
+  --ink: var(--dark-ink);
+  --ink-muted: var(--dark-ink-muted);
+  --accent: var(--dark-accent);
+  --border: var(--dark-border);
+  --tint: var(--dark-tint);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 72px 32px 96px;
+}
+
+header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 28px;
+  margin-bottom: 44px;
+}
+
+h1 {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+}
+
+h1 em {
+  font-style: normal;
+  color: var(--ink-muted);
+}
+
+.lede {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--ink-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Role swatches — proof the two ramps mirror. */
+.roles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 28px;
+  border: 1px solid var(--border);
+}
+
+.ramp {
+  background: var(--bg);
+  padding: 14px 16px 16px;
+}
+
+.ramp + .ramp {
+  border-left: 1px solid var(--border);
+}
+
+.ramp h3 {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.swatches {
+  display: flex;
+  gap: 6px;
+}
+
+.swatch {
+  flex: 1;
+  height: 34px;
+  border: 1px solid var(--border);
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: 30px 26px;
+}
+
+.card {
+  animation: rise 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* The pair: identical geometry, one tile per mode, hairline shared. */
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--border);
+}
+
+.tile {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--tile);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.tile + .tile {
+  border-left: 1px solid var(--border);
+}
+
+.tile.is-failed::after {
+  content: 'failed';
+  position: absolute;
+  inset: auto 0 50% 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink);
+}
+
+.avatar {
+  width: 74%;
+  height: 74%;
+}
+
+.avatar svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mode-tag {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.meta {
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.meta .note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.meta .role {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+footer {
+  margin-top: 68px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+    opacity: 1;
+  }
+}

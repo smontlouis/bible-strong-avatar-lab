@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f6f6" />
+    <title>Crew - sixteen ghosts, no two proportioned alike</title>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <h1>Crew <em>&mdash; sixteen ghosts, no two proportioned alike</em></h1>
+        <p class="lede">
+          Every ghost has arms and a tail, and no two share a set of proportions. The head's
+          width-to-height ratio, the eye scale and spacing, and the reach of the arms and tail all
+          change from one to the next. The tail sits well behind the body, so it recedes rather than
+          reading as a fifth limb. Each figure is generated twice from identical geometry: light is
+          the tonal inverse of dark.
+        </p>
+        <p class="lede">
+          The printed measurements are derived from the geometry that renders, not written by hand,
+          and every reach is quoted as a fraction of that ghost's own head width.
+        </p>
+
+        <div class="roles">
+          <div class="ramp" data-mode="light">
+            <h3>Light &mdash; bg 97 &middot; tile 79 &middot; muted 40 &middot; ink 15 &middot; accent 0</h3>
+            <div class="swatches">
+              <div class="swatch" style="background: var(--light-bg)"></div>
+              <div class="swatch" style="background: var(--light-tile)"></div>
+              <div class="swatch" style="background: var(--light-ink-muted)"></div>
+              <div class="swatch" style="background: var(--light-ink)"></div>
+              <div class="swatch" style="background: var(--light-accent)"></div>
+            </div>
+          </div>
+          <div class="ramp" data-mode="dark">
+            <h3>Dark &mdash; bg 3 &middot; tile 21 &middot; muted 60 &middot; ink 85 &middot; accent 100</h3>
+            <div class="swatches">
+              <div class="swatch" style="background: var(--dark-bg)"></div>
+              <div class="swatch" style="background: var(--dark-tile)"></div>
+              <div class="swatch" style="background: var(--dark-ink-muted)"></div>
+              <div class="swatch" style="background: var(--dark-ink)"></div>
+              <div class="swatch" style="background: var(--dark-accent)"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main id="grid"></main>
+
+      <footer>
+        <span>Rendered with @bible-strong/avatar-web</span>
+        <span>Design System 01 &middot; 16 proportions &middot; 32 avatars</span>
+      </footer>
+    </div>
+    <script type="module" src="/src/crew-main.ts"></script>
+  </body>
+</html>

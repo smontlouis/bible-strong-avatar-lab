@@ -21,6 +21,7 @@ export type NodeSurface = {
   height: number
   depth: number
   roundness: number
+  morphRoundness?: number
   tipRoundness?: number
   baseRoundness?: number
 }
@@ -29,6 +30,22 @@ export type BodyNode = {
   surface: NodeSurface
   position: [number, number, number]
   rotation: [number, number, number]
+}
+
+// Mirrors FOCAL_LENGTH in @bible-strong/avatar-core's geometry: the engine
+// projects every node with `scale = FOCAL_LENGTH / (FOCAL_LENGTH - z)`. Depth
+// helpers below divide by that scale so their arguments stay screen-space.
+const FOCAL_LENGTH = 620
+
+// Exact radius of an ellipse of the given full width/height along `angleDeg`.
+// Heads are not all spherical, so the depth helpers need the real distance to
+// the surface in the direction they are working; assuming width/2 would leave a
+// tail or an arm floating clear of a tall head, or swallowed by a wide one.
+export const surfaceRadius = (width: number, height: number, angleDeg: number): number => {
+  const a = width / 2
+  const b = height / 2
+  const t = (angleDeg * Math.PI) / 180
+  return (a * b) / Math.hypot(b * Math.cos(t), a * Math.sin(t))
 }
 
 export type EyeShape = { w: number; h: number; y: number; angle: number; spacing: number }
@@ -175,6 +192,108 @@ export const wisp = (opts: {
     nodes.push(lobe(Math.round(size), Math.round(x), Math.round(y), z))
   }
   return nodes
+}
+
+// A tail as ONE smooth volume, not a chain.
+//
+// A cone is the only primitive that tapers. Its profile is revolved, and three
+// roundness controls shape it: `baseRoundness` rounds the wide end,
+// `tipRoundness` softens the point, and `morphRoundness` bends the silhouette
+// toward an ellipsoid. That last one matters most — a raw cone has straight
+// sides that meet the body's curve at a sharp inflection, which reads as a map
+// pin or a speech bubble. A convex (high-morph) profile leaves the body
+// tangentially and reads as a droplet instead.
+//
+// The geometry is expressed as protrusion and burial rather than raw position
+// and length, so a seamless join is structural: `bury` places the wide base
+// past the body centre, where it cannot show an edge, and `protrude` sets how
+// far only the tapering end clears the surface.
+//
+// `angleDeg` is the direction the tip points, in screen space: 0 = right,
+// 90 = down, 180 = left, -90 = up.
+//
+// `depth` sits the whole volume behind the head. That matters for two reasons.
+// The engine only files a node in `backPaths` when its rotated depth stays under
+// its own radius, so a shallow `z` flips between front and back as the head
+// tilts during animation; a clearly negative depth pins the tail behind the body
+// for every pose. The engine also projects nodes with
+// `scale = FOCAL / (FOCAL - z)`, so receding a node shrinks it AND pulls its
+// centre inward — left alone that would quietly eat the `protrude` budget. The
+// local geometry is therefore divided back out by that scale, which keeps
+// `protrude` and `bury` promises about SCREEN space at any depth.
+export const tail = (opts: {
+  angleDeg: number
+  protrude: number
+  width: number
+  bury?: number
+  bodyRadius?: number
+  tip?: number
+  base?: number
+  morph?: number
+  depth?: number
+}): BodyNode => {
+  const {
+    angleDeg,
+    protrude,
+    width,
+    bury = 24,
+    bodyRadius = 94,
+    tip = 0.45,
+    base = 1,
+    morph = 1.2,
+    depth = -90,
+  } = opts
+  const scale = FOCAL_LENGTH / (FOCAL_LENGTH - depth)
+  // Screen-space intent, then undo the projection so it survives the recession.
+  const tipAt = (bodyRadius + protrude) / scale
+  const baseAt = -bury / scale
+  const length = tipAt - baseAt
+  const centre = (tipAt + baseAt) / 2
+  const radians = (angleDeg * Math.PI) / 180
+  // An unrotated cone points up (-Y), i.e. -90deg, so the roll needed to aim
+  // the tip along `angleDeg` is angleDeg + 90.
+  return nd(
+    ns('cone', Math.round(width / scale), Math.round(length), Math.round(width / scale), 0.5, {
+      morphRoundness: morph,
+      tipRoundness: tip,
+      baseRoundness: base,
+    }),
+    [Math.round(Math.cos(radians) * centre), Math.round(Math.sin(radians) * centre), depth],
+    [0, 0, angleDeg + 90]
+  )
+}
+
+// A mirrored pair of soft arms.
+//
+// Capsules rather than cones, so the outer end stays blunt and mitt-like. The
+// inner end sinks below the body surface and shares the body fill, so each arm
+// merges into the mass instead of butting against it. `angleDeg` is measured
+// downward from horizontal, so 0 is straight out and positive droops.
+export const arms = (opts: {
+  angleDeg: number
+  protrude: number
+  width: number
+  sink?: number
+  bodyRadius?: number
+  depth?: number
+}): BodyNode[] => {
+  const { angleDeg, protrude, width, sink = 34, bodyRadius = 94, depth = -30 } = opts
+  const scale = FOCAL_LENGTH / (FOCAL_LENGTH - depth)
+  const outerAt = (bodyRadius + protrude) / scale
+  const innerAt = (bodyRadius - sink) / scale
+  const length = outerAt - innerAt
+  const centre = (outerAt + innerAt) / 2
+  const w = Math.round(width / scale)
+  return [-1, 1].map(side => {
+    // Right arm aims along +angleDeg; the left mirrors across the vertical axis.
+    const theta = side === 1 ? angleDeg : 180 - angleDeg
+    const radians = (theta * Math.PI) / 180
+    return nd(
+      ns('capsule', w, Math.round(length), w, 1),
+      [Math.round(Math.cos(radians) * centre), Math.round(Math.sin(radians) * centre), depth],
+      [0, 0, theta + 90]
+    )
+  })
 }
 
 // --- Expression + animation generation ------------------------------------
