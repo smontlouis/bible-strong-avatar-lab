@@ -64,14 +64,7 @@ export type CharacterConfig = {
 }
 
 export type EmoteKey =
-  | 'idle'
-  | 'hello'
-  | 'curious'
-  | 'look-around'
-  | 'excited'
-  | 'surprise'
-  | 'sleepy'
-  | 'shy'
+  'idle' | 'hello' | 'curious' | 'look-around' | 'excited' | 'surprise' | 'sleepy' | 'shy'
 
 // Ordered emote repertoire every character can perform. `idle` is the resting
 // loop; the rest are triggerable one-shot or looping emotes.
@@ -345,7 +338,14 @@ export const buildDefinition = (c: CharacterConfig): AvatarDefinition => {
     motion: MotionKind,
     perspective = 1
   ) =>
-    expression(head, eye(ew, eh, ex, ey, angle), eye(ew, eh, ex, ey, angle), sp, motion, perspective)
+    expression(
+      head,
+      eye(ew, eh, ex, ey, angle),
+      eye(ew, eh, ex, ey, angle),
+      sp,
+      motion,
+      perspective
+    )
 
   const expressions = {
     // resting + gaze
@@ -402,8 +402,20 @@ export const buildDefinition = (c: CharacterConfig): AvatarDefinition => {
     maxIntervalMs: 5400,
     durationMs: 140,
   }
-  const fastBlink = { ...blink, initialDelayMs: 400, minIntervalMs: 900, maxIntervalMs: 1900, durationMs: 110 }
-  const slowBlink = { ...blink, initialDelayMs: 300, minIntervalMs: 1400, maxIntervalMs: 2800, durationMs: 300 }
+  const fastBlink = {
+    ...blink,
+    initialDelayMs: 400,
+    minIntervalMs: 900,
+    maxIntervalMs: 1900,
+    durationMs: 110,
+  }
+  const slowBlink = {
+    ...blink,
+    initialDelayMs: 300,
+    minIntervalMs: 1400,
+    maxIntervalMs: 2800,
+    durationMs: 300,
+  }
 
   type Trans = 'spring' | 'smooth' | 'snappy'
   const step = (expression: string, holdMs: number, transitionMs: number, transition: Trans) => ({
@@ -474,10 +486,7 @@ export const buildDefinition = (c: CharacterConfig): AvatarDefinition => {
     },
     surprise: {
       playbackMode: 'once' as const,
-      steps: [
-        step('wide', 820, 150, 'snappy'),
-        step('neutral', 1200, 460, 'spring'),
-      ],
+      steps: [step('wide', 820, 150, 'snappy'), step('neutral', 1200, 460, 'spring')],
       blink,
       metadata: { label: `${c.name} gasps`, group: 'ensemble' },
     },

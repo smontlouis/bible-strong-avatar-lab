@@ -56,7 +56,12 @@ const configs: CharacterConfig[] = [
     body: '#e65f2e',
     eyes: ink,
     eye: { w: 24, h: 44, y: -6, spacing: 40 },
-    nodes: [lobe(96, -92, -58, -8), lobe(90, 96, -50, -8), lobe(92, -88, 64, -8), lobe(86, 92, 72, -8)],
+    nodes: [
+      lobe(96, -92, -58, -8),
+      lobe(90, 96, -50, -8),
+      lobe(92, -88, 64, -8),
+      lobe(86, 92, 72, -8),
+    ],
     signature: 'hello',
   },
   {

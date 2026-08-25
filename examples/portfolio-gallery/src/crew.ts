@@ -39,6 +39,12 @@ export const MODES = {
 
 export type ModeName = keyof typeof MODES
 export type BodyRole = 'accent' | 'ink' | 'inkMuted'
+type EyeColorRole = 'background' | 'inverseInk'
+
+const INVERSE_INK: Record<ModeName, string> = {
+  light: MODES.dark.ink,
+  dark: MODES.light.ink,
+}
 
 const ROLE_LABEL: Record<BodyRole, string> = {
   accent: 'accent',
@@ -51,6 +57,7 @@ type Proportions = {
   name: string
   note: string
   role: BodyRole
+  eyeColor?: EyeColorRole
   headW: number
   headH: number
   eyeW: number
@@ -343,10 +350,11 @@ const crew: Proportions[] = [
     tailDepth: -95,
   },
   {
-    id: 'bigeye',
-    name: 'Bigeye',
-    note: 'Largest eyes, filling much of the face',
-    role: 'accent',
+    id: 'davebot',
+    name: 'Davebot',
+    note: 'Davebot — largest eyes, filling much of the face',
+    role: 'ink',
+    eyeColor: 'inverseInk',
     headW: 184,
     headH: 190,
     eyeW: 36,
@@ -436,8 +444,9 @@ export const crewMembers: CrewMember[] = crew.map(p => {
       role: p.note,
       surface: sf('sphere', p.headW, p.headH, p.headW, 1),
       body,
-      // Eyes take the mode's background, so they read as cut-outs in both modes.
-      eyes: palette.bg,
+      // Davebot uses the opposite mode's ink for his eyes; the other crew
+      // members keep background-colour cut-outs.
+      eyes: p.eyeColor === 'inverseInk' ? INVERSE_INK[mode] : palette.bg,
       eye: { w: p.eyeW, h: p.eyeH, y: p.eyeY, spacing: p.eyeSpacing },
       nodes: [
         tail({

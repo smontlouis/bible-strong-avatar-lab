@@ -1,0 +1,300 @@
+@import url('https://fonts.bunny.net/css?family=geist:400,500,600|geist-mono:400,500');
+
+:root {
+  font-family: 'Geist', system-ui, sans-serif;
+  color: #d4d4d4;
+  background: #242424;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #242424;
+}
+
+.comparison {
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(14px, 1.5vw, 24px);
+  padding: clamp(14px, 2vw, 30px);
+  align-content: center;
+}
+
+.portfolio[data-mode='light'] {
+  --page: #f6f6f6;
+  --ink: #262626;
+  --muted: #5e5e5e;
+  --project: #c4c4c4;
+  --border: #0000001f;
+}
+
+.portfolio[data-mode='dark'] {
+  --page: #0b0b0b;
+  --ink: #d4d4d4;
+  --muted: #909090;
+  --project: #323232;
+  --border: #ffffff1f;
+}
+
+.portfolio {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  min-height: clamp(420px, 49vw, 610px);
+  padding: clamp(16px, 2vw, 28px);
+  overflow: hidden;
+  background: var(--page);
+  color: var(--ink);
+}
+
+.site-nav {
+  min-height: 26px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: clamp(16px, 2vw, 32px);
+  border-bottom: 1px solid var(--border);
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: clamp(7px, 0.52vw, 9px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.brand,
+.nav-links,
+.davebot {
+  text-box: trim-both cap alphabetic;
+}
+
+.brand {
+  display: flex;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.brand-role {
+  color: var(--muted);
+}
+
+.nav-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: clamp(10px, 1.2vw, 22px);
+  min-width: 0;
+}
+
+.nav-links a,
+.nav-links span {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.nav-links a:first-child {
+  color: var(--ink);
+}
+
+.davebot {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.davebot::before {
+  content: '+';
+  margin-inline-end: 5px;
+}
+
+.davebot:hover,
+.davebot:focus-visible {
+  color: var(--ink);
+}
+
+.davebot:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 5px;
+}
+
+.davebot-avatar {
+  position: absolute;
+  z-index: 2;
+  /* Same right edge as DAVEbot; the character is its visual endpoint. */
+  inset-inline-end: clamp(17px, 2vw, 29px);
+  top: clamp(47px, 4.5vw, 62px);
+  width: clamp(34px, 3.2vw, 46px);
+  height: clamp(34px, 3.2vw, 46px);
+}
+
+.davebot-avatar .bs-avatar,
+.davebot-avatar svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.status-dot {
+  position: absolute;
+  top: clamp(52px, 4.9vw, 68px);
+  inset-inline-start: 70%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(210px, 0.85fr);
+  align-items: end;
+  gap: clamp(22px, 4vw, 64px);
+  margin-top: clamp(108px, 12vw, 164px);
+}
+
+.hero h1 {
+  max-width: 13ch;
+  margin: 0;
+  font-size: clamp(27px, 2.8vw, 43px);
+  font-weight: 500;
+  line-height: 0.93;
+  letter-spacing: -0.055em;
+}
+
+.timeline {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 0;
+  font-size: clamp(7px, 0.56vw, 10px);
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.timeline div {
+  display: contents;
+}
+
+.timeline dt,
+.timeline dd {
+  margin: 0;
+}
+
+.timeline dd:last-child {
+  color: var(--ink);
+}
+
+.projects {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(10px, 1vw, 16px);
+  margin-top: clamp(18px, 2vw, 30px);
+}
+
+.project {
+  height: clamp(154px, 17vw, 224px);
+  background: var(--project);
+}
+
+.mode-caption {
+  position: absolute;
+  inset-inline-start: clamp(16px, 2vw, 28px);
+  bottom: 10px;
+  margin: 0;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+@media (max-width: 980px) {
+  .comparison {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio {
+    min-height: 520px;
+  }
+
+  .site-nav,
+  .timeline {
+    font-size: 9px;
+  }
+
+  .hero {
+    margin-top: 132px;
+  }
+}
+
+@media (max-width: 620px) {
+  .comparison {
+    padding: 0;
+    gap: 1px;
+  }
+
+  .portfolio {
+    min-height: 600px;
+    padding: 18px;
+  }
+
+  .site-nav {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .brand-role {
+    display: none;
+  }
+
+  .davebot-avatar {
+    inset-inline-end: 18px;
+    top: 52px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .status-dot {
+    display: none;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+    margin-top: 142px;
+  }
+
+  .hero h1 {
+    font-size: 38px;
+  }
+
+  .projects {
+    margin-top: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}

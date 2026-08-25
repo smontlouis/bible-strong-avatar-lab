@@ -1,18 +1,10 @@
-import {
-  antenna,
-  buildEnsemble,
-  ears,
-  sf,
-  type Character,
-  type CharacterConfig,
-} from './builder'
+import { antenna, buildEnsemble, ears, sf, type Character, type CharacterConfig } from './builder'
 
 // The original twenty characters for Rachel Chen's portfolio: warm coral
 // (#e65f2e) accents on a cool near-white field, slate ink, and soft cool tints.
 
 const ink = '#2a2f3a'
 const cream = '#f4f1ea'
-
 
 const configs: CharacterConfig[] = [
   {

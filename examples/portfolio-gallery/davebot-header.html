@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#242424" />
+    <title>Davebot — pointer-following portfolio guide</title>
+  </head>
+  <body>
+    <main class="comparison" aria-label="Davebot portfolio header in light and dark mode">
+      <section class="portfolio" data-mode="light" aria-label="Light mode portfolio header">
+        <nav class="site-nav" aria-label="Light mode primary navigation">
+          <div class="brand">
+            <span>David Lafond</span>
+            <span class="brand-role">Product designer · Architect</span>
+          </div>
+          <div class="nav-links" aria-label="Portfolio sections">
+            <a href="#light-work">Work</a>
+            <span>Community</span>
+            <span>Play</span>
+            <span>About</span>
+            <span>Resume</span>
+          </div>
+          <button class="davebot" type="button" data-davebot>Davebot</button>
+        </nav>
+
+        <div class="davebot-avatar" data-davebot-avatar></div>
+        <span class="status-dot" aria-hidden="true"></span>
+
+        <div class="hero">
+          <h1>Hi, I’m David ~<br />a product designer who leads creative teams.</h1>
+          <dl class="timeline">
+            <div>
+              <dt>2026</dt>
+              <dd>Tableau Urban Innovation</dd>
+              <dd>Senior Designer</dd>
+            </div>
+            <div>
+              <dt>2025</dt>
+              <dd>Fluid Interfaces</dd>
+              <dd>Lead Product Designer</dd>
+            </div>
+            <div>
+              <dt>2025</dt>
+              <dd>Plumba Parking</dd>
+              <dd>Product Manager</dd>
+            </div>
+            <div>
+              <dt>2024</dt>
+              <dd>Serendipity City</dd>
+              <dd>Lead Product Designer</dd>
+            </div>
+            <div>
+              <dt>2023</dt>
+              <dd>Computational Design Exploratory</dd>
+              <dd>Lead Product Designer</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="projects" id="light-work" aria-label="Selected work placeholders">
+          <div class="project"></div>
+          <div class="project"></div>
+        </div>
+        <p class="mode-caption">Light mode</p>
+      </section>
+
+      <section class="portfolio" data-mode="dark" aria-label="Dark mode portfolio header">
+        <nav class="site-nav" aria-label="Dark mode primary navigation">
+          <div class="brand">
+            <span>David Lafond</span>
+            <span class="brand-role">Product designer · Architect</span>
+          </div>
+          <div class="nav-links" aria-label="Portfolio sections">
+            <a href="#dark-work">Work</a>
+            <span>Community</span>
+            <span>Play</span>
+            <span>About</span>
+            <span>Resume</span>
+          </div>
+          <button class="davebot" type="button" data-davebot>Davebot</button>
+        </nav>
+
+        <div class="davebot-avatar" data-davebot-avatar></div>
+        <span class="status-dot" aria-hidden="true"></span>
+
+        <div class="hero">
+          <h1>Hi, I’m David ~<br />a product designer who leads creative teams.</h1>
+          <dl class="timeline">
+            <div>
+              <dt>2026</dt>
+              <dd>Tableau Urban Innovation</dd>
+              <dd>Senior Designer</dd>
+            </div>
+            <div>
+              <dt>2025</dt>
+              <dd>Fluid Interfaces</dd>
+              <dd>Lead Product Designer</dd>
+            </div>
+            <div>
+              <dt>2025</dt>
+              <dd>Plumba Parking</dd>
+              <dd>Product Manager</dd>
+            </div>
+            <div>
+              <dt>2024</dt>
+              <dd>Serendipity City</dd>
+              <dd>Lead Product Designer</dd>
+            </div>
+            <div>
+              <dt>2023</dt>
+              <dd>Computational Design Exploratory</dd>
+              <dd>Lead Product Designer</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="projects" id="dark-work" aria-label="Selected work placeholders">
+          <div class="project"></div>
+          <div class="project"></div>
+        </div>
+        <p class="mode-caption">Dark mode</p>
+      </section>
+    </main>
+    <script type="module" src="/src/davebot-header-main.ts"></script>
+  </body>
+</html>
