@@ -36,7 +36,7 @@ export type GazeSettings = {
 }
 
 export const GAZE_DEFAULTS: GazeSettings = {
-  travel: 30,
+  travel: 48,
   depth: 900,
   smoothing: 0.9,
   convergence: 0.35,
