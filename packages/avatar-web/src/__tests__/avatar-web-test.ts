@@ -34,6 +34,46 @@ describe('@bible-strong/avatar-web', () => {
     expect(document.querySelector('#avatar svg')).toBeNull()
   })
 
+  it('tints fixed-color body parts when an expression overrides the body color', () => {
+    const tintedDefinition = {
+      ...definitionJson,
+      body: {
+        ...definitionJson.body,
+        nodes: [
+          {
+            layer: 'back',
+            color: '#a95f47',
+            surface: {
+              type: 'ellipse',
+              width: 40,
+              height: 68,
+              depth: 36,
+              roundness: 1,
+            },
+            position: [-64, -80, -18],
+            rotation: [-4, -7, 8],
+          },
+        ],
+      },
+      expressions: {
+        ...definitionJson.expressions,
+        neutral: {
+          ...definitionJson.expressions.neutral,
+          colors: { body: '#ba3636' },
+        },
+      },
+    }
+
+    const avatar = createAvatar('#avatar', {
+      definition: tintedDefinition,
+      defaultExpression: 'neutral',
+    })
+    const firstBodyPart = document.querySelector('#avatar svg > path')
+
+    expect(firstBodyPart?.getAttribute('fill')).toBe('#ba3636')
+    avatar.destroy()
+  })
+
   it('returns typed errors for unknown targets', () => {
     const avatar = createAvatar('#avatar', { definition: definitionJson })
 

@@ -1,6 +1,6 @@
 import { RotateCcw } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { useStudioLanguage } from '@/i18n'
@@ -496,8 +496,10 @@ export function AvatarCanvas({
   expression,
   avatarEyes,
   surface,
+  bodyNodes,
   scene,
   colors,
+  expressionBodyColor,
   renderStyle,
   rotationGizmo,
   showWire,
@@ -522,8 +524,10 @@ export function AvatarCanvas({
   expression: Expression
   avatarEyes: AvatarEyeDefaults
   surface: SurfaceConfig
+  bodyNodes: BodyNode[]
   scene: RenderedScene
   colors: RenderedColors
+  expressionBodyColor?: string
   renderStyle: AvatarRenderStyle
   rotationGizmo: RenderedRotationGizmo
   showWire: boolean
@@ -593,6 +597,11 @@ export function AvatarCanvas({
     if (!bodyEditing || !selectedBodyNodeId) return null
     return findBodyNodePath(scene, selectedBodyNodeId)
   })()
+  const nodeColorStyle = (id: string | null | undefined) => {
+    if (expressionBodyColor ?? expression.bodyColor) return undefined
+    const color = bodyNodes.find(node => node.id === id)?.color
+    return color ? ({ '--avatar-node-color': color } as CSSProperties) : undefined
+  }
 
   const toSvg = (event: React.PointerEvent<SVGElement>): readonly [number, number] => {
     const rectangle = svgRef.current!.getBoundingClientRect()
@@ -774,7 +783,9 @@ export function AvatarCanvas({
   }
   useEscapeToCancel(cancelDrag)
   return (
-    <div className={`avatar-wrap${renderStyle.type === 'pixel' ? ' is-pixel-rendered' : ''}`}>
+    <div
+      className={`avatar-wrap${renderStyle.type === 'pixel' ? ' is-pixel-rendered' : ''}${renderStyle.type === 'vector' && renderStyle.filled ? ' is-filled-vector' : ''}`}
+    >
       {playback && (
         <motion.div
           className="stage-playback-status"
@@ -814,6 +825,7 @@ export function AvatarCanvas({
               className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
               d={pathValue}
               key={index}
+              style={nodeColorStyle(backNodeIds.current[index])}
               onPointerDown={event => selectBodyPath(event, backNodeIds.current[index])}
             />
           ))}
@@ -848,6 +860,7 @@ export function AvatarCanvas({
               className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
               d={pathValue}
               key={index}
+              style={nodeColorStyle(frontNodeIds.current[index])}
               onPointerDown={event => selectBodyPath(event, frontNodeIds.current[index])}
             />
           ))}

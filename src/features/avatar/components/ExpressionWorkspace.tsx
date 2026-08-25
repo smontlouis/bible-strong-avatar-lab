@@ -1,4 +1,5 @@
 import { ArrowLeft, Copy, Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useState, type RefObject } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -27,15 +28,38 @@ import { scaleEye, updateEyeDimension } from '@/features/avatar/expressionEditin
 import { type Expression } from '@/features/avatar/geometry'
 import { defaultExpression } from '@/features/avatar/presets'
 import { type SurfaceConfig } from '@/features/avatar/surfaces'
-import { StaticPixelAvatarCanvas } from '@/features/rendering/components/PixelAvatarCanvas'
+import {
+  avatarBodyOutlineWidth,
+  resolveAvatarNodeColor,
+  useAvatarBodyColorOverride,
+} from '@/features/rendering/avatarAppearance'
+import {
+  LivePixelAvatarCanvas,
+  StaticPixelAvatarCanvas,
+} from '@/features/rendering/components/PixelAvatarCanvas'
+import type { RenderedColors, RenderedScene } from '@/features/rendering/renderedScene'
 export function SurfaceThumbnail({ surface }: { surface: SurfaceConfig }) {
   const geometry = getPreviewGeometry(defaultExpression, surface, emptyBodyNodes)
+  const outlineWidth = avatarBodyOutlineWidth()
   return (
     <svg viewBox="-150 -150 300 300" aria-hidden="true">
       {geometry.backPaths.map((pathValue, index) => (
-        <path d={pathValue} key={index} />
+        <path
+          d={pathValue}
+          fill="var(--avatar-interior-color, #ffffff)"
+          stroke="currentColor"
+          strokeWidth={outlineWidth}
+          strokeLinejoin="round"
+          key={index}
+        />
       ))}
-      <path d={geometry.headPath} />
+      <path
+        d={geometry.headPath}
+        fill="var(--avatar-interior-color, #ffffff)"
+        stroke="currentColor"
+        strokeWidth={outlineWidth}
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
@@ -59,6 +83,16 @@ export function ExpressionPreview({
 }) {
   const geometry = getPreviewGeometry(expression, surface, bodyNodes, avatarEyes)
   const resolvedColors = resolveColors(expression, colors)
+  const outlineWidth = avatarBodyOutlineWidth()
+  const filled = renderStyle.type === 'vector' && renderStyle.filled === true
+  const bodyFill = filled ? resolvedColors.body : 'var(--avatar-interior-color, #ffffff)'
+  const eyeFill = resolvedColors.eyes
+  const nodeColor = (id: string | null | undefined) =>
+    resolveAvatarNodeColor({
+      nodeColor: bodyNodes.find(node => node.id === id)?.color,
+      bodyColor: resolvedColors.body,
+      expressionBodyColor: expression.bodyColor,
+    })
   if (renderStyle.type === 'pixel') {
     return (
       <StaticPixelAvatarCanvas
@@ -88,37 +122,168 @@ export function ExpressionPreview({
           <path d={geometry.headPath} />
         </clipPath>
       </defs>
-      {geometry.backPaths.map((pathValue, index) => (
-        <path
-          className="preview-head"
-          d={pathValue}
-          key={index}
-          style={{ fill: resolvedColors.body }}
-        />
-      ))}
-      <path className="preview-head" d={geometry.headPath} style={{ fill: resolvedColors.body }} />
+      {geometry.backPaths.map((pathValue, index) => {
+        const color = nodeColor(geometry.backNodeIds[index])
+        return (
+          <path
+            className="preview-head"
+            d={pathValue}
+            key={index}
+            style={{
+              fill: filled ? color : bodyFill,
+              stroke: color,
+              strokeWidth: outlineWidth,
+              strokeLinejoin: 'round',
+            }}
+          />
+        )
+      })}
+      <path
+        className="preview-head"
+        d={geometry.headPath}
+        style={{
+          fill: bodyFill,
+          stroke: resolvedColors.body,
+          strokeWidth: outlineWidth,
+          strokeLinejoin: 'round',
+        }}
+      />
       <g clipPath={`url(#${clipId})`}>
         <path
           className="preview-eye"
           d={geometry.leftPath}
           opacity={geometry.leftVisible ? 1 : 0}
-          style={{ fill: resolvedColors.eyes }}
+          style={{ fill: eyeFill }}
         />
         <path
           className="preview-eye"
           d={geometry.rightPath}
           opacity={geometry.rightVisible ? 1 : 0}
-          style={{ fill: resolvedColors.eyes }}
+          style={{ fill: eyeFill }}
         />
       </g>
-      {geometry.frontPaths.map((pathValue, index) => (
-        <path
-          className="preview-head"
-          d={pathValue}
-          key={`front-${index}`}
-          style={{ fill: resolvedColors.body }}
+      {geometry.frontPaths.map((pathValue, index) => {
+        const color = nodeColor(geometry.frontNodeIds[index])
+        return (
+          <path
+            className="preview-head"
+            d={pathValue}
+            key={`front-${index}`}
+            style={{
+              fill: filled ? color : bodyFill,
+              stroke: color,
+              strokeWidth: outlineWidth,
+              strokeLinejoin: 'round',
+            }}
+          />
+        )
+      })}
+    </svg>
+  )
+}
+
+export function LiveExpressionPreview({
+  scene,
+  colors,
+  baseBodyColor,
+  bodyNodes,
+  renderStyle,
+  expressionBodyColor,
+  id,
+}: {
+  scene: RenderedScene
+  colors: RenderedColors
+  baseBodyColor: string
+  bodyNodes: BodyNode[]
+  renderStyle: AvatarRenderStyle
+  expressionBodyColor?: string
+  id: string
+}) {
+  const bodyColorIsOverridden = useAvatarBodyColorOverride(colors.body, baseBodyColor)
+
+  if (renderStyle.type === 'pixel') {
+    return (
+      <LivePixelAvatarCanvas
+        className="avatar-preview"
+        scene={scene}
+        colors={colors}
+        style={renderStyle}
+      />
+    )
+  }
+
+  const clipId = `live-preview-${id}`
+  const filled = renderStyle.filled === true
+  const outlineWidth = avatarBodyOutlineWidth()
+  const inheritBodyColor = Boolean(expressionBodyColor) || bodyColorIsOverridden
+  const nodeColor = (nodeId: string | null | undefined) =>
+    inheritBodyColor
+      ? colors.body
+      : (bodyNodes.find(node => node.id === nodeId)?.color ?? colors.body)
+
+  return (
+    <svg className="avatar-preview" viewBox="-150 -150 300 300" aria-hidden="true">
+      <defs>
+        <clipPath id={clipId}>
+          <motion.path d={scene.headPath} />
+        </clipPath>
+      </defs>
+      <motion.g style={{ x: scene.offsetX, y: scene.offsetY }}>
+        {scene.backPaths.map((pathValue, index) => {
+          const color = nodeColor(scene.backNodeIds.current[index])
+          return (
+            <motion.path
+              d={pathValue}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                fill: filled ? color : 'var(--avatar-interior-color, #ffffff)',
+                stroke: color,
+                strokeWidth: outlineWidth,
+              }}
+              key={`back-${index}`}
+            />
+          )
+        })}
+        <motion.path
+          d={scene.headPath}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            fill: filled ? colors.body : 'var(--avatar-interior-color, #ffffff)',
+            stroke: colors.body,
+            strokeWidth: outlineWidth,
+          }}
         />
-      ))}
+        <g clipPath={`url(#${clipId})`}>
+          <motion.path
+            d={scene.leftPath}
+            opacity={scene.leftOpacity}
+            style={{ fill: colors.eyes }}
+          />
+          <motion.path
+            d={scene.rightPath}
+            opacity={scene.rightOpacity}
+            style={{ fill: colors.eyes }}
+          />
+        </g>
+        {scene.frontPaths.map((pathValue, index) => {
+          const color = nodeColor(scene.frontNodeIds.current[index])
+          return (
+            <motion.path
+              d={pathValue}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                fill: filled ? color : 'var(--avatar-interior-color, #ffffff)',
+                stroke: color,
+                strokeWidth: outlineWidth,
+              }}
+              key={`front-${index}`}
+            />
+          )
+        })}
+      </motion.g>
     </svg>
   )
 }

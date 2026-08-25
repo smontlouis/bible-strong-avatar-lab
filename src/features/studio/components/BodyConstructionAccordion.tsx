@@ -176,7 +176,11 @@ export function BodyConstructionAccordion({
                 unit="u"
                 onChange={depth => updateSurface({ ...surface, depth })}
               />
-              {(surface.type === 'cube' || surface.type === 'diamond') && (
+              {(surface.type === 'cube' ||
+                surface.type === 'diamond' ||
+                surface.type === 'trapezoid' ||
+                surface.type === 'frustum' ||
+                surface.type === 'half-cone') && (
                 <NumericField
                   label="Rondeur"
                   value={surface.roundness}
@@ -230,6 +234,29 @@ export function BodyConstructionAccordion({
                     onChange={baseRoundness => updateSurface({ ...surface, baseRoundness })}
                   />
                 </>
+              )}
+              {surface.type === 'trapezoid' && (
+                <NumericField
+                  label="Échelle du sommet"
+                  value={surface.topScale ?? 0.82}
+                  min={0.05}
+                  max={2}
+                  step={0.01}
+                  onActiveChange={active => controller.updateHighlight(active ? 'head' : null)}
+                  onChange={topScale => updateSurface({ ...surface, topScale })}
+                />
+              )}
+              {surface.type === 'half-cone' && (
+                <NumericField
+                  label="Angle de coupe"
+                  value={surface.cutAngle ?? 0}
+                  min={-180}
+                  max={180}
+                  step={1}
+                  unit="°"
+                  onActiveChange={active => controller.updateHighlight(active ? 'head' : null)}
+                  onChange={cutAngle => updateSurface({ ...surface, cutAngle })}
+                />
               )}
             </div>
           </AccordionContent>
@@ -320,7 +347,10 @@ export function BodyConstructionAccordion({
                     ))}
                     {(selectedBodyNode.surface.type === 'cube' ||
                       selectedBodyNode.surface.type === 'diamond' ||
-                      selectedBodyNode.surface.type === 'cylinder') && (
+                      selectedBodyNode.surface.type === 'cylinder' ||
+                      selectedBodyNode.surface.type === 'trapezoid' ||
+                      selectedBodyNode.surface.type === 'frustum' ||
+                      selectedBodyNode.surface.type === 'half-cone') && (
                       <NumericField
                         label="Rondeur"
                         value={selectedBodyNode.surface.roundness}
@@ -380,6 +410,37 @@ export function BodyConstructionAccordion({
                           }
                         />
                       </>
+                    )}
+                    {selectedBodyNode.surface.type === 'trapezoid' && (
+                      <NumericField
+                        label="Échelle du sommet"
+                        value={selectedBodyNode.surface.topScale ?? 0.82}
+                        min={0.05}
+                        max={2}
+                        step={0.01}
+                        onChange={topScale =>
+                          updateSelectedBodyNode(currentNode => ({
+                            ...currentNode,
+                            surface: { ...currentNode.surface, topScale },
+                          }))
+                        }
+                      />
+                    )}
+                    {selectedBodyNode.surface.type === 'half-cone' && (
+                      <NumericField
+                        label="Angle de coupe"
+                        value={selectedBodyNode.surface.cutAngle ?? 0}
+                        min={-180}
+                        max={180}
+                        step={1}
+                        unit="°"
+                        onChange={cutAngle =>
+                          updateSelectedBodyNode(currentNode => ({
+                            ...currentNode,
+                            surface: { ...currentNode.surface, cutAngle },
+                          }))
+                        }
+                      />
                     )}
                   </div>
                   <div className="body-transform-grid">

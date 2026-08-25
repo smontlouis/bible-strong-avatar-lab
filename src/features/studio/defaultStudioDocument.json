@@ -17,8 +17,8 @@
           "nodes": []
         },
         "colors": {
-          "body": "#5b7fe5",
-          "eyes": "#111316"
+          "body": "#7c89ff",
+          "eyes": "#50d7fe"
         },
         "eyes": {
           "widthLeft": 20,
@@ -113,8 +113,8 @@
           ]
         },
         "colors": {
-          "body": "#e6855c",
-          "eyes": "#ffffff"
+          "body": "#ff9d45",
+          "eyes": "#ffda1a"
         },
         "eyes": {
           "widthLeft": 28.934879954481378,
@@ -147,8 +147,8 @@
           "nodes": []
         },
         "colors": {
-          "body": "#ffcf24",
-          "eyes": "#000000"
+          "body": "#ffda1a",
+          "eyes": "#ffda1a"
         },
         "eyes": {
           "widthLeft": 20,
@@ -178,8 +178,8 @@
           "nodes": []
         },
         "colors": {
-          "body": "#55b6c3",
-          "eyes": "#111316"
+          "body": "#1ad7e3",
+          "eyes": "#1ad7e3"
         },
         "eyes": {
           "widthLeft": 13.26171875,
@@ -209,8 +209,8 @@
           "nodes": []
         },
         "colors": {
-          "body": "#000000",
-          "eyes": "#ffffff"
+          "body": "#df48f3",
+          "eyes": "#ff4b6f"
         },
         "eyes": {
           "widthLeft": 20,
@@ -409,8 +409,8 @@
           ]
         },
         "colors": {
-          "body": "#e69a5c",
-          "eyes": "#111316"
+          "body": "#be9675",
+          "eyes": "#ff9d45"
         },
         "eyes": {
           "widthLeft": 20,
@@ -483,8 +483,8 @@
           ]
         },
         "colors": {
-          "body": "#ffc2e9",
-          "eyes": "#3e4e65"
+          "body": "#ff4b6f",
+          "eyes": "#df48f3"
         },
         "eyes": {
           "widthLeft": 20,
@@ -599,8 +599,8 @@
           ]
         },
         "colors": {
-          "body": "#c9cbcf",
-          "eyes": "#111316"
+          "body": "#50d7fe",
+          "eyes": "#1a9cff"
         },
         "eyes": {
           "widthLeft": 13.942812499999993,
@@ -630,8 +630,8 @@
           "nodes": []
         },
         "colors": {
-          "body": "#e65c5c",
-          "eyes": "#111316"
+          "body": "#ff5558",
+          "eyes": "#ff5558"
         },
         "eyes": {
           "widthLeft": 19.975390625,
@@ -664,8 +664,8 @@
           "nodes": []
         },
         "colors": {
-          "body": "#dbe2f5",
-          "eyes": "#111316"
+          "body": "#1a9cff",
+          "eyes": "#1a9cff"
         },
         "eyes": {
           "widthLeft": 13.389062500000001,
@@ -1253,6 +1253,29 @@
       "eyeMotion": "shake",
       "bodyMotion": "slowDrift",
       "bodyColor": "#adc3ff"
+    },
+    {
+      "id": "expression-joyful-arc",
+      "semanticKey": "joyful-arc",
+      "headX": -8.75234375,
+      "headY": -8.743359375,
+      "headZ": -10.773828125,
+      "widthLeft": 54,
+      "widthRight": 54,
+      "heightLeft": 15,
+      "heightRight": 15,
+      "curvatureLeft": 1,
+      "curvatureRight": 1,
+      "spacing": 69.276171875,
+      "positionXLeft": 0,
+      "positionXRight": 0,
+      "positionYLeft": -18,
+      "positionYRight": -18,
+      "leftAngle": 0,
+      "rightAngle": 0,
+      "perspective": 1,
+      "eyeMotion": "none",
+      "bodyMotion": "none"
     }
   ],
   "sequences": [
@@ -1699,7 +1722,7 @@
         },
         {
           "id": "angry-step-1",
-          "expressionId": "expression-16",
+          "expressionId": "expression-3d2bed26-f97c-477d-922f-77600cb10e92",
           "holdMs": 2300,
           "transitionMs": 500,
           "transition": "smooth"
@@ -1792,6 +1815,38 @@
       ],
       "blink": {
         "enabled": true,
+        "initialDelayMs": 2100,
+        "minIntervalMs": 2800,
+        "maxIntervalMs": 5000,
+        "durationMs": 260
+      }
+    },
+    {
+      "id": "joyful",
+      "semanticKey": "joyful",
+      "name": "joyful",
+      "group": "Réactions",
+      "description": "Morphing fluide entre les expressions 11 et 27.",
+      "builtIn": true,
+      "playbackMode": "loop",
+      "steps": [
+        {
+          "id": "joyful-step-0",
+          "expressionId": "expression-11",
+          "holdMs": 2300,
+          "transitionMs": 700,
+          "transition": "gentleSpring"
+        },
+        {
+          "id": "joyful-step-1",
+          "expressionId": "expression-joyful-arc",
+          "holdMs": 2300,
+          "transitionMs": 700,
+          "transition": "gentleSpring"
+        }
+      ],
+      "blink": {
+        "enabled": false,
         "initialDelayMs": 2100,
         "minIntervalMs": 2800,
         "maxIntervalMs": 5000,
@@ -2089,7 +2144,7 @@
         },
         {
           "id": "scared-step-1",
-          "expressionId": "expression-21",
+          "expressionId": "expression-5220eaee-32fe-4bd8-ad31-432189534cc8",
           "holdMs": 2300,
           "transitionMs": 500,
           "transition": "smooth"

@@ -9,10 +9,28 @@ import {
   paintRenderedScene,
 } from '@/features/rendering/renderedScene'
 import { surfacePresets } from '@/features/avatar/surfaces'
+import { loadStudioDocument } from '@/features/studio/studioDocument'
 import defaultStudioDocument from '@/features/studio/defaultStudioDocument.json'
 import type { BodyNode } from '@/features/avatar/body'
 import type { Expression } from '@/features/avatar/geometry'
 import type { SurfaceConfig } from '@/features/avatar/surfaces'
+
+const pathBounds = (value: string) => {
+  const numbers = (value.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
+  const x = numbers.filter((_, index) => index % 2 === 0)
+  const y = numbers.filter((_, index) => index % 2 === 1)
+  return {
+    left: Math.min(...x),
+    top: Math.min(...y),
+    right: Math.max(...x),
+    bottom: Math.max(...y),
+  }
+}
+
+const overlap = (first: ReturnType<typeof pathBounds>, second: ReturnType<typeof pathBounds>) => ({
+  x: Math.min(first.right, second.right) - Math.max(first.left, second.left),
+  y: Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top),
+})
 
 describe('rendered avatar scene', () => {
   it('keeps layer identity and hit mapping behind the scene seam', () => {
@@ -68,5 +86,85 @@ describe('rendered avatar scene', () => {
       { bodyNodes: avatar.body.nodes as BodyNode[] }
     )
     expect(clearlyTurned.frontNodeIds).toContain('shape-d4b4e8ad-8625-488d-920c-c497da226f9f')
+
+    const forcedFront = renderAvatar(
+      poseFromExpression({ ...expression, headY: 35 }),
+      avatar.body.primary as SurfaceConfig,
+      1,
+      {
+        bodyNodes: [{ ...(avatar.body.nodes[0] as unknown as BodyNode), layer: 'front' }],
+      }
+    )
+    expect(forcedFront.frontNodeIds).toContain(avatar.body.nodes[0].id)
+  })
+
+  it('anchors dog ears in front of the head across expressions', () => {
+    const studio = loadStudioDocument({ getItem: () => null })
+    const avatar = studio.library.avatars.find(item => item.id === 'oneworks-dog')!
+    const detachedEars: string[] = []
+
+    const neutral = renderAvatar(
+      poseFromExpression(defaultExpression),
+      avatar.body.primary as SurfaceConfig,
+      1,
+      { bodyNodes: avatar.body.nodes as BodyNode[] }
+    )
+    expect(neutral.frontNodeIds).toEqual(['dog-ear-left', 'dog-ear-right'])
+
+    studio.expressions.forEach(expression => {
+      const geometry = renderAvatar(
+        poseFromExpression(expression as Expression),
+        avatar.body.primary as SurfaceConfig,
+        1,
+        { bodyNodes: avatar.body.nodes as BodyNode[] }
+      )
+      const head = pathBounds(geometry.headPath)
+
+      const earIds = ['dog-ear-left', 'dog-ear-right'] as const
+      earIds.forEach(nodeId => {
+        const frontIndex = geometry.frontNodeIds.indexOf(nodeId)
+        expect(geometry.backNodeIds).not.toContain(nodeId)
+        expect(frontIndex).toBeGreaterThanOrEqual(0)
+        const earPath = geometry.frontPaths[frontIndex]
+        const ear = pathBounds(earPath)
+        const headOverlap = overlap(ear, head)
+        if (headOverlap.x <= 0 || headOverlap.y <= 0) {
+          detachedEars.push(
+            `${expression.id}/${nodeId} (${headOverlap.x.toFixed(2)} × ${headOverlap.y.toFixed(2)})`
+          )
+        }
+      })
+
+    })
+
+    expect(detachedEars, 'detached dog ears').toEqual([])
+  })
+
+  it('keeps bear ears attached behind the head across expressions', () => {
+    const studio = loadStudioDocument({ getItem: () => null })
+    const avatar = studio.library.avatars.find(item => item.id === 'oneworks-bear')!
+    const detachedEars: string[] = []
+
+    studio.expressions.forEach(expression => {
+      const geometry = renderAvatar(
+        poseFromExpression(expression as Expression),
+        avatar.body.primary as SurfaceConfig,
+        1,
+        { bodyNodes: avatar.body.nodes as BodyNode[] }
+      )
+      const head = pathBounds(geometry.headPath)
+
+      ;(['bear-ear-left', 'bear-ear-right'] as const).forEach(nodeId => {
+        const earIndex = geometry.backNodeIds.indexOf(nodeId)
+        expect(earIndex).toBeGreaterThanOrEqual(0)
+        const ear = pathBounds(geometry.backPaths[earIndex])
+        const headOverlap = overlap(ear, head)
+        if (headOverlap.x <= 0 || headOverlap.y <= 0) {
+          detachedEars.push(expression.id + '/' + nodeId)
+        }
+      })
+    })
+
+    expect(detachedEars, 'detached bear ears').toEqual([])
   })
 })

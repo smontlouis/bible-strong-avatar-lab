@@ -8,7 +8,10 @@ const easeProgress = (progress, transition) => transition === 'smooth'
   ? progress * progress * (3 - 2 * progress)
   : transition === 'snappy'
     ? 1 - (1 - progress) ** 3
-    : 1 - Math.exp(-6 * progress) * Math.cos(8 * progress);
+    : transition === 'gentleSpring'
+      ? (1 - Math.exp(-9 * progress) * Math.cos(5 * progress))
+        / (1 - Math.exp(-9) * Math.cos(5))
+      : 1 - Math.exp(-6 * progress) * Math.cos(8 * progress);
 const nearestAngle = (target, current) => {
   let resolved = target;
   while (resolved - current > 180) resolved -= 360;
@@ -134,12 +137,13 @@ function mountAvatar(target, options = {}) {
   const renderElement = pixelStyle ? canvas : svg;
   host.replaceChildren(renderElement);
 
-  const ensurePaths = (group, paths, fill) => {
+  const ensurePaths = (group, paths, fill, nodeIds, bodyColorOverride) => {
     while (group.children.length < paths.length) group.append(svgElement('path'));
     while (group.children.length > paths.length) group.lastElementChild.remove();
     paths.forEach((path, index) => {
       group.children[index].setAttribute('d', path);
-      group.children[index].setAttribute('fill', fill);
+      const node = DATA.avatar.bodyNodes.find(candidate => candidate.id === nodeIds[index]);
+      group.children[index].setAttribute('fill', bodyColorOverride ? fill : node?.color || fill);
     });
   };
   let currentAnimation = options.animation && DATA.animations[options.animation] ? options.animation : animationNames[0];
@@ -200,8 +204,23 @@ function mountAvatar(target, options = {}) {
       return;
     }
     motionLayer.setAttribute('transform', 'translate(' + offset.x + ' ' + offset.y + ')');
-    ensurePaths(backLayer, geometry.backPaths, currentColors.body);
-    ensurePaths(frontLayer, geometry.frontPaths, currentColors.body);
+    const bodyColorOverride = Boolean(
+      currentPose.expression.bodyColor || transitionState?.toPose.expression.bodyColor
+    );
+    ensurePaths(
+      backLayer,
+      geometry.backPaths,
+      currentColors.body,
+      geometry.backNodeIds,
+      bodyColorOverride
+    );
+    ensurePaths(
+      frontLayer,
+      geometry.frontPaths,
+      currentColors.body,
+      geometry.frontNodeIds,
+      bodyColorOverride
+    );
     head.setAttribute('d', geometry.headPath);
     head.setAttribute('fill', currentColors.body);
     clipHead.setAttribute('d', geometry.headPath);

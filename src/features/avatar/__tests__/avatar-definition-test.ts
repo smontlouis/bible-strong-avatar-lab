@@ -486,9 +486,9 @@ describe('Studio to avatar definition conversion', () => {
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(result.value.expressionOrder).toHaveLength(28)
+    expect(result.value.expressionOrder).toHaveLength(31)
     expect(result.value.expressionOrder[0]).toBe('neutral')
-    expect(result.value.animationOrder).toHaveLength(23)
+    expect(result.value.animationOrder).toHaveLength(25)
     expect(result.value.animationOrder).toContain('idle')
     expect(result.value.animations.idle.steps.map(step => step.expression)).toEqual([
       'upward-side-glance',
@@ -624,7 +624,7 @@ describe('Studio to avatar definition conversion', () => {
     createAvatarDefinition({ avatar, behavior })
 
     expect(JSON.stringify({ avatar, behavior })).toBe(before)
-    expect(defaultAvatarColors).toEqual({ body: '#5b7fe5', eyes: '#111316' })
+    expect(defaultAvatarColors).toEqual({ body: '#7c89ff', eyes: '#7c89ff' })
   })
 })
 

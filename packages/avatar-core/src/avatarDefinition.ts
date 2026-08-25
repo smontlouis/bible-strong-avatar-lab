@@ -41,14 +41,17 @@ export type SurfaceDefinition<TType extends SurfaceType = SurfaceType> = {
   morphRoundness?: number
   tipRoundness?: number
   baseRoundness?: number
+  topScale?: number
+  cutAngle?: number
 }
 
-export type BodyNodeSurfaceType = Exclude<SurfaceType, 'mickey' | 'cursor' | 'ghost'>
+export type BodyNodeSurfaceType = Exclude<SurfaceType, 'mickey' | 'cursor' | 'ghost' | 'apple-bite'>
 export type PrimarySurfaceDefinition = SurfaceDefinition<SurfaceType>
 export type BodyNodeSurfaceDefinition = SurfaceDefinition<BodyNodeSurfaceType>
 
 export type AvatarBodyNodeDefinition = {
   layer?: 'auto' | 'front' | 'back'
+  color?: HexColor
   surface: BodyNodeSurfaceDefinition
   position: [number, number, number]
   rotation: [number, number, number]
@@ -62,8 +65,15 @@ export type AvatarBodyDefinition = {
 export type AvatarExpressionDefinition = {
   head: { x: number; y: number; z: number }
   eyes: {
-    left: { width: number; height: number; x: number; y: number; angle: number }
-    right: { width: number; height: number; x: number; y: number; angle: number }
+    left: { width: number; height: number; x: number; y: number; angle: number; curvature?: number }
+    right: {
+      width: number
+      height: number
+      x: number
+      y: number
+      angle: number
+      curvature?: number
+    }
     spacing: number
   }
   perspective: number
@@ -78,7 +88,7 @@ export type AvatarAnimationStepDefinition = {
   expression: ExpressionKey
   holdMs: number
   transitionMs: number
-  transition: 'spring' | 'smooth' | 'snappy'
+  transition: 'spring' | 'gentleSpring' | 'smooth' | 'snappy'
 }
 
 export type AvatarAnimationDefinition = {

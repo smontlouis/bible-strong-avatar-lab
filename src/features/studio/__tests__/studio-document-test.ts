@@ -28,42 +28,188 @@ const documentFixture = (): StudioDocument => {
 
 describe('Studio document', () => {
   const storage = (value: string | null = null) => ({ getItem: () => value })
+  const bundledAvatarNames = [
+    'Memento',
+    'Apple Bite',
+    'Siamese',
+    'British Shorthair',
+    'Russian Blue',
+    'Orange Tabby',
+    'Black Cat',
+    'Dog',
+    'Brown Dog',
+    'Bear',
+    'Rabbit',
+    'Bun',
+    'Onee',
+    'Cubee',
+    'Nova',
+    'Citrus',
+    'Sphere',
+    'Cube',
+    'Capsule',
+    'Cylinder',
+    'Cone',
+    'Diamond',
+    'Willy',
+    'OneWorks Sphere',
+    'OneWorks Ellipse',
+    'OneWorks Square',
+    'OneWorks Rounded',
+    'OneWorks Capsule',
+    'OneWorks Teardrop',
+    'OneWorks Diamond',
+    'OneWorks Trapezoid',
+    'OneWorks Cone',
+    'OneWorks Frustum',
+    'OneWorks Half Cone',
+    'OneWorks Cloud',
+    'OneWorks Sun',
+  ]
 
   it('loads the bundled Studio snapshot when no local project exists', () => {
     const document = loadStudioDocument(storage())
 
-    expect(document.library.avatars).toHaveLength(12)
-    expect(document.library.activeAvatarId).toBe(document.library.avatars[0].id)
-    expect(document.library.avatars.map(avatar => avatar.name)).toEqual([
-      'Onee',
-      'Cubee',
-      'Nova',
-      'Citrus',
-      'Sphere',
-      'Cube',
-      'Capsule',
-      'Cylinder',
-      'Cone',
-      'Diamond',
-      'Memento',
-      'Willy',
+    expect(document.library.avatars).toHaveLength(bundledAvatarNames.length)
+    expect(document.library.activeAvatarId).toBe('avatar-4b9ea0c1-286f-4aa1-b053-61fcc416ba7e')
+    expect(document.library.avatars.map(avatar => avatar.name)).toEqual(bundledAvatarNames)
+    expect(
+      document.library.avatars
+        .filter(avatar => avatar.renderStyle.type !== 'vector' || !avatar.renderStyle.filled)
+        .every(avatar => avatar.colors.body === avatar.colors.eyes)
+    ).toBe(true)
+    expect(document.library.avatars.slice(0, 12).map(avatar => avatar.body.primary.type)).toEqual([
+      'ghost',
+      'apple-bite',
+      'ellipse',
+      'ellipse',
+      'ellipse',
+      'ellipse',
+      'ellipse',
+      'trapezoid',
+      'trapezoid',
+      'trapezoid',
+      'trapezoid',
+      'sphere',
+    ])
+    expect(document.library.avatars.some(avatar => avatar.id === 'memento-piglet')).toBe(false)
+    expect(document.library.avatars.some(avatar => avatar.id === 'oneworks-cat')).toBe(false)
+    expect(document.library.avatars.some(avatar => avatar.id === 'oneworks-cat-cow')).toBe(false)
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-willy')?.body.nodes
+    ).toHaveLength(3)
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'oneworks-cloud')?.body.nodes
+    ).toHaveLength(7)
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'oneworks-sun')?.body.nodes
+    ).toHaveLength(8)
+    expect(
+      document.library.avatars
+        .filter(avatar =>
+          ['dog', 'dog-brown', 'bear', 'rabbit', 'bun'].some(
+            id => avatar.id === `oneworks-${id}`
+          )
+        )
+        .every(avatar => avatar.renderStyle.type === 'vector' && avatar.renderStyle.filled === true)
+    ).toBe(true)
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-ghost')?.renderStyle
+    ).toEqual({
+      type: 'vector',
+      filled: true,
+    })
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.renderStyle
+    ).toEqual({ type: 'vector', filled: true })
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-ghost')?.body.primary
+    ).toMatchObject({ width: 225, height: 220.5, depth: 171 })
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.body.primary
+    ).toMatchObject({ width: 216, height: 225, depth: 171 })
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.eyes
+        .positionXLeft
+    ).toBe(defaultAvatarEyes.positionXLeft - 18)
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.eyes
+        .positionXRight
+    ).toBe(defaultAvatarEyes.positionXRight - 18)
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'oneworks-cat-siamese')?.colors
+    ).toEqual({ body: '#ead7b8', eyes: '#281913' })
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'oneworks-cat-black')?.colors
+    ).toEqual({ body: '#111419', eyes: '#eef2f5' })
+    expect(
+      document.library.avatars
+        .find(avatar => avatar.id === 'oneworks-cat-siamese')
+        ?.body.nodes.map(node => node.color)
+    ).toEqual(['#3c2118', '#3c2118'])
+    expect(document.library.avatars.find(avatar => avatar.id === 'oneworks-dog')?.colors).toEqual({
+      body: '#d4d0c8',
+      eyes: '#211f1d',
+    })
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'oneworks-dog-brown')?.colors
+    ).toEqual({
+      body: '#e3b17f',
+      eyes: '#2b1d18',
+    })
+    expect(document.library.avatars.find(avatar => avatar.id === 'oneworks-bear')?.colors).toEqual({
+      body: '#a95f47',
+      eyes: '#2b1d18',
+    })
+    expect(
+      document.library.avatars
+        .find(avatar => avatar.id === 'oneworks-dog')
+        ?.body.nodes.map(node => node.color)
+    ).toEqual(['#be9675', '#be9675'])
+    expect(
+      document.library.avatars
+        .find(avatar => avatar.id === 'oneworks-dog-brown')
+        ?.body.nodes.map(node => node.color)
+    ).toEqual(['#a95f47', '#a95f47'])
+    expect(
+      document.library.avatars
+        .filter(avatar =>
+          ['oneworks-dog', 'oneworks-dog-brown', 'oneworks-bear'].includes(avatar.id)
+        )
+        .map(avatar => ({
+          id: avatar.id,
+          hasBehavior: Boolean(avatar.behavior),
+          coloredExpressions:
+            avatar.behavior?.expressions.filter(
+              expression => expression.bodyColor || expression.eyeColor
+            ).length ?? -1,
+        }))
+    ).toEqual([
+      { id: 'oneworks-dog', hasBehavior: true, coloredExpressions: 4 },
+      { id: 'oneworks-dog-brown', hasBehavior: true, coloredExpressions: 4 },
+      { id: 'oneworks-bear', hasBehavior: true, coloredExpressions: 4 },
     ])
     expect(
-      document.library.avatars.every(avatar => avatar.colors.body === avatar.colors.eyes)
-    ).toBe(true)
-    expect(document.library.avatars.slice(4).map(avatar => avatar.body.primary.type)).toEqual([
-      'sphere',
-      'cube',
-      'capsule',
-      'cylinder',
-      'cone',
-      'diamond',
-      'ghost',
-      'capsule',
-    ])
-    expect(document.library.avatars.at(-1)?.body.nodes).toHaveLength(3)
+      document.library.avatars
+        .find(avatar => avatar.id === 'oneworks-bear')
+        ?.body.nodes.map(node => node.color)
+    ).toEqual(['#a95f47', '#a95f47'])
     const memento = document.library.avatars.find(avatar => avatar.id === 'primitive-ghost')
-    expect(memento?.colors).toEqual({ body: '#ff9d45', eyes: '#ff9d45' })
+    expect(memento?.colors).toEqual({ body: '#ff9d45', eyes: '#111316' })
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.colors
+    ).toEqual({ body: '#ff5558', eyes: '#111316' })
+    expect(
+      document.library.avatars
+        .find(avatar => avatar.id === 'primitive-apple-bite')
+        ?.behavior?.expressions.filter(expression => expression.bodyColor || expression.eyeColor)
+        .map(expression => [expression.semanticKey, expression.bodyColor, expression.eyeColor])
+    ).toEqual([
+      ['angry-brows', '#ba3636', '#610000'],
+      ['uneasy-left', '#adc3ff', undefined],
+      ['scared-state-surprised-left', '#adc3ff', undefined],
+      ['scared-state-uneasy-left', '#adc3ff', undefined],
+    ])
     expect(
       document.library.avatars
         .filter(avatar => avatar.id !== 'primitive-ghost')
@@ -72,12 +218,20 @@ describe('Studio document', () => {
     expect(memento?.eyes.positionYLeft).toBe(defaultAvatarEyes.positionYLeft - 20)
     expect(memento?.eyes.positionYRight).toBe(defaultAvatarEyes.positionYRight - 20)
     expect(
-      memento?.behavior?.expressions.every(
-        expression => !expression.bodyColor && !expression.eyeColor
-      )
+      memento?.behavior?.expressions.find(
+        expression => expression.semanticKey === 'onboarding-curious'
+      )?.positionYLeft
+    ).toBe(-22)
+    expect(
+      memento?.behavior?.sequences.some(sequence => sequence.semanticKey === 'onboarding')
     ).toBe(true)
-    expect(document.expressions).toHaveLength(27)
-    expect(document.sequences).toHaveLength(23)
+    expect(
+      memento?.behavior?.expressions
+        .filter(expression => expression.bodyColor || expression.eyeColor)
+        .map(expression => [expression.semanticKey, expression.bodyColor, expression.eyeColor])
+    ).toEqual([['angry-brows', '#ba3636', '#610000']])
+    expect(document.expressions).toHaveLength(28)
+    expect(document.sequences).toHaveLength(24)
     expect(document.sequences.find(sequence => sequence.id === 'angry')?.steps).toHaveLength(2)
     expect(
       document.sequences
@@ -90,9 +244,38 @@ describe('Studio document', () => {
         .find(sequence => sequence.id === 'scared')
         ?.steps.map(step => step.expressionId)
     ).toEqual(['expression-03', 'expression-5220eaee-32fe-4bd8-ad31-432189534cc8'])
+    expect(
+      document.sequences
+        .find(sequence => sequence.id === 'joyful')
+        ?.steps.map(step => [step.expressionId, step.transitionMs, step.transition])
+    ).toEqual([
+      ['expression-11', 700, 'gentleSpring'],
+      ['expression-joyful-arc', 700, 'gentleSpring'],
+    ])
     expect(document.expressions.every(expression => expression.semanticKey)).toBe(true)
     expect(document.sequences.every(sequence => sequence.semanticKey)).toBe(true)
     expect(document.playback).toEqual({ stateId: 'proud', playing: true })
+  })
+
+  it('exports every imported OneWorks skin as a valid avatar definition', () => {
+    const document = loadStudioDocument(storage())
+    const importedAvatars = document.library.avatars.filter(avatar =>
+      avatar.id.startsWith('oneworks-')
+    )
+
+    expect(importedAvatars).toHaveLength(23)
+    importedAvatars.forEach(avatar => {
+      const result = createAvatarDefinition({
+        avatar,
+        behavior: avatar.behavior ?? {
+          expressions: document.expressions,
+          sequences: document.sequences,
+        },
+      })
+
+      expect(result.ok, avatar.name).toBe(true)
+      if (result.ok) expect(JSON.stringify(result.value)).not.toContain('NaN')
+    })
   })
 
   it('clears only the persisted Studio project', () => {
@@ -106,6 +289,122 @@ describe('Studio document', () => {
     const localDocument = documentFixture()
 
     expect(loadStudioDocument(storage(JSON.stringify(localDocument)))).toEqual(localDocument)
+  })
+
+  it('migrates previously saved bundled filled avatars to the filled treatment', () => {
+    const fallback = loadStudioDocument(storage())
+    const filledIds = new Set([
+      'primitive-ghost',
+      'primitive-apple-bite',
+      ...fallback.library.avatars
+        .filter(avatar => avatar.id.startsWith('oneworks-'))
+        .map(avatar => avatar.id),
+    ])
+    const legacy = {
+      ...fallback,
+      library: {
+        ...fallback.library,
+        avatars: fallback.library.avatars.map(avatar =>
+          filledIds.has(avatar.id)
+            ? {
+                ...avatar,
+                renderStyle: { type: 'vector' },
+                eyes:
+                  avatar.id === 'primitive-apple-bite'
+                    ? { ...avatar.eyes, positionXLeft: 0, positionXRight: 0 }
+                    : avatar.eyes,
+                body: {
+                  ...avatar.body,
+                  nodes: avatar.body.nodes.map(node => ({ ...node, color: undefined })),
+                },
+              }
+            : avatar
+        ),
+      },
+    } satisfies StudioDocument
+
+    const restored = loadStudioDocument(storage(JSON.stringify(legacy)))
+    const restoredById = new Map(restored.library.avatars.map(avatar => [avatar.id, avatar]))
+
+    ;['dog', 'dog-brown', 'bear', 'rabbit', 'bun'].forEach(id => {
+      expect(restoredById.get(`oneworks-${id}`)?.renderStyle).toEqual({
+        type: 'vector',
+        filled: true,
+      })
+    })
+    expect(restoredById.get('primitive-ghost')?.renderStyle).toEqual({
+      type: 'vector',
+      filled: true,
+    })
+    expect(restoredById.get('primitive-apple-bite')?.renderStyle).toEqual({
+      type: 'vector',
+      filled: true,
+    })
+    expect(restoredById.get('primitive-ghost')?.colors).toEqual({
+      body: '#ff9d45',
+      eyes: '#111316',
+    })
+    expect(restoredById.get('primitive-apple-bite')?.colors).toEqual({
+      body: '#ff5558',
+      eyes: '#111316',
+    })
+    expect(restoredById.get('primitive-apple-bite')?.eyes.positionXLeft).toBe(-18)
+    expect(restoredById.get('primitive-apple-bite')?.eyes.positionXRight).toBe(-18)
+    expect(
+      restoredById
+        .get('primitive-apple-bite')
+        ?.behavior?.expressions.filter(expression => expression.bodyColor || expression.eyeColor)
+        .map(expression => [expression.semanticKey, expression.bodyColor, expression.eyeColor])
+    ).toEqual([
+      ['angry-brows', '#ba3636', '#610000'],
+      ['uneasy-left', '#adc3ff', undefined],
+      ['scared-state-surprised-left', '#adc3ff', undefined],
+      ['scared-state-uneasy-left', '#adc3ff', undefined],
+    ])
+    expect(restoredById.get('oneworks-rabbit')?.colors).toEqual({
+      body: '#eee9df',
+      eyes: '#292724',
+    })
+    expect(restoredById.get('oneworks-bun')?.colors).toEqual({
+      body: '#fff3d9',
+      eyes: '#241915',
+    })
+    expect(restoredById.get('oneworks-dog')?.colors).toEqual({
+      body: '#d4d0c8',
+      eyes: '#211f1d',
+    })
+    expect(restoredById.get('oneworks-dog')?.body.nodes.map(node => node.color)).toEqual([
+      '#be9675',
+      '#be9675',
+    ])
+    expect(restoredById.get('oneworks-dog-brown')?.colors).toEqual({
+      body: '#e3b17f',
+      eyes: '#2b1d18',
+    })
+    expect(restoredById.get('oneworks-dog-brown')?.body.nodes.map(node => node.color)).toEqual([
+      '#a95f47',
+      '#a95f47',
+    ])
+    expect(restoredById.get('oneworks-bear')?.colors).toEqual({
+      body: '#a95f47',
+      eyes: '#2b1d18',
+    })
+    expect(
+      restoredById
+        .get('oneworks-dog-brown')
+        ?.behavior?.expressions.filter(expression => expression.bodyColor || expression.eyeColor)
+        .map(expression => [expression.semanticKey, expression.bodyColor, expression.eyeColor])
+    ).toEqual([
+      ['angry-brows', '#ba3636', '#610000'],
+      ['uneasy-left', '#adc3ff', undefined],
+      ['scared-state-surprised-left', '#adc3ff', undefined],
+      ['scared-state-uneasy-left', '#adc3ff', undefined],
+    ])
+    expect(restoredById.get('oneworks-bear')?.body.nodes.map(node => node.color)).toEqual([
+      '#a95f47',
+      '#a95f47',
+    ])
+    expect(restoredById.get('oneworks-sun')?.renderStyle).toEqual({ type: 'vector' })
   })
 
   it('restores standalone built-in animations from the temporary idle pairs', () => {
@@ -133,34 +432,94 @@ describe('Studio document', () => {
     expect(restored.playback).toEqual({ stateId: 'proud', playing: true })
   })
 
+  it('adds the joyful arc expression to an existing local project', () => {
+    const fallback = loadStudioDocument(storage())
+    const localDocument = {
+      ...fallback,
+      expressions: fallback.expressions.filter(
+        expression => expression.semanticKey !== 'joyful-arc'
+      ),
+    }
+
+    const restored = loadStudioDocument(storage(JSON.stringify(localDocument)))
+
+    expect(restored.expressions.at(-1)?.semanticKey).toBe('joyful-arc')
+  })
+
+  it('adds the joyful animation to an existing local project', () => {
+    const fallback = loadStudioDocument(storage())
+    const localDocument = {
+      ...fallback,
+      sequences: fallback.sequences.filter(sequence => sequence.id !== 'joyful'),
+    }
+
+    const restored = loadStudioDocument(storage(JSON.stringify(localDocument)))
+    const joyful = restored.sequences.find(sequence => sequence.id === 'joyful')
+
+    expect(joyful?.steps.map(step => step.expressionId)).toEqual([
+      'expression-11',
+      'expression-joyful-arc',
+    ])
+    expect(joyful?.blink.enabled).toBe(false)
+  })
+
+  it('updates the bundled joyful arc thickness in an existing local project', () => {
+    const fallback = loadStudioDocument(storage())
+    const legacyExpressions = fallback.expressions.map(expression =>
+      expression.semanticKey === 'joyful-arc'
+        ? { ...expression, heightLeft: 11, heightRight: 11 }
+        : expression
+    )
+    const localDocument = {
+      ...fallback,
+      expressions: legacyExpressions,
+      library: {
+        ...fallback.library,
+        avatars: fallback.library.avatars.map((avatar, index) =>
+          index === 0
+            ? {
+                ...avatar,
+                behavior: { expressions: legacyExpressions, sequences: fallback.sequences },
+              }
+            : avatar
+        ),
+      },
+    }
+
+    const restored = loadStudioDocument(storage(JSON.stringify(localDocument)))
+    const joyfulArc = restored.expressions.find(
+      expression => expression.semanticKey === 'joyful-arc'
+    )
+
+    expect(joyfulArc?.heightLeft).toBe(15)
+    expect(joyfulArc?.heightRight).toBe(15)
+    const avatarJoyfulArc = restored.library.avatars[0].behavior?.expressions.find(
+      expression => expression.semanticKey === 'joyful-arc'
+    )
+    expect(avatarJoyfulArc?.heightLeft).toBe(15)
+    expect(avatarJoyfulArc?.heightRight).toBe(15)
+    expect(
+      restored.library.avatars[0].behavior?.sequences.some(sequence => sequence.id === 'joyful')
+    ).toBe(true)
+  })
+
   it('removes retired bundled avatars from a locally saved project', () => {
     const fallback = loadStudioDocument(storage())
     const retired = createAvatar('Freddy')
     retired.id = 'avatar-4fe2d1bd-cf46-4e5e-a62d-d6b60be519ed'
+    const retiredFox = createAvatar('Продовый песец')
+    retiredFox.id = 'memento-arctic-fox'
     const localDocument: StudioDocument = {
       ...fallback,
       library: {
-        activeAvatarId: retired.id,
-        avatars: [retired, ...fallback.library.avatars],
+        activeAvatarId: retiredFox.id,
+        avatars: [retired, retiredFox, ...fallback.library.avatars],
       },
     }
 
     const document = loadStudioDocument(storage(JSON.stringify(localDocument)))
 
-    expect(document.library.avatars.map(avatar => avatar.name)).toEqual([
-      'Onee',
-      'Cubee',
-      'Nova',
-      'Citrus',
-      'Sphere',
-      'Cube',
-      'Capsule',
-      'Cylinder',
-      'Cone',
-      'Diamond',
-      'Memento',
-      'Willy',
-    ])
+    expect(document.library.avatars.map(avatar => avatar.name)).toEqual(bundledAvatarNames)
     expect(document.library.activeAvatarId).toBe(document.library.avatars[0].id)
   })
 
@@ -181,6 +540,35 @@ describe('Studio document', () => {
     expect(
       document.library.avatars.find(avatar => avatar.id === 'primitive-ghost')?.eyes.positionYLeft
     ).toBe(defaultAvatarEyes.positionYLeft - 20)
+  })
+
+  it('simplifies bundled animal names in an existing local project', () => {
+    const fallback = loadStudioDocument(storage())
+    const legacyNames: Record<string, string> = {
+      'oneworks-dog': 'OneWorks Dog',
+      'oneworks-bear': 'OneWorks Bear',
+      'oneworks-rabbit': 'OneWorks Rabbit',
+      'oneworks-bun': 'OneWorks Bun',
+    }
+    const legacy = {
+      ...fallback,
+      library: {
+        ...fallback.library,
+        avatars: fallback.library.avatars.map(avatar => ({
+          ...avatar,
+          name: legacyNames[avatar.id] ?? avatar.name,
+        })),
+      },
+    }
+
+    const restored = loadStudioDocument(storage(JSON.stringify(legacy)))
+    const restoredById = new Map(restored.library.avatars.map(avatar => [avatar.id, avatar]))
+
+    expect(restoredById.has('oneworks-cat')).toBe(false)
+    expect(restoredById.get('oneworks-dog')?.name).toBe('Dog')
+    expect(restoredById.get('oneworks-bear')?.name).toBe('Bear')
+    expect(restoredById.get('oneworks-rabbit')?.name).toBe('Rabbit')
+    expect(restoredById.get('oneworks-bun')?.name).toBe('Bun')
   })
 
   it('restores bundled semantic keys in a legacy local project', () => {

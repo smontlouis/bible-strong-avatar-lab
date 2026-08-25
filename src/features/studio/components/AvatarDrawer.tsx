@@ -12,7 +12,114 @@ import {
 import { defaultAvatarEyes } from '@/features/avatar/avatars'
 import { ExpressionPreview } from '@/features/avatar/components/ExpressionWorkspace'
 import { defaultExpression } from '@/features/avatar/presets'
+import {
+  avatarBodyOutlineWidth,
+  useAvatarBodyColorOverride,
+} from '@/features/rendering/avatarAppearance'
+import { LivePixelAvatarCanvas } from '@/features/rendering/components/PixelAvatarCanvas'
+import type { RenderedColors, RenderedScene } from '@/features/rendering/renderedScene'
 import type { StudioController } from '@/features/studio/useStudioController'
+
+function LiveAvatarPreview({
+  avatar,
+  colors,
+  scene,
+  expressionBodyColor,
+}: {
+  avatar: StudioController['activeAvatar']
+  colors: RenderedColors
+  scene: RenderedScene
+  expressionBodyColor?: string
+}) {
+  const outlineWidth = avatarBodyOutlineWidth()
+  const filled = avatar.renderStyle.type === 'vector' && avatar.renderStyle.filled === true
+  const fixedSkinColors =
+    avatar.behavior?.expressions.every(
+      expression => !expression.bodyColor && !expression.eyeColor
+    ) ?? false
+  const bodyColorIsOverridden = useAvatarBodyColorOverride(colors.body, avatar.colors.body)
+  const bodyColor = fixedSkinColors && !bodyColorIsOverridden ? avatar.colors.body : colors.body
+  const eyeColor = fixedSkinColors ? avatar.colors.eyes : colors.eyes
+  const inheritBodyColor = Boolean(expressionBodyColor) || bodyColorIsOverridden
+  const nodeColor = (id: string | null | undefined) =>
+    inheritBodyColor
+      ? bodyColor
+      : (avatar.body.nodes.find(node => node.id === id)?.color ?? bodyColor)
+  const bodyFill = filled ? bodyColor : '#ffffff'
+  const clipId = `live-avatar-${avatar.id}`
+
+  if (avatar.renderStyle.type === 'pixel') {
+    return (
+      <LivePixelAvatarCanvas
+        className="avatar-preview avatar-preview-live"
+        scene={scene}
+        colors={colors}
+        style={avatar.renderStyle}
+      />
+    )
+  }
+
+  return (
+    <svg
+      className="avatar-preview avatar-preview-live"
+      viewBox="-150 -150 300 300"
+      aria-hidden="true"
+    >
+      <defs>
+        <clipPath id={clipId}>
+          <motion.path d={scene.headPath} />
+        </clipPath>
+      </defs>
+      <motion.g style={{ x: scene.offsetX, y: scene.offsetY }}>
+        {scene.backPaths.map((pathValue, index) => {
+          const color = nodeColor(scene.backNodeIds.current[index])
+          return (
+            <motion.path
+              className="preview-head"
+              d={pathValue}
+              key={`back-${index}`}
+              style={{ fill: filled ? color : bodyFill, stroke: color, strokeWidth: outlineWidth }}
+            />
+          )
+        })}
+        <motion.path
+          className="preview-head"
+          d={scene.headPath}
+          style={{
+            fill: bodyFill,
+            stroke: bodyColor,
+            strokeWidth: outlineWidth,
+          }}
+        />
+        <g clipPath={`url(#${clipId})`}>
+          <motion.path
+            className="preview-eye"
+            d={scene.leftPath}
+            opacity={scene.leftOpacity}
+            style={{ fill: eyeColor }}
+          />
+          <motion.path
+            className="preview-eye"
+            d={scene.rightPath}
+            opacity={scene.rightOpacity}
+            style={{ fill: eyeColor }}
+          />
+        </g>
+        {scene.frontPaths.map((pathValue, index) => {
+          const color = nodeColor(scene.frontNodeIds.current[index])
+          return (
+            <motion.path
+              className="preview-head"
+              d={pathValue}
+              key={`front-${index}`}
+              style={{ fill: filled ? color : bodyFill, stroke: color, strokeWidth: outlineWidth }}
+            />
+          )
+        })}
+      </motion.g>
+    </svg>
+  )
+}
 
 export function AvatarPage({ controller }: { controller: StudioController }) {
   const {
@@ -29,8 +136,12 @@ export function AvatarPage({ controller }: { controller: StudioController }) {
     draggingAvatarId,
     duplicateAvatar,
     expressions,
+    playbackStatus,
     previewAvatarMove,
     reduceMotion,
+    renderedColors,
+    renderedExpressionBodyColor,
+    renderedScene,
     setDeleteAvatarOpen,
     setDraggingAvatarId,
     setFocusAvatarName,
@@ -93,15 +204,24 @@ export function AvatarPage({ controller }: { controller: StudioController }) {
                         activateAvatar(avatar.id, true)
                       }}
                     >
-                      <ExpressionPreview
-                        expression={expressions[0] ?? defaultExpression}
-                        surface={avatar.body.primary}
-                        bodyNodes={avatar.body.nodes}
-                        colors={avatar.colors}
-                        avatarEyes={avatar.eyes ?? defaultAvatarEyes}
-                        renderStyle={avatar.renderStyle}
-                        id={`avatar-${avatar.id}`}
-                      />
+                      {activeAvatarId === avatar.id && playbackStatus !== 'stopped' ? (
+                        <LiveAvatarPreview
+                          avatar={avatar}
+                          colors={renderedColors}
+                          scene={renderedScene}
+                          expressionBodyColor={renderedExpressionBodyColor}
+                        />
+                      ) : (
+                        <ExpressionPreview
+                          expression={expressions[0] ?? defaultExpression}
+                          surface={avatar.body.primary}
+                          bodyNodes={avatar.body.nodes}
+                          colors={avatar.colors}
+                          avatarEyes={avatar.eyes ?? defaultAvatarEyes}
+                          renderStyle={avatar.renderStyle}
+                          id={`avatar-${avatar.id}`}
+                        />
+                      )}
                       <span>{avatar.name}</span>
                     </Button>
                   }

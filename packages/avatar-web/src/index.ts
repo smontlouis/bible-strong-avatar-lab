@@ -145,7 +145,19 @@ export function createAvatar(
     if (onError) onError(error)
     else console.error(`[Avatar] ${error.message}`)
   }
-  const paint = (scene: ReturnType<typeof renderAvatarDefinition>) => {
+  const colorForNodeId = (
+    id: string | null | undefined,
+    fallback: string,
+    bodyColorOverride: boolean
+  ) => {
+    if (bodyColorOverride) return fallback
+    if (!id?.startsWith('runtime-node-')) return fallback
+    const index = Number(id.slice('runtime-node-'.length))
+    return definition.body.nodes[index]?.color ?? fallback
+  }
+  const paint = (scene: ReturnType<typeof renderAvatarDefinition>, bodyColorOverride = false) => {
+    host.style.setProperty('--bs-avatar-body-color', scene.colors.body)
+    host.style.setProperty('--bs-avatar-eye-color', scene.colors.eyes)
     clipHeadPath.setAttribute('d', scene.geometry.headPath)
     headPath.setAttribute('d', scene.geometry.headPath)
     headPath.setAttribute('fill', scene.colors.body)
@@ -157,11 +169,23 @@ export function createAvatar(
     rightPath.setAttribute('opacity', scene.geometry.rightVisible ? '1' : '0')
     backPaths.forEach((element, index) => {
       element.setAttribute('d', scene.geometry.backPaths[index] ?? '')
-      element.setAttribute('fill', scene.colors.body)
+      const color = colorForNodeId(
+        scene.geometry.backNodeIds[index],
+        scene.colors.body,
+        bodyColorOverride
+      )
+      element.setAttribute('fill', color)
+      element.style.setProperty('--bs-avatar-node-color', color)
     })
     frontPaths.forEach((element, index) => {
       element.setAttribute('d', scene.geometry.frontPaths[index] ?? '')
-      element.setAttribute('fill', scene.colors.body)
+      const color = colorForNodeId(
+        scene.geometry.frontNodeIds[index],
+        scene.colors.body,
+        bodyColorOverride
+      )
+      element.setAttribute('fill', color)
+      element.style.setProperty('--bs-avatar-node-color', color)
     })
   }
 
@@ -180,7 +204,10 @@ export function createAvatar(
   const renderCurrent = (now: number) => {
     const environment = runtimeEnvironment()
     paintedFrame = sampleAvatarFrame(definition, playback, now, environment)
-    paint(renderAvatarFrame(definition, playback, now, environment))
+    paint(
+      renderAvatarFrame(definition, playback, now, environment),
+      Boolean(definition.expressions[playback.activeExpression]?.colors?.body)
+    )
     notifyExpression()
   }
   const tick = (now: number) => {
@@ -260,7 +287,10 @@ export function createAvatar(
       playback = createAvatarPlaybackState()
       if (frameRequest !== null) cancelAnimationFrame(frameRequest)
       frameRequest = null
-      paint(renderAvatarDefinition(definition))
+      paint(
+        renderAvatarDefinition(definition),
+        Boolean(definition.expressions.neutral.colors?.body)
+      )
       notifyExpression()
     },
     getState() {
@@ -293,7 +323,7 @@ export function createAvatar(
       renderCurrent(performance.now())
     }
   } else {
-    paint(initialScene)
+    paint(initialScene, Boolean(definition.expressions.neutral.colors?.body))
     paintedFrame = sampleAvatarFrame(definition, playback, performance.now(), runtimeEnvironment())
     notifyExpression()
   }

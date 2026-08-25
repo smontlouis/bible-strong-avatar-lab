@@ -3,6 +3,7 @@ import {
   createInitialSequences,
   duplicateSequence,
   getSequenceSpring,
+  scaleSpringDynamics,
   normalizeSequencesForExpressions,
   parseSequences,
   remapSequencesAfterExpressionDelete,
@@ -11,7 +12,8 @@ import { initialExpressions } from '@/features/avatar/presets'
 
 describe('editable avatar sequences', () => {
   it('creates the idle animation with editable steps and blink settings', () => {
-    const idle = createInitialSequences().find(sequence => sequence.id === 'idle')
+    const sequences = createInitialSequences()
+    const idle = sequences.find(sequence => sequence.id === 'idle')
 
     expect(idle?.steps.map(step => step.expressionId)).toEqual([
       initialExpressions[0].id,
@@ -19,6 +21,41 @@ describe('editable avatar sequences', () => {
     ])
     expect(idle?.steps[0].holdMs).toBe(5200)
     expect(idle?.blink.durationMs).toBe(280)
+    expect(sequences).toHaveLength(24)
+  })
+
+  it('creates a saved joyful animation that morphs between expressions 11 and 27', () => {
+    const joyful = createInitialSequences().find(sequence => sequence.id === 'joyful')
+
+    expect(joyful?.steps).toEqual([
+      {
+        id: 'joyful-step-0',
+        expressionId: 'expression-11',
+        holdMs: 2300,
+        transitionMs: 700,
+        transition: 'gentleSpring',
+      },
+      {
+        id: 'joyful-step-1',
+        expressionId: 'expression-joyful-arc',
+        holdMs: 2300,
+        transitionMs: 700,
+        transition: 'gentleSpring',
+      },
+    ])
+    expect(joyful?.playbackMode).toBe('loop')
+    expect(joyful?.blink.enabled).toBe(false)
+  })
+
+  it('uses the motion expressions as the second Angry and Scared steps', () => {
+    const sequences = createInitialSequences()
+
+    expect(
+      sequences.find(sequence => sequence.id === 'angry')?.steps.map(step => step.expressionId)
+    ).toEqual(['expression-07', 'expression-3d2bed26-f97c-477d-922f-77600cb10e92'])
+    expect(
+      sequences.find(sequence => sequence.id === 'scared')?.steps.map(step => step.expressionId)
+    ).toEqual(['expression-03', 'expression-5220eaee-32fe-4bd8-ad31-432189534cc8'])
   })
 
   it('supports loop, once and ping-pong playback cursors', () => {
@@ -94,6 +131,16 @@ describe('editable avatar sequences', () => {
 
     expect(snappy.stiffness).toBeGreaterThan(smooth.stiffness)
     expect(smooth.damping).toBeGreaterThan(0)
+  })
+
+  it('time-scales spring dynamics without changing their motion character', () => {
+    const spring = getSequenceSpring('smooth', 500, 7)
+
+    expect(scaleSpringDynamics(spring, 1)).toEqual(spring)
+    expect(scaleSpringDynamics(spring, 2)).toEqual({
+      stiffness: spring.stiffness * 4,
+      damping: spring.damping * 2,
+    })
   })
 
   it('clears the public semantic key when an animation is duplicated', () => {

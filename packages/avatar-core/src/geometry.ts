@@ -22,6 +22,8 @@ export type Expression = {
   widthRight: number
   heightLeft: number
   heightRight: number
+  curvatureLeft: number
+  curvatureRight: number
   spacing: number
   positionXLeft: number
   positionXRight: number
@@ -98,6 +100,8 @@ export const expressionFields: ExpressionNumericField[] = [
   'widthRight',
   'heightLeft',
   'heightRight',
+  'curvatureLeft',
+  'curvatureRight',
   'spacing',
   'positionXLeft',
   'positionXRight',
@@ -519,6 +523,8 @@ const surfaceCacheKey = (surface: SurfaceConfig) =>
     surface.morphRoundness,
     surface.tipRoundness,
     surface.baseRoundness,
+    surface.topScale,
+    surface.cutAngle,
   ])
 
 const cacheSurfaceValue = <Value>(cache: Map<string, Value>, key: string, value: Value) => {
@@ -569,12 +575,33 @@ const eyePoints = (
   const width = expression[`width${suffix}`]
   const restingHeight = expression[`height${suffix}`]
   const height = 5 + (restingHeight - 5) * blink
+  const curvature = expression[`curvature${suffix}`]
+  const cornerRadius = Math.min(width / 2, height / 2)
+  const segmentHalf = Math.max(width / 2 - cornerRadius, 0)
+  const desiredCurveDepth = Math.max(9, width * 0.38) * curvature * blink
+  // Keep the offset capsule below the cusp limit of the curved centerline.
+  // Without this bound, morphing a curved horizontal eye into a tall eye makes
+  // segmentHalf approach zero while its slope tends to infinity, folding the
+  // outline over itself for a few frames.
+  const maximumSafeCurveDepth =
+    segmentHalf > 0 ? (0.5 * segmentHalf ** 2) / (2 * Math.max(cornerRadius, Number.EPSILON)) : 0
+  const curveDepth = Math.min(desiredCurveDepth, maximumSafeCurveDepth)
   const centerX = (side * expression.spacing) / 2 + expression[`positionX${suffix}`] + offset.x
   const centerY = expression[`positionY${suffix}`] + offset.y
   const angle = radians(side < 0 ? expression.leftAngle : expression.rightAngle)
   return roundedRectangle(width, height).map(([localX, localY]) => {
-    const rotatedX = localX * Math.cos(angle) - localY * Math.sin(angle)
-    const rotatedY = localX * Math.sin(angle) + localY * Math.cos(angle)
+    const curveX = segmentHalf ? clamp(localX, -segmentHalf, segmentHalf) : 0
+    const normalizedX = segmentHalf ? curveX / segmentHalf : 0
+    const curveY = -curveDepth * (1 - normalizedX ** 2)
+    const slope = segmentHalf ? (2 * curveDepth * curveX) / segmentHalf ** 2 : 0
+    const tangentLength = Math.hypot(1, slope)
+    const tangentX = 1 / tangentLength
+    const tangentY = slope / tangentLength
+    const offsetAlongCurve = localX - curveX
+    const curvedX = curveX + tangentX * offsetAlongCurve - tangentY * localY
+    const curvedY = curveY + tangentY * offsetAlongCurve + tangentX * localY
+    const rotatedX = curvedX * Math.cos(angle) - curvedY * Math.sin(angle)
+    const rotatedY = curvedX * Math.sin(angle) + curvedY * Math.cos(angle)
     return projectFacePoint(pose, surface, centerX + rotatedX, centerY + rotatedY)
   })
 }
@@ -1198,6 +1225,126 @@ const projectedGhostPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   ].join('')
 }
 
+const projectedAppleBitePath = (pose: AvatarPose, surface: SurfaceConfig) => {
+  const halfWidth = surface.width / 2
+  const halfHeight = surface.height / 2
+  const point = (x: number, y: number) => projectLocalPoint(pose, [x, y, 0])
+  const format = ([x, y]: Point3) => `${x.toFixed(2)} ${y.toFixed(2)}`
+  const move = (x: number, y: number) => `M${format(point(x, y))}`
+  const line = (x: number, y: number) => `L${format(point(x, y))}`
+  const cubicTo = (
+    firstX: number,
+    firstY: number,
+    secondX: number,
+    secondY: number,
+    endX: number,
+    endY: number
+  ) =>
+    `C${format(point(firstX, firstY))} ${format(point(secondX, secondY))} ${format(point(endX, endY))}`
+
+  return [
+    move(-halfWidth * 0.46, -halfHeight),
+    cubicTo(
+      -halfWidth * 0.08,
+      -halfHeight,
+      halfWidth * 0.15,
+      -halfHeight * 0.78,
+      halfWidth * 0.12,
+      -halfHeight * 0.54
+    ),
+    cubicTo(
+      halfWidth * 0.4,
+      -halfHeight * 0.72,
+      halfWidth * 0.74,
+      -halfHeight * 0.75,
+      halfWidth,
+      -halfHeight * 0.56
+    ),
+    cubicTo(
+      halfWidth * 0.8,
+      -halfHeight * 0.43,
+      halfWidth * 0.68,
+      -halfHeight * 0.24,
+      halfWidth * 0.68,
+      -halfHeight * 0.03
+    ),
+    cubicTo(
+      halfWidth * 0.68,
+      halfHeight * 0.2,
+      halfWidth * 0.8,
+      halfHeight * 0.4,
+      halfWidth,
+      halfHeight * 0.5
+    ),
+    cubicTo(
+      halfWidth * 0.82,
+      halfHeight * 0.83,
+      halfWidth * 0.54,
+      halfHeight,
+      halfWidth * 0.26,
+      halfHeight
+    ),
+    cubicTo(
+      halfWidth * 0.08,
+      halfHeight,
+      -halfWidth * 0.02,
+      halfHeight * 0.91,
+      -halfWidth * 0.16,
+      halfHeight * 0.91
+    ),
+    cubicTo(
+      -halfWidth * 0.31,
+      halfHeight * 0.91,
+      -halfWidth * 0.4,
+      halfHeight,
+      -halfWidth * 0.57,
+      halfHeight
+    ),
+    cubicTo(
+      -halfWidth * 0.89,
+      halfHeight,
+      -halfWidth,
+      halfHeight * 0.67,
+      -halfWidth,
+      halfHeight * 0.3
+    ),
+    cubicTo(
+      -halfWidth,
+      -halfHeight * 0.16,
+      -halfWidth * 0.8,
+      -halfHeight * 0.58,
+      -halfWidth * 0.49,
+      -halfHeight * 0.7
+    ),
+    cubicTo(
+      -halfWidth * 0.28,
+      -halfHeight * 0.78,
+      -halfWidth * 0.03,
+      -halfHeight * 0.69,
+      halfWidth * 0.08,
+      -halfHeight * 0.55
+    ),
+    line(-halfWidth * 0.1, -halfHeight * 0.66),
+    cubicTo(
+      -halfWidth * 0.12,
+      -halfHeight * 0.82,
+      -halfWidth * 0.22,
+      -halfHeight * 0.88,
+      -halfWidth * 0.35,
+      -halfHeight * 0.84
+    ),
+    cubicTo(
+      -halfWidth * 0.41,
+      -halfHeight * 0.84,
+      -halfWidth * 0.45,
+      -halfHeight * 0.93,
+      -halfWidth * 0.46,
+      -halfHeight
+    ),
+    'Z',
+  ].join('')
+}
+
 const headPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   if (surface.type === 'sphere' || surface.type === 'mickey') {
     const exactPath = projectedEllipsoidPath(pose, surface)
@@ -1215,6 +1362,7 @@ const headPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   if (surface.type === 'cube') return projectedCubePath(pose, surface)
   if (surface.type === 'diamond') return projectedDiamondPath(pose, surface)
   if (surface.type === 'ghost') return projectedGhostPath(pose, surface)
+  if (surface.type === 'apple-bite') return projectedAppleBitePath(pose, surface)
 
   const key = surfaceCacheKey(surface)
   let localSamples = headSamplesCache.get(key)
@@ -1306,8 +1454,8 @@ const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[]) => {
         depth,
         front:
           node.layer === 'front' ||
-          (node.layer !== 'back' &&
-            depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO),
+            (node.layer !== 'back' &&
+              depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO),
       }
     })
     .sort((left, right) => left.depth - right.depth)

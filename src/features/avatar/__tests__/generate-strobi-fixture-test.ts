@@ -3,10 +3,11 @@ import { resolve } from 'node:path'
 
 import { createAvatarDefinition } from '../avatarDefinition'
 import { resolveAvatarBehavior } from '../avatars'
-import { loadStudioDocument } from '../../studio/studioDocument'
+import defaultStudioDocument from '../../studio/defaultStudioDocument.json'
+import type { StudioDocument } from '../../studio/studioDocument'
 
 it('keeps the consumer fixture synchronized with the bundled Strobi Studio document', async () => {
-  const document = loadStudioDocument({ getItem: () => null })
+  const document = defaultStudioDocument as unknown as StudioDocument
   const avatar = document.library.avatars.find(candidate => candidate.id === 'strobi')
   if (!avatar) throw new Error('Bundled Strobi avatar not found')
   const behavior = resolveAvatarBehavior(avatar, {

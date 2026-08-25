@@ -30,6 +30,8 @@ const mapSurface = <TType extends SurfaceType>(
   ...(surface.morphRoundness === undefined ? {} : { morphRoundness: surface.morphRoundness }),
   ...(surface.tipRoundness === undefined ? {} : { tipRoundness: surface.tipRoundness }),
   ...(surface.baseRoundness === undefined ? {} : { baseRoundness: surface.baseRoundness }),
+  ...(surface.topScale === undefined ? {} : { topScale: surface.topScale }),
+  ...(surface.cutAngle === undefined ? {} : { cutAngle: surface.cutAngle }),
 })
 
 const mapExpression = (expression: Expression): AvatarExpressionDefinition => ({
@@ -38,6 +40,7 @@ const mapExpression = (expression: Expression): AvatarExpressionDefinition => ({
     left: {
       width: expression.widthLeft,
       height: expression.heightLeft,
+      curvature: expression.curvatureLeft,
       x: expression.positionXLeft,
       y: expression.positionYLeft,
       angle: expression.leftAngle,
@@ -45,6 +48,7 @@ const mapExpression = (expression: Expression): AvatarExpressionDefinition => ({
     right: {
       width: expression.widthRight,
       height: expression.heightRight,
+      curvature: expression.curvatureRight,
       x: expression.positionXRight,
       y: expression.positionYRight,
       angle: expression.rightAngle,
@@ -170,6 +174,8 @@ export const createAvatarDefinition = ({
     body: {
       primary: mapSurface(avatar.body.primary),
       nodes: avatar.body.nodes.map((node): AvatarBodyNodeDefinition => ({
+        ...(node.layer ? { layer: node.layer } : {}),
+        ...(node.color ? { color: node.color as HexColor } : {}),
         surface: mapSurface(node.surface as SurfaceDefinition<BodyNodeSurfaceType>),
         position: [...node.position],
         rotation: [...node.rotation],

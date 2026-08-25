@@ -3,6 +3,7 @@ import {
   bodyFromDefinition,
   createAvatarPlaybackState,
   expressionFromDefinition,
+  interpolatePose,
   parseAvatarDefinition,
   playAvatarAnimation,
   pauseAvatarPlayback,
@@ -13,7 +14,11 @@ import {
   resumeAvatarPlayback,
   resolveAnimation,
   sampleAvatarFrame,
+  surfaceFrontSampleAt,
+  surfacePresets,
+  surfaceSampleAt,
   type AvatarDefinition,
+  type SurfaceType,
 } from '../index'
 
 const expression = {
@@ -66,7 +71,64 @@ const definition: AvatarDefinition = {
   animationOrder: ['idle'],
 }
 
+const pathPoints = (value: string): [number, number][] =>
+  Array.from(value.matchAll(/[ML](-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g), match => [
+    Number(match[1]),
+    Number(match[2]),
+  ])
+
+const pathSelfIntersects = (value: string) => {
+  const points = pathPoints(value)
+  const orientation = (
+    [ax, ay]: [number, number],
+    [bx, by]: [number, number],
+    [cx, cy]: [number, number]
+  ) => (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+
+  for (let first = 0; first < points.length; first += 1) {
+    const firstNext = (first + 1) % points.length
+    for (let second = first + 2; second < points.length; second += 1) {
+      const secondNext = (second + 1) % points.length
+      if (secondNext === first) continue
+      const abC = orientation(points[first], points[firstNext], points[second])
+      const abD = orientation(points[first], points[firstNext], points[secondNext])
+      const cdA = orientation(points[second], points[secondNext], points[first])
+      const cdB = orientation(points[second], points[secondNext], points[firstNext])
+      if (abC * abD < -0.000001 && cdA * cdB < -0.000001) return true
+    }
+  }
+  return false
+}
+
 describe('@bible-strong/avatar-core', () => {
+  it('renders every adapted OneWorks surface with finite body and eye geometry', () => {
+    const types: SurfaceType[] = [
+      'ellipse',
+      'square',
+      'rounded',
+      'teardrop',
+      'trapezoid',
+      'frustum',
+      'half-cone',
+    ]
+    const neutral = poseFromExpression(expressionFromDefinition('neutral', expression))
+
+    types.forEach(type => {
+      const surface = surfacePresets[type]
+      const sample = surfaceSampleAt(surface, 0.4, -0.25)
+      const face = surfaceFrontSampleAt(surface, 18, -12)
+      const geometry = renderAvatar(neutral, surface)
+
+      expect(
+        [...sample.point, ...sample.normal, ...face.point, ...face.normal].every(Number.isFinite)
+      ).toBe(true)
+      expect(geometry.headPath).toContain('M')
+      expect(geometry.leftPath).toContain('M')
+      expect(geometry.rightPath).toContain('M')
+      expect(JSON.stringify(geometry)).not.toContain('NaN')
+    })
+  })
+
   it('loads a JSON definition and resolves an explicit semantic animation', () => {
     const parsed = parseAvatarDefinition(JSON.stringify(definition))
     expect(parsed.ok).toBe(true)
@@ -239,6 +301,74 @@ describe('@bible-strong/avatar-core', () => {
 
     expect(scene.geometry).toEqual(direct)
     expect(scene.colors).toEqual(definition.colors)
+  })
+
+  it('interpolates joyful eye curvature with the standard expression fields', () => {
+    const regular = poseFromExpression(expressionFromDefinition('neutral', expression))
+    const joyful = poseFromExpression(
+      expressionFromDefinition('joyful', {
+        ...expression,
+        eyes: {
+          ...expression.eyes,
+          left: { ...expression.eyes.left, curvature: 1 },
+          right: { ...expression.eyes.right, curvature: 1 },
+        },
+      })
+    )
+
+    const halfway = interpolatePose(regular, joyful, 0.5)
+
+    expect(halfway.expression.curvatureLeft).toBe(0.5)
+    expect(halfway.expression.curvatureRight).toBe(0.5)
+  })
+
+  it('keeps curved eyes from folding over themselves while morphing into tall eyes', () => {
+    const joyful = poseFromExpression(
+      expressionFromDefinition('joyful', {
+        ...expression,
+        eyes: {
+          left: { width: 54, height: 15, x: 0, y: -18, angle: 0, curvature: 1 },
+          right: { width: 54, height: 15, x: 0, y: -18, angle: 0, curvature: 1 },
+          spacing: 69.276,
+        },
+      })
+    )
+    const tallTargets = [
+      { left: [51.4, 50.1, 0], right: [50.5, 49.4, 0], spacing: 69 },
+      { left: [28.8, 51.4, 0], right: [17.3, 42.7, 90], spacing: 56.6 },
+    ] as const
+    const surface = bodyFromDefinition(definition.body).primary
+
+    tallTargets.forEach(target => {
+      const targetPose = poseFromExpression(
+        expressionFromDefinition('target', {
+          ...expression,
+          eyes: {
+            left: {
+              width: target.left[0],
+              height: target.left[1],
+              x: 0,
+              y: 0,
+              angle: target.left[2],
+            },
+            right: {
+              width: target.right[0],
+              height: target.right[1],
+              x: 0,
+              y: 0,
+              angle: target.right[2],
+            },
+            spacing: target.spacing,
+          },
+        })
+      )
+
+      for (let step = 0; step <= 100; step += 1) {
+        const geometry = renderAvatar(interpolatePose(joyful, targetPose, step / 100), surface, 1)
+        expect(pathSelfIntersects(geometry.leftPath)).toBe(false)
+        expect(pathSelfIntersects(geometry.rightPath)).toBe(false)
+      }
+    })
   })
 
   it('does not alias cached geometry for surfaces that differ beyond four decimals', () => {

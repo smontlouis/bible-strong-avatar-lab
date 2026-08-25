@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { defaultExpression } from '@/features/avatar/presets'
+import { avatarBodyOutlineWidth } from '@/features/rendering/avatarAppearance'
 import { AvatarCanvas } from '@/features/rendering/components/AvatarCanvas'
 import { PhotoStageFrame } from '@/features/studio/components/PhotoStageFrame'
 import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
@@ -35,6 +36,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     previewExpressionDraft,
     previewSelectedBodyNode,
     renderedColors,
+    renderedExpressionBodyColor,
     renderedRotationGizmo,
     renderedScene,
     selectBodyNode,
@@ -72,8 +74,10 @@ export function StudioStage({ controller }: { controller: StudioController }) {
       expression={canvasExpression}
       avatarEyes={activeAvatarEyes}
       surface={surface}
+      bodyNodes={activeAvatar.body.nodes}
       scene={renderedScene}
       colors={renderedColors}
+      expressionBodyColor={renderedExpressionBodyColor}
       renderStyle={activeAvatar.renderStyle}
       rotationGizmo={renderedRotationGizmo}
       showWire={showWire}
@@ -114,6 +118,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
         {
           '--avatar-body-color': renderedColors.body,
           '--avatar-eye-color': renderedColors.eyes,
+          '--avatar-outline-width': avatarBodyOutlineWidth(),
         } as CSSProperties
       }
     >

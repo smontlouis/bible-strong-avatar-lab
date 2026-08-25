@@ -1,4 +1,5 @@
 import {
+  ensurePrimitiveBundledAvatars,
   parseAvatarLibrary,
   parseExpressions,
   restoreLegacyBehaviorSemanticKeys,
@@ -99,17 +100,181 @@ const createBundledStudioDocument = () => {
   return parseStudioDocument(snapshot, snapshot)
 }
 
+const restoreStandaloneBundledAnimations = (
+  document: StudioDocument,
+  fallback: StudioDocument
+): Pick<StudioDocument, 'sequences' | 'playback'> => {
+  const bundledIds = new Set(fallback.sequences.map(sequence => sequence.id))
+  const targetByPairId = new Map(
+    fallback.sequences
+      .filter(sequence => sequence.id !== 'idle')
+      .map(sequence => [`idle-${sequence.id}`, sequence.id])
+  )
+  if (!document.sequences.some(sequence => targetByPairId.has(sequence.id))) {
+    return { sequences: document.sequences, playback: document.playback }
+  }
+  const custom = document.sequences.filter(
+    sequence => !bundledIds.has(sequence.id) && !targetByPairId.has(sequence.id)
+  )
+  const stateId =
+    document.playback.stateId === null
+      ? null
+      : (targetByPairId.get(document.playback.stateId) ?? document.playback.stateId)
+  return {
+    sequences: [...fallback.sequences, ...custom],
+    playback: { ...document.playback, stateId },
+  }
+}
+
+const restoreSignatureAnimationSteps = (
+  sequences: AvatarSequence[],
+  fallback: AvatarSequence[],
+  signatureIds = new Set(['angry', 'scared', 'joyful'])
+) => {
+  const fallbackById = new Map(fallback.map(sequence => [sequence.id, sequence]))
+  const restored = sequences.map(sequence => {
+    if (!signatureIds.has(sequence.id)) return sequence
+    const canonical = fallbackById.get(sequence.id)
+    if (!canonical) return sequence
+    if (sequence.id === 'joyful') {
+      return {
+        ...canonical,
+        steps: canonical.steps.map(step => ({ ...step })),
+        blink: { ...canonical.blink },
+      }
+    }
+    const steps = canonical.steps.map((canonicalStep, index) => ({
+      ...(sequence.steps[index] ?? canonicalStep),
+      id: canonicalStep.id,
+      expressionId: canonicalStep.expressionId,
+    }))
+    const unchanged =
+      steps.length === sequence.steps.length &&
+      steps.every(
+        (step, index) =>
+          step.id === sequence.steps[index].id &&
+          step.expressionId === sequence.steps[index].expressionId
+      )
+    return unchanged ? sequence : { ...sequence, steps }
+  })
+  const joyful = fallbackById.get('joyful')
+  if (!joyful || restored.some(sequence => sequence.id === joyful.id)) return restored
+  return [
+    ...restored,
+    {
+      ...joyful,
+      steps: joyful.steps.map(step => ({ ...step })),
+      blink: { ...joyful.blink },
+    },
+  ]
+}
+
+const restoreSignatureExpressions = (
+  expressions: Expression[],
+  fallback: Expression[],
+  addMissing = true
+) => {
+  const signatureKeys = new Set(['joyful-arc'])
+  const fallbackByKey = new Map(
+    fallback
+      .filter(expression => expression.semanticKey && signatureKeys.has(expression.semanticKey))
+      .map(expression => [expression.semanticKey!, expression])
+  )
+  let changed = false
+  const restored = expressions.map(expression => {
+    const canonical = expression.semanticKey ? fallbackByKey.get(expression.semanticKey) : undefined
+    if (
+      !canonical ||
+      (expression.curvatureLeft === canonical.curvatureLeft &&
+        expression.curvatureRight === canonical.curvatureRight &&
+        expression.heightLeft === canonical.heightLeft &&
+        expression.heightRight === canonical.heightRight)
+    ) {
+      return expression
+    }
+    changed = true
+    return {
+      ...expression,
+      curvatureLeft: canonical.curvatureLeft,
+      curvatureRight: canonical.curvatureRight,
+      heightLeft: canonical.heightLeft,
+      heightRight: canonical.heightRight,
+    }
+  })
+  const existingKeys = new Set(restored.map(expression => expression.semanticKey))
+  const missing = addMissing
+    ? fallback.filter(
+        expression =>
+          expression.semanticKey &&
+          signatureKeys.has(expression.semanticKey) &&
+          !existingKeys.has(expression.semanticKey)
+      )
+    : []
+  if (missing.length) return [...restored, ...missing.map(expression => ({ ...expression }))]
+  return changed ? restored : expressions
+}
+
+const restoreAvatarSignatureBehavior = (
+  library: AvatarLibrary,
+  fallbackExpressions: Expression[],
+  fallbackSequences: AvatarSequence[]
+) => {
+  let changed = false
+  const avatars = library.avatars.map(avatar => {
+    if (!avatar.behavior) return avatar
+    const expressions = restoreSignatureExpressions(
+      avatar.behavior.expressions,
+      fallbackExpressions,
+      false
+    )
+    const availableExpressionIds = new Set(expressions.map(expression => expression.id))
+    const joyful = fallbackSequences.find(sequence => sequence.id === 'joyful')
+    const sequences =
+      joyful && joyful.steps.every(step => availableExpressionIds.has(step.expressionId))
+        ? restoreSignatureAnimationSteps(
+            avatar.behavior.sequences,
+            fallbackSequences,
+            new Set(['angry', 'joyful'])
+          )
+        : avatar.behavior.sequences
+    if (expressions === avatar.behavior.expressions && sequences === avatar.behavior.sequences) {
+      return avatar
+    }
+    changed = true
+    return { ...avatar, behavior: { expressions, sequences } }
+  })
+  return changed ? { ...library, avatars } : library
+}
+
 export const loadStudioDocument = (
   storage: Pick<Storage, 'getItem'> = window.localStorage
 ): StudioDocument => {
   const fallback = createBundledStudioDocument()
   try {
-    return parseStudioDocument(
+    const document = parseStudioDocument(
       JSON.parse(storage.getItem(DOCUMENT_STORAGE_KEY) ?? 'null'),
       fallback
     )
+    const expressions = restoreSignatureExpressions(document.expressions, fallback.expressions)
+    const hydrated = expressions === document.expressions ? document : { ...document, expressions }
+    const restored = restoreStandaloneBundledAnimations(hydrated, fallback)
+    const sequences = restoreSignatureAnimationSteps(restored.sequences, fallback.sequences)
+    const library = restoreAvatarSignatureBehavior(
+      ensurePrimitiveBundledAvatars(hydrated.library),
+      fallback.expressions,
+      fallback.sequences
+    )
+    return {
+      ...hydrated,
+      library,
+      ...restored,
+      sequences,
+    }
   } catch {
-    return fallback
+    return {
+      ...fallback,
+      library: ensurePrimitiveBundledAvatars(fallback.library),
+    }
   }
 }
 

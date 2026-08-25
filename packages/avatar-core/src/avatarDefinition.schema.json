@@ -71,11 +71,19 @@
             "mickey",
             "cursor",
             "cube",
+            "ellipse",
+            "square",
+            "rounded",
             "capsule",
             "cylinder",
             "cone",
+            "teardrop",
+            "trapezoid",
+            "frustum",
+            "half-cone",
             "diamond",
-            "ghost"
+            "ghost",
+            "apple-bite"
           ]
         },
         "width": { "$ref": "#/$defs/dimension" },
@@ -84,7 +92,9 @@
         "roundness": { "$ref": "#/$defs/roundness" },
         "morphRoundness": { "$ref": "#/$defs/roundness" },
         "tipRoundness": { "$ref": "#/$defs/roundness" },
-        "baseRoundness": { "$ref": "#/$defs/roundness" }
+        "baseRoundness": { "$ref": "#/$defs/roundness" },
+        "topScale": { "type": "number", "minimum": 0.05, "maximum": 2 },
+        "cutAngle": { "type": "number", "minimum": -360, "maximum": 360 }
       }
     },
     "nodeSurface": {
@@ -93,7 +103,23 @@
         {
           "type": "object",
           "properties": {
-            "type": { "enum": ["sphere", "cube", "capsule", "cylinder", "cone", "diamond"] }
+            "type": {
+              "enum": [
+                "sphere",
+                "cube",
+                "ellipse",
+                "square",
+                "rounded",
+                "capsule",
+                "cylinder",
+                "cone",
+                "teardrop",
+                "trapezoid",
+                "frustum",
+                "half-cone",
+                "diamond"
+              ]
+            }
           }
         }
       ]
@@ -133,6 +159,7 @@
             "required": ["surface", "position", "rotation"],
             "properties": {
               "layer": { "enum": ["auto", "front", "back"] },
+              "color": { "$ref": "#/$defs/hexColor" },
               "surface": { "$ref": "#/$defs/nodeSurface" },
               "position": { "$ref": "#/$defs/position" },
               "rotation": { "$ref": "#/$defs/rotation" }
@@ -159,7 +186,8 @@
         "height": { "$ref": "#/$defs/boundedNumber" },
         "x": { "$ref": "#/$defs/boundedNumber" },
         "y": { "$ref": "#/$defs/boundedNumber" },
-        "angle": { "$ref": "#/$defs/boundedNumber" }
+        "angle": { "$ref": "#/$defs/boundedNumber" },
+        "curvature": { "type": "number", "minimum": 0, "maximum": 1 }
       }
     },
     "expression": {
@@ -238,7 +266,7 @@
               "expression": { "$ref": "#/$defs/semanticKey" },
               "holdMs": { "type": "number", "minimum": 100, "maximum": 60000 },
               "transitionMs": { "type": "number", "minimum": 0, "maximum": 5000 },
-              "transition": { "enum": ["spring", "smooth", "snappy"] }
+              "transition": { "enum": ["spring", "gentleSpring", "smooth", "snappy"] }
             }
           }
         },

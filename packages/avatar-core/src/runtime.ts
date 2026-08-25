@@ -224,6 +224,10 @@ const easing = (
   const progress = Math.max(0, Math.min(1, value))
   if (transition === 'smooth') return progress * progress * (3 - 2 * progress)
   if (transition === 'snappy') return 1 - (1 - progress) ** 3
+  if (transition === 'gentleSpring') {
+    const end = 1 - Math.exp(-9) * Math.cos(5)
+    return (1 - Math.exp(-9 * progress) * Math.cos(5 * progress)) / end
+  }
   const end = 1 - Math.exp(-6) * Math.cos(8)
   return Math.max(0, Math.min(1, (1 - Math.exp(-6 * progress) * Math.cos(8 * progress)) / end))
 }

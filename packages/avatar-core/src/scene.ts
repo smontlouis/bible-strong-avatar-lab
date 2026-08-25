@@ -20,6 +20,8 @@ export const expressionFromDefinition = (
   widthRight: expression.eyes.right.width,
   heightLeft: expression.eyes.left.height,
   heightRight: expression.eyes.right.height,
+  curvatureLeft: expression.eyes.left.curvature ?? 0,
+  curvatureRight: expression.eyes.right.curvature ?? 0,
   spacing: expression.eyes.spacing,
   positionXLeft: expression.eyes.left.x,
   positionXRight: expression.eyes.right.x,
@@ -39,6 +41,8 @@ export const bodyFromDefinition = (body: AvatarBodyDefinition): AvatarBody => ({
   nodes: body.nodes.map((node, index) => ({
     id: `runtime-node-${index}`,
     name: `Runtime node ${index + 1}`,
+    ...(node.layer ? { layer: node.layer } : {}),
+    ...(node.color ? { color: node.color } : {}),
     surface: { ...node.surface },
     position: [...node.position],
     rotation: [...node.rotation],

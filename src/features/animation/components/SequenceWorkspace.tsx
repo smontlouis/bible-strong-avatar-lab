@@ -380,6 +380,7 @@ export function SequenceWorkspace({
                     value={selectedStep.transition}
                     items={[
                       { value: 'spring', label: t('Ressort') },
+                      { value: 'gentleSpring', label: t('Ressort léger') },
                       { value: 'smooth', label: t('Douce') },
                       { value: 'snappy', label: t('Rapide') },
                     ]}
@@ -392,6 +393,7 @@ export function SequenceWorkspace({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="spring">{t('Ressort')}</SelectItem>
+                      <SelectItem value="gentleSpring">{t('Ressort léger')}</SelectItem>
                       <SelectItem value="smooth">{t('Douce')}</SelectItem>
                       <SelectItem value="snappy">{t('Rapide')}</SelectItem>
                     </SelectContent>

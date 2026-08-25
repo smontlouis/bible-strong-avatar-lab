@@ -38,6 +38,7 @@ import {
   getSequenceSpring,
   readSequenceClock,
   remapSequencesAfterExpressionDelete,
+  scaleSpringDynamics,
   type AvatarSequence,
   type SequenceStep,
 } from '@/features/animation/sequences'
@@ -127,6 +128,9 @@ import {
   type StatePlaybackSelection,
   type StudioDocument,
 } from '@/features/studio/studioDocument'
+
+const JOYFUL_ARC_SEMANTIC_KEY = 'joyful-arc'
+const JOYFUL_ARC_ENTRY_SPEED_MULTIPLIER = 1.5
 
 export function useStudioController() {
   const { language, setLanguage, t } = useStudioLanguage()
@@ -340,6 +344,7 @@ export function useStudioController() {
   const lastTransitionTime = useRef<number | null>(null)
   const lastInspectorFrame = useRef(0)
   const springSpeedRef = useRef(springSpeed)
+  const expressionEntrySpeedMultiplier = useRef(1)
   const sequenceTransitionRef = useRef<Pick<SequenceStep, 'transitionMs' | 'transition'>>({
     transitionMs: 500,
     transition: 'smooth',
@@ -525,6 +530,8 @@ export function useStudioController() {
       transitionMs: 500,
       transition: 'smooth',
     }
+    expressionEntrySpeedMultiplier.current =
+      next.semanticKey === JOYFUL_ARC_SEMANTIC_KEY ? JOYFUL_ARC_ENTRY_SPEED_MULTIPLIER : 1
     setActiveExpression(index)
     const avatar = avatarsRef.current.find(item => item.id === activeAvatarIdRef.current)
     if (reduceMotion || transitionSettings?.transitionMs === 0) {
@@ -576,7 +583,10 @@ export function useStudioController() {
             ? progress * progress * (3 - 2 * progress)
             : transitionSettings.transition === 'snappy'
               ? 1 - (1 - progress) ** 3
-              : 1 - Math.exp(-6 * progress) * Math.cos(8 * progress)
+              : transitionSettings.transition === 'gentleSpring'
+                ? (1 - Math.exp(-9 * progress) * Math.cos(5 * progress)) /
+                  (1 - Math.exp(-9) * Math.cos(5))
+                : 1 - Math.exp(-6 * progress) * Math.cos(8 * progress)
         const animated = { ...from, eyeMotion: next.eyeMotion, bodyMotion: next.bodyMotion }
         expressionFields.forEach(field => {
           animated[field] = from[field] + (resolvedTarget[field] - from[field]) * eased
@@ -618,11 +628,11 @@ export function useStudioController() {
     if (avatar) {
       const targetColors = resolveColors(next, avatar.colors)
       bodyColorAnimation.current = animate(renderedColors.body, targetColors.body, {
-        duration: 0.35,
+        duration: 0.35 / expressionEntrySpeedMultiplier.current,
         ease: 'easeInOut',
       })
       eyeColorAnimation.current = animate(renderedColors.eyes, targetColors.eyes, {
-        duration: 0.35,
+        duration: 0.35 / expressionEntrySpeedMultiplier.current,
         ease: 'easeInOut',
       })
     }
@@ -644,16 +654,23 @@ export function useStudioController() {
       const previousTime = lastTransitionTime.current ?? time
       const deltaTime = Math.min(Math.max((time - previousTime) / 1000, 1 / 240), 1 / 30)
       lastTransitionTime.current = time
-      const { stiffness, damping } = getSequenceSpring(
-        sequenceTransitionRef.current.transition,
-        sequenceTransitionRef.current.transitionMs,
-        springSpeedRef.current
+      const { stiffness, damping } = scaleSpringDynamics(
+        getSequenceSpring(
+          sequenceTransitionRef.current.transition,
+          sequenceTransitionRef.current.transitionMs,
+          springSpeedRef.current
+        ),
+        expressionEntrySpeedMultiplier.current
       )
       const mass = 0.85
       const currentExpression = displayedPose.current.expression
       if (retargetStartedAt.current !== null && retargetFrom.current && retargetTo.current) {
         if (retargetStartedAt.current < 0) retargetStartedAt.current = time
-        const linearProgress = Math.min((time - retargetStartedAt.current) / RETARGET_BLEND_MS, 1)
+        const linearProgress = Math.min(
+          (time - retargetStartedAt.current) /
+            (RETARGET_BLEND_MS / expressionEntrySpeedMultiplier.current),
+          1
+        )
         const smoothProgress =
           linearProgress ** 3 * (linearProgress * (linearProgress * 6 - 15) + 10)
         const blendedTarget = { ...retargetTo.current }
@@ -815,6 +832,7 @@ export function useStudioController() {
     const nextExpressions = nextBehavior.expressions
     const nextSequences = nextBehavior.sequences
     stopTransition(true)
+    stopColorTransitions()
     activeAvatarIdRef.current = id
     surfaceRef.current = avatar.body.primary
     bodyNodesRef.current = avatar.body.nodes
@@ -849,9 +867,23 @@ export function useStudioController() {
       modeRef.current = 'manual'
       setMode('manual')
     }
+    const avatarStateExpression =
+      nextExpressions.find(expression => expression.id === currentStateExpression.id) ??
+      nextExpressions.find(
+        expression =>
+          currentStateExpression.semanticKey &&
+          expression.semanticKey === currentStateExpression.semanticKey
+      )
     const selectedExpression = nextActiveSequence
-      ? currentStateExpression
+      ? { ...(avatarStateExpression ?? currentStateExpression) }
       : { ...(nextExpressions[0] ?? defaultExpression) }
+    const usesFixedSkinColors = nextExpressions.every(
+      expression => !expression.bodyColor && !expression.eyeColor
+    )
+    if (usesFixedSkinColors) {
+      delete selectedExpression.bodyColor
+      delete selectedExpression.eyeColor
+    }
     const nextExpression = editBody ? resetBodyEditorView(selectedExpression) : selectedExpression
     setExpression(nextExpression)
     if (editBody) {
@@ -1537,6 +1569,16 @@ export function useStudioController() {
       : activeSequence.name
     : null
   const expressionById = new Map(expressions.map(item => [item.id, item]))
+  const playbackExpression =
+    activeSequence && playbackVisual.position !== null
+      ? expressionById.get(activeSequence.steps[playbackVisual.position]?.expressionId ?? '')
+      : null
+  const activeSequenceUsesBodyColor =
+    activeSequence?.steps.some(step => expressionById.get(step.expressionId)?.bodyColor) ?? false
+  const renderedExpressionBodyColor =
+    playbackExpression?.bodyColor ??
+    expression.bodyColor ??
+    (activeSequenceUsesBodyColor ? renderedColors.body.get() : undefined)
   const semanticKeyIssueMessage = (issue: SemanticKeyIssueCode | 'duplicate_semantic_key') =>
     t(
       issue === 'missing_semantic_key'
@@ -1999,6 +2041,7 @@ export function useStudioController() {
     reduceMotion,
     renameActiveAvatar,
     renderedColors,
+    renderedExpressionBodyColor,
     renderedRotationGizmo,
     renderedScene,
     runtimeDefinitionResult,

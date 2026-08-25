@@ -13,8 +13,8 @@
     "nodes": []
   },
   "colors": {
-    "body": "#5b7fe5",
-    "eyes": "#111316"
+    "body": "#7c89ff",
+    "eyes": "#50d7fe"
   },
   "expressions": {
     "neutral": {
@@ -27,6 +27,7 @@
         "left": {
           "width": 20,
           "height": 50,
+          "curvature": 0,
           "x": 0,
           "y": -7,
           "angle": 0
@@ -34,6 +35,7 @@
         "right": {
           "width": 20,
           "height": 50,
+          "curvature": 0,
           "x": 0,
           "y": -7,
           "angle": 0
@@ -835,6 +837,37 @@
       "colors": {
         "body": "#adc3ff"
       }
+    },
+    "joyful-arc": {
+      "head": {
+        "x": -8.75234375,
+        "y": -8.743359375,
+        "z": -10.773828125
+      },
+      "eyes": {
+        "left": {
+          "width": 54,
+          "height": 15,
+          "curvature": 1,
+          "x": 0,
+          "y": -18,
+          "angle": 0
+        },
+        "right": {
+          "width": 54,
+          "height": 15,
+          "curvature": 1,
+          "x": 0,
+          "y": -18,
+          "angle": 0
+        },
+        "spacing": 69.276171875
+      },
+      "perspective": 1,
+      "motion": {
+        "eyes": "none",
+        "body": "none"
+      }
     }
   },
   "expressionOrder": [
@@ -865,7 +898,8 @@
     "suspicious-right",
     "shy-downward",
     "angry-brows",
-    "uneasy-left"
+    "uneasy-left",
+    "joyful-arc"
   ],
   "animations": {
     "sleeping": {
@@ -1258,7 +1292,7 @@
           "transition": "smooth"
         },
         {
-          "expression": "angry-left",
+          "expression": "angry-brows",
           "holdMs": 2300,
           "transitionMs": 500,
           "transition": "smooth"
@@ -1350,6 +1384,35 @@
       "metadata": {
         "label": "happy",
         "description": "Cet état enchaîne un pool de presets et des clignements.",
+        "group": "Réactions"
+      }
+    },
+    "joyful": {
+      "playbackMode": "loop",
+      "steps": [
+        {
+          "expression": "joyful-wide",
+          "holdMs": 2300,
+          "transitionMs": 700,
+          "transition": "gentleSpring"
+        },
+        {
+          "expression": "joyful-arc",
+          "holdMs": 2300,
+          "transitionMs": 700,
+          "transition": "gentleSpring"
+        }
+      ],
+      "blink": {
+        "enabled": false,
+        "initialDelayMs": 2100,
+        "minIntervalMs": 2800,
+        "maxIntervalMs": 5000,
+        "durationMs": 260
+      },
+      "metadata": {
+        "label": "joyful",
+        "description": "Morphing fluide entre les expressions 11 et 27.",
         "group": "Réactions"
       }
     },
@@ -1608,7 +1671,7 @@
           "transition": "smooth"
         },
         {
-          "expression": "surprised-wide-left",
+          "expression": "uneasy-left",
           "holdMs": 2300,
           "transitionMs": 500,
           "transition": "smooth"
@@ -1718,6 +1781,7 @@
     "angry",
     "drowsy",
     "happy",
+    "joyful",
     "curious",
     "confused",
     "surprised",

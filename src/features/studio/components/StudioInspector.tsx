@@ -72,6 +72,7 @@ import {
   ExpressionCard,
   ExpressionPreview,
   ExpressionWorkspace,
+  LiveExpressionPreview,
 } from '@/features/avatar/components/ExpressionWorkspace'
 import { defaultExpression } from '@/features/avatar/presets'
 import { randomSnapshotPalette } from '@/features/export/snapshotPalette'
@@ -488,6 +489,9 @@ export function StudioInspector({ controller }: { controller: StudioController }
     projectImportError,
     projectImportRef,
     reduceMotion,
+    renderedColors,
+    renderedExpressionBodyColor,
+    renderedScene,
     renameActiveAvatar,
     runtimeDefinitionResult,
     runtimeCopyStatus,
@@ -1245,17 +1249,30 @@ export function StudioInspector({ controller }: { controller: StudioController }
                                 onClick={() => launchSequence(sequence)}
                                 onDoubleClick={() => openSequenceEditor(sequence)}
                               >
-                                <ExpressionPreview
-                                  expression={
-                                    firstExpression ?? expressions[0] ?? defaultExpression
-                                  }
-                                  surface={surface}
-                                  bodyNodes={bodyNodes}
-                                  colors={activeAvatar.colors}
-                                  avatarEyes={activeAvatarEyes}
-                                  renderStyle={activeAvatar.renderStyle}
-                                  id={`state-card-${sequence.id}`}
-                                />
+                                {activeSequence?.id === sequence.id &&
+                                playbackStatus !== 'stopped' ? (
+                                  <LiveExpressionPreview
+                                    scene={renderedScene}
+                                    colors={renderedColors}
+                                    baseBodyColor={activeAvatar.colors.body}
+                                    bodyNodes={bodyNodes}
+                                    renderStyle={activeAvatar.renderStyle}
+                                    expressionBodyColor={renderedExpressionBodyColor}
+                                    id={`state-card-${sequence.id}`}
+                                  />
+                                ) : (
+                                  <ExpressionPreview
+                                    expression={
+                                      firstExpression ?? expressions[0] ?? defaultExpression
+                                    }
+                                    surface={surface}
+                                    bodyNodes={bodyNodes}
+                                    colors={activeAvatar.colors}
+                                    avatarEyes={activeAvatarEyes}
+                                    renderStyle={activeAvatar.renderStyle}
+                                    id={`state-card-${sequence.id}`}
+                                  />
+                                )}
                                 {animationSemanticKeyError(sequence) && (
                                   <i
                                     className="runtime-key-missing"

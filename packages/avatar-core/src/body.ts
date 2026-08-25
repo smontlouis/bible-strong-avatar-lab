@@ -5,6 +5,8 @@ export type BodyVector = readonly [number, number, number]
 export type BodyNode = {
   id: string
   name: string
+  layer?: 'auto' | 'front' | 'back'
+  color?: string
   surface: SurfaceConfig
   position: BodyVector
   rotation: BodyVector
@@ -18,9 +20,16 @@ export type AvatarBody = {
 export const bodyPrimitiveTypes = [
   'sphere',
   'cube',
+  'ellipse',
+  'square',
+  'rounded',
   'capsule',
   'cylinder',
   'cone',
+  'teardrop',
+  'trapezoid',
+  'frustum',
+  'half-cone',
   'diamond',
 ] as const
 
@@ -31,6 +40,8 @@ const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 const vector = (value: unknown): value is BodyVector =>
   Array.isArray(value) && value.length === 3 && value.every(finite)
+const hexColor = (value: unknown): value is string =>
+  typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
 
 export const parseSurfaceConfig = (value: unknown, fallback: SurfaceConfig): SurfaceConfig => {
   if (!value || typeof value !== 'object') return { ...fallback }
@@ -46,6 +57,8 @@ export const parseSurfaceConfig = (value: unknown, fallback: SurfaceConfig): Sur
     return { ...fallback }
   if (candidate.baseRoundness !== undefined && !finite(candidate.baseRoundness))
     return { ...fallback }
+  if (candidate.topScale !== undefined && !finite(candidate.topScale)) return { ...fallback }
+  if (candidate.cutAngle !== undefined && !finite(candidate.cutAngle)) return { ...fallback }
   return { ...preset, ...candidate, type }
 }
 
@@ -80,6 +93,11 @@ export const parseAvatarBody = (value: unknown, fallbackPrimary: SurfaceConfig):
         .slice(0, MAX_BODY_NODES)
         .map(node => ({
           ...node,
+          layer:
+            node.layer === 'front' || node.layer === 'back' || node.layer === 'auto'
+              ? node.layer
+              : undefined,
+          color: hexColor(node.color) ? node.color : undefined,
           surface: parseSurfaceConfig(node.surface, surfacePresets[node.surface.type]),
         }))
     : []

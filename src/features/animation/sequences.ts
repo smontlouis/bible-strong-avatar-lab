@@ -8,7 +8,7 @@ import {
 import type { Expression } from '../avatar/geometry'
 
 export type SequencePlaybackMode = 'loop' | 'once' | 'pingPong'
-export type SequenceTransition = 'spring' | 'smooth' | 'snappy'
+export type SequenceTransition = 'spring' | 'gentleSpring' | 'smooth' | 'snappy'
 
 export type SequenceStep = {
   id: string
@@ -45,7 +45,7 @@ export type SequenceCursor = {
 }
 
 const playbackModes: SequencePlaybackMode[] = ['loop', 'once', 'pingPong']
-const transitions: SequenceTransition[] = ['spring', 'smooth', 'snappy']
+const transitions: SequenceTransition[] = ['spring', 'gentleSpring', 'smooth', 'snappy']
 const builtInSequenceIds = new Set<string>(Object.values(stateGroups).flat())
 
 const finite = (value: unknown, fallback: number, min: number, max: number) =>
@@ -79,10 +79,10 @@ export const createInitialSequences = (): AvatarSequence[] =>
           id: `${id}-step-${index}`,
           expressionId: initialExpressions[expressionIndex]?.id ?? initialExpressions[0].id,
           holdMs: playback.expressionIntervalMs,
-          transitionMs: 500,
-          transition: 'smooth',
+          transitionMs: id === 'joyful' ? 700 : 500,
+          transition: id === 'joyful' ? 'gentleSpring' : 'smooth',
         })),
-        blink: { enabled: true, ...playback.blink },
+        blink: { enabled: id !== 'joyful', ...playback.blink },
       }
     })
   )
@@ -283,10 +283,30 @@ export const getSequenceSpring = (
   baseSpeed: number
 ) => {
   const durationFactor = Math.min(Math.max(500 / Math.max(durationMs, 100), 0.35), 3)
-  const styleFactor = transition === 'smooth' ? 0.72 : transition === 'snappy' ? 1.45 : 1
+  const styleFactor =
+    transition === 'smooth'
+      ? 0.72
+      : transition === 'snappy'
+        ? 1.45
+        : transition === 'gentleSpring'
+          ? 0.9
+          : 1
   const speed = Math.max(baseSpeed * durationFactor * styleFactor, 0.5)
   return {
     stiffness: 70 + speed * 24,
-    damping: (17 + speed * 1.7) * (transition === 'smooth' ? 1.18 : 1),
+    damping:
+      (17 + speed * 1.7) *
+      (transition === 'smooth' ? 1.18 : transition === 'gentleSpring' ? 1.2 : 1),
+  }
+}
+
+export const scaleSpringDynamics = (
+  spring: Readonly<{ stiffness: number; damping: number }>,
+  timeScale: number
+) => {
+  const boundedTimeScale = Math.max(timeScale, 0.01)
+  return {
+    stiffness: spring.stiffness * boundedTimeScale ** 2,
+    damping: spring.damping * boundedTimeScale,
   }
 }
