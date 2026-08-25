@@ -98,18 +98,12 @@ describe('rendered avatar scene', () => {
     expect(forcedFront.frontNodeIds).toContain(avatar.body.nodes[0].id)
   })
 
-  it('anchors dog ears in front of the head across expressions', () => {
+  it('moves dog ears between front and back with head depth', () => {
     const studio = loadStudioDocument({ getItem: () => null })
     const avatar = studio.library.avatars.find(item => item.id === 'oneworks-dog')!
     const detachedEars: string[] = []
 
-    const neutral = renderAvatar(
-      poseFromExpression(defaultExpression),
-      avatar.body.primary as SurfaceConfig,
-      1,
-      { bodyNodes: avatar.body.nodes as BodyNode[] }
-    )
-    expect(neutral.frontNodeIds).toEqual(['dog-ear-left', 'dog-ear-right'])
+    let splitDepthExpressions = 0
 
     studio.expressions.forEach(expression => {
       const geometry = renderAvatar(
@@ -121,11 +115,18 @@ describe('rendered avatar scene', () => {
       const head = pathBounds(geometry.headPath)
 
       const earIds = ['dog-ear-left', 'dog-ear-right'] as const
+      if (
+        geometry.frontNodeIds.some(id => earIds.includes(id as (typeof earIds)[number])) &&
+        geometry.backNodeIds.some(id => earIds.includes(id as (typeof earIds)[number]))
+      ) {
+        splitDepthExpressions += 1
+      }
       earIds.forEach(nodeId => {
         const frontIndex = geometry.frontNodeIds.indexOf(nodeId)
-        expect(geometry.backNodeIds).not.toContain(nodeId)
-        expect(frontIndex).toBeGreaterThanOrEqual(0)
-        const earPath = geometry.frontPaths[frontIndex]
+        const backIndex = geometry.backNodeIds.indexOf(nodeId)
+        expect(Number(frontIndex >= 0) + Number(backIndex >= 0)).toBe(1)
+        const earPath =
+          frontIndex >= 0 ? geometry.frontPaths[frontIndex] : geometry.backPaths[backIndex]
         const ear = pathBounds(earPath)
         const headOverlap = overlap(ear, head)
         if (headOverlap.x <= 0 || headOverlap.y <= 0) {
@@ -134,9 +135,9 @@ describe('rendered avatar scene', () => {
           )
         }
       })
-
     })
 
+    expect(splitDepthExpressions).toBeGreaterThan(0)
     expect(detachedEars, 'detached dog ears').toEqual([])
   })
 

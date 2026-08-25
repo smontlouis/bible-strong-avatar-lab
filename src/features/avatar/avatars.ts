@@ -195,11 +195,7 @@ export const simpleBundledAvatarIds = [
 const simpleBundledAvatarOrder = new Map(simpleBundledAvatarIds.map((id, index) => [id, index]))
 
 // Remove hidden bundled characters from both fresh and previously persisted local libraries.
-const hiddenBundledAvatarIds = new Set([
-  'memento-piglet',
-  'oneworks-cat',
-  'oneworks-cat-cow',
-])
+const hiddenBundledAvatarIds = new Set(['memento-piglet', 'oneworks-cat', 'oneworks-cat-cow'])
 
 const retiredBundledAvatarIds = new Set([
   'memento-arctic-fox',
@@ -579,13 +575,13 @@ const oneWorksDogAvatar = (
       oneWorksNode('dog-ear-left', 'Left ear', 'teardrop', [-82, -65, 0], 0.18, 0.34, {
         scaleZ: 0.18,
         rotation: [-4, -10, 22],
-        layer: 'front',
+        layer: 'auto',
         color: earColor,
       }),
       oneWorksNode('dog-ear-right', 'Right ear', 'teardrop', [82, -65, 0], 0.18, 0.34, {
         scaleZ: 0.18,
         rotation: [-4, 10, -22],
-        layer: 'front',
+        layer: 'auto',
         color: earColor,
       }),
     ],

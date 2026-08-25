@@ -1454,8 +1454,8 @@ const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[]) => {
         depth,
         front:
           node.layer === 'front' ||
-            (node.layer !== 'back' &&
-              depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO),
+          (node.layer !== 'back' &&
+            depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO),
       }
     })
     .sort((left, right) => left.depth - right.depth)
