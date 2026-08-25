@@ -20,6 +20,7 @@ const controls = document.querySelector<HTMLElement>('#controls')
 const presetRow = document.querySelector<HTMLElement>('#presets')
 const deflectionBar = document.querySelector<HTMLElement>('#deflection-bar')
 const deflectionValue = document.querySelector<HTMLElement>('#deflection-value')
+const headroomValue = document.querySelector<HTMLElement>('#headroom-value')
 const output = document.querySelector<HTMLElement>('#settings-json')
 const copyButton = document.querySelector<HTMLButtonElement>('#copy')
 const resetButton = document.querySelector<HTMLButtonElement>('#reset')
@@ -31,6 +32,7 @@ if (
   !presetRow ||
   !deflectionBar ||
   !deflectionValue ||
+  !headroomValue ||
   !output ||
   !copyButton ||
   !resetButton
@@ -105,7 +107,7 @@ const FIELDS: Field[] = [
     key: 'travel',
     label: 'Travel',
     unit: 'units',
-    hint: 'Furthest the pupils move. The head silhouette starts clipping them past 48.',
+    hint: 'How far the pupils want to move. Each frame this is capped to the room actually left inside the head, so raising it past the headroom below simply holds at the edge.',
   },
   {
     key: 'depth',
@@ -217,6 +219,16 @@ const paintDeflection = (): void => {
   const percent = Math.round(value * 100)
   deflectionBar.style.setProperty('--fill', `${Math.min(percent, 100)}%`)
   deflectionValue.textContent = `${percent}%`
+
+  const headroom = gaze.getHeadroom()
+  if (Number.isFinite(headroom)) {
+    const clamped = settings.travel > headroom
+    headroomValue.textContent = `${headroom.toFixed(1)} units${clamped ? ' - capping travel' : ''}`
+    headroomValue.dataset.clamped = String(clamped)
+  } else {
+    headroomValue.textContent = '\u2014'
+    headroomValue.dataset.clamped = 'false'
+  }
 
   if (Math.abs(value - lastDeflection) > 0.001) {
     lastDeflection = value

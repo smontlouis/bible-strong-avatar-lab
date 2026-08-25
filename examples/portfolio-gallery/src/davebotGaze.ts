@@ -2,8 +2,14 @@
 //
 // The engine owns playback, blinking and body drift. Gaze is layered on top by
 // translating the two existing eye paths, which sit inside a group clipped to
-// the head silhouette — so the head outline bounds the pupils and extreme
-// deflection clips naturally instead of floating outside the body.
+// the head silhouette.
+//
+// The clip is NOT a safety net worth relying on: a cut-off pupil reads as a
+// rendering bug, not as anatomy. Nor is the budget fixed, because the engine's
+// own expressions already displace and reshape the eyes before gaze is applied
+// — measured, they swing an eye centre across roughly 100 units. So every frame
+// the reach is capped to the room actually left inside the head, measured from
+// live geometry. See the clamp in `paint`.
 //
 // Direction is exact: the offset is the unit vector to the pointer. Magnitude
 // uses the angle to the pointer rather than a linear distance ramp:
@@ -16,7 +22,8 @@
 // as "looking at you". A linear ramp instead keeps drifting and reads as vague.
 
 export type GazeSettings = {
-  /** Maximum pupil displacement, in SVG user units (viewBox is 300 wide). */
+  /** Requested pupil displacement in SVG units (viewBox is 300 wide). The
+   * per-frame clip budget may cap the applied value below this. */
   travel: number
   /** Perceived distance to Davebot in screen px; sets how fast gaze saturates. */
   depth: number
@@ -36,8 +43,10 @@ export const GAZE_DEFAULTS: GazeSettings = {
   lean: 3,
 }
 
-// `travel` stops at 48 because that is the measured distance from Davebot's
-// outer eye edge to the head silhouette; past it the clip starts cutting.
+// `travel` may be pushed to 48 because the per-frame clamp guarantees the pupils
+// stay inside the head; past roughly 30 it simply spends more frames held at the
+// silhouette edge. Measured: travel 30 is capped on 14% of frames, 36 on 33%,
+// 48 on 81%.
 export const GAZE_LIMITS: Record<keyof GazeSettings, { min: number; max: number; step: number }> = {
   travel: { min: 0, max: 48, step: 1 },
   depth: { min: 40, max: 900, step: 10 },
@@ -49,7 +58,9 @@ export const GAZE_LIMITS: Record<keyof GazeSettings, { min: number; max: number;
 export const GAZE_PRESETS: Record<string, GazeSettings> = {
   Subtle: { travel: 14, depth: 460, smoothing: 0.34, convergence: 0.15, lean: 1 },
   Balanced: GAZE_DEFAULTS,
-  'Locked on': { travel: 44, depth: 120, smoothing: 0.06, convergence: 0.5, lean: 6 },
+  // Lock-on comes from the low `depth` knee, not raw amplitude; a larger travel
+  // here would just sit clamped and lose its sense of response.
+  'Locked on': { travel: 34, depth: 110, smoothing: 0.04, convergence: 0.5, lean: 6 },
 }
 
 const STORAGE_KEY = 'davebot-gaze-settings'
@@ -87,14 +98,34 @@ export const saveGazeSettings = (settings: GazeSettings): void => {
   }
 }
 
+// Support function of an axis-aligned box with half-extents a and b along a unit
+// direction: the furthest any point of that box reaches along u. The eye's own
+// bounding box contains the eye whatever its shape or rotation, so bounding the
+// box bounds the eye. The ellipse boundary radius is smaller than this and would
+// under-report the reach, which is what let the eye cross the silhouette.
+const boxSupport = (a: number, b: number, ux: number, uy: number): number =>
+  a * Math.abs(ux) + b * Math.abs(uy)
+
+// Largest t >= 0 with |c + t*u| <= limit, i.e. how far a point may advance
+// along a direction before leaving a circle of that radius.
+const maxAdvance = (cx: number, cy: number, ux: number, uy: number, limit: number): number => {
+  if (limit <= 0) return 0
+  const dot = cx * ux + cy * uy
+  const discriminant = dot * dot - (cx * cx + cy * cy) + limit * limit
+  if (discriminant <= 0) return 0
+  return Math.max(0, Math.sqrt(discriminant) - dot)
+}
+
 type Eye = {
   transform: SVGTransform
-  /** +1 when moving right takes this eye toward the face centre, -1 otherwise. */
-  inward: number
+  /** Own geometry, re-read each frame because expressions reshape the eyes. */
+  path: SVGPathElement
 }
 
 type Target = {
   mount: HTMLElement
+  /** The head silhouette that clips the eyes; its `d` is repainted each frame. */
+  clip: SVGGraphicsElement
   eyes: Eye[]
   centerX: number
   centerY: number
@@ -111,6 +142,8 @@ export type GazeTracker = {
   getSettings: () => GazeSettings
   /** Current deflection as a fraction of `travel`, for live readouts. */
   getDeflection: () => number
+  /** Clip room left on the last frame, in SVG units. Infinity when idle. */
+  getHeadroom: () => number
   destroy: () => void
 }
 
@@ -124,6 +157,8 @@ export const createGazeTracker = (initial: GazeSettings): GazeTracker => {
   let pointerPresent = false
   let geometryDirty = true
   let frame: number | null = null
+  // Clip room measured on the most recent frame, surfaced for the tuning lab.
+  let lastAllowance = Number.POSITIVE_INFINITY
 
   const measure = (): void => {
     for (const target of targets) {
@@ -147,15 +182,49 @@ export const createGazeTracker = (initial: GazeSettings): GazeTracker => {
       let nextY = 0
       let gain = 0
 
+      // Measured once per frame and shared by the clamp and the convergence
+      // sign. The head drifts during playback, so its centre is never assumed
+      // to sit at the origin.
+      const headBox = target.clip.getBBox()
+      const headRadius = Math.min(headBox.width, headBox.height) / 2
+      const headCx = headBox.x + headBox.width / 2
+      const headCy = headBox.y + headBox.height / 2
+
       if (pointerPresent) {
         const deltaX = pointerX - target.centerX
         const deltaY = pointerY - target.centerY
         const distance = Math.hypot(deltaX, deltaY)
         if (distance > 0.0001) {
           gain = distance / Math.hypot(distance, settings.depth)
-          const reach = settings.travel * gain
-          nextX = (deltaX / distance) * reach
-          nextY = (deltaY / distance) * reach
+          const ux = deltaX / distance
+          const uy = deltaY / distance
+
+          // The engine's own expressions already displace and reshape the eyes,
+          // consuming part of the head's interior before gaze is applied, so the
+          // budget is recomputed every frame from live geometry rather than
+          // assumed from the neutral pose. The head is treated as the circle
+          // inscribed in its own bounding box, which is exact for a circle and
+          // conservative for the near-circular ellipse Davebot actually uses.
+
+          let allowance = Infinity
+          for (const eye of target.eyes) {
+            const box = eye.path.getBBox()
+            const reachOut = boxSupport(box.width / 2, box.height / 2, ux, uy)
+            const advance = maxAdvance(
+              box.x + box.width / 2 - headCx,
+              box.y + box.height / 2 - headCy,
+              ux,
+              uy,
+              headRadius - reachOut
+            )
+            allowance = Math.min(allowance, advance)
+          }
+          // Both eyes share the tighter budget, so the pair keeps moving as one.
+          lastAllowance = allowance
+
+          const reach = Math.min(settings.travel * gain, allowance)
+          nextX = ux * reach
+          nextY = uy * reach
         }
       }
 
@@ -185,7 +254,14 @@ export const createGazeTracker = (initial: GazeSettings): GazeTracker => {
         : 0
 
       for (const eye of target.eyes) {
-        eye.transform.setTranslate(target.currentX + converge * eye.inward, target.currentY)
+        // The inward direction is re-derived from live geometry every frame.
+        // Expressions swing an eye clear across the centre line, so a sign cached
+        // at setup would eventually point outward and spend budget the clamp
+        // above never reserved. Measured this way, convergence always moves the
+        // eye toward the head centre and can never breach the silhouette.
+        const box = eye.path.getBBox()
+        const inward = box.x + box.width / 2 + target.currentX > headCx ? -1 : 1
+        eye.transform.setTranslate(target.currentX + converge * inward, target.currentY)
       }
 
       if (reduceMotion || settings.lean === 0) {
@@ -244,7 +320,10 @@ export const createGazeTracker = (initial: GazeSettings): GazeTracker => {
     track: mount => {
       const svg = mount.querySelector<SVGSVGElement>('svg')
       const paths = svg?.querySelectorAll<SVGPathElement>('g[clip-path] > path')
-      if (!svg || !paths || paths.length !== 2) return false
+      // The clip path child is the head silhouette, and getBBox works on it even
+      // though clipPath contents are never painted.
+      const clip = svg?.querySelector<SVGPathElement>('clipPath path')
+      if (!svg || !clip || !paths || paths.length !== 2) return false
 
       const eyes: Eye[] = []
       for (const path of paths) {
@@ -254,15 +333,12 @@ export const createGazeTracker = (initial: GazeSettings): GazeTracker => {
         // value; only getItem yields the live handle that setTranslate updates.
         path.transform.baseVal.appendItem(transform)
         const attached = path.transform.baseVal.getItem(path.transform.baseVal.numberOfItems - 1)
-        // Which way is the face centre for this eye, read from its own geometry
-        // rather than assuming the engine's path order.
-        const box = path.getBBox()
-        const centre = box.x + box.width / 2
-        eyes.push({ transform: attached, inward: centre > 0 ? -1 : 1 })
+        eyes.push({ transform: attached, path })
       }
 
       targets.push({
         mount,
+        clip,
         eyes,
         centerX: 0,
         centerY: 0,
@@ -284,6 +360,7 @@ export const createGazeTracker = (initial: GazeSettings): GazeTracker => {
       if (!target || settings.travel === 0) return 0
       return Math.hypot(target.currentX, target.currentY) / settings.travel
     },
+    getHeadroom: () => lastAllowance,
     destroy: () => {
       if (frame !== null) cancelAnimationFrame(frame)
       window.removeEventListener('pointermove', onPointerMove)

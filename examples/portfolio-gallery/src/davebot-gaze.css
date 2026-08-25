@@ -298,6 +298,17 @@ input:focus-visible {
   background: var(--ink);
 }
 
+.meter-sub {
+  margin-top: 10px;
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.meter-sub span:last-child[data-clamped='true'] {
+  color: var(--ink);
+  font-weight: 500;
+}
+
 .actions {
   display: flex;
   gap: 8px;
