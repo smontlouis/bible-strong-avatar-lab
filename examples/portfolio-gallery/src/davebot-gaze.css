@@ -1,0 +1,335 @@
+@import url('https://fonts.bunny.net/css?family=geist:400,500,600|geist-mono:400,500');
+
+/* Design System 01, monochrome. The lab is a tool, so it stays neutral and
+   lets the two Davebot tiles carry the only real contrast on the page. */
+:root {
+  --page: #f6f6f6;
+  --panel: #ffffff;
+  --ink: #262626;
+  --ink-muted: #5e5e5e;
+  --ink-faint: #909090;
+  --line: #0000001f;
+  --line-strong: #0000003d;
+  --font: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.shell {
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 40px 28px 72px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+header p {
+  margin: 8px 0 0;
+  max-width: 62ch;
+  color: var(--ink-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.layout {
+  display: grid;
+  gap: 28px;
+  margin-top: 32px;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: start;
+}
+
+@media (max-width: 940px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Stage */
+
+.stage {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tile {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  margin: 0;
+  padding: 52px 24px 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.tile[data-mode='light'] {
+  background: #f6f6f6;
+}
+
+.tile[data-mode='dark'] {
+  background: #0b0b0b;
+  border-color: #ffffff1f;
+}
+
+.tile-avatar {
+  width: 100%;
+  max-width: 330px;
+  aspect-ratio: 1;
+  /* Lean is a compositor-only translate, so promote the layer once. */
+  will-change: transform;
+}
+
+.tile-avatar .bs-avatar,
+.tile-avatar svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tile figcaption {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.tile[data-mode='dark'] figcaption {
+  color: #909090;
+}
+
+.scales {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.chip[data-mode='light'] {
+  background: #f6f6f6;
+}
+
+.chip[data-mode='dark'] {
+  background: #0b0b0b;
+  border-color: #ffffff1f;
+  color: #909090;
+}
+
+.chip-avatar {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  will-change: transform;
+}
+
+.chip-avatar .bs-avatar,
+.chip-avatar svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Panel */
+
+.panel {
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  position: sticky;
+  top: 28px;
+}
+
+.panel h2 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 22px;
+}
+
+button {
+  padding: 7px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background-color 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+button:hover {
+  background: #0000000a;
+}
+
+button[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #f6f6f6;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.field-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.field-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.field input[type='range'] {
+  width: 100%;
+  margin: 8px 0 0;
+  accent-color: var(--ink);
+}
+
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+/* Meter */
+
+.meter {
+  margin: 24px 0 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.meter-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.meter-head span:last-child {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  --fill: 0%;
+  margin-top: 8px;
+  height: 5px;
+  border-radius: 999px;
+  background: #00000014;
+  overflow: hidden;
+}
+
+.bar::after {
+  content: '';
+  display: block;
+  width: var(--fill);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+pre {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f6f6f6;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  overflow-x: auto;
+}
+
+footer {
+  margin-top: 36px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f6f6" />
+    <title>Davebot gaze lab - tune how hard he looks at the cursor</title>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <h1>Davebot gaze lab</h1>
+        <p>
+          Move the cursor anywhere on the page. Davebot's eyes point at it, and the settings on the
+          right change how hard he locks on. Values save as you drag, and the portfolio header reads
+          the same values, so tune here and reload that page to see it in place.
+        </p>
+      </header>
+
+      <div class="layout">
+        <main>
+          <section class="stage" id="stage" aria-label="Davebot at review size"></section>
+          <section class="scales" id="scales" aria-label="Davebot at shipping size"></section>
+        </main>
+
+        <aside class="panel">
+          <h2>Feel</h2>
+          <div class="presets" id="presets"></div>
+          <div id="controls"></div>
+
+          <div class="meter">
+            <div class="meter-head">
+              <span>Deflection</span>
+              <span id="deflection-value">0%</span>
+            </div>
+            <div class="bar" id="deflection-bar"></div>
+          </div>
+
+          <div class="actions">
+            <button type="button" id="copy">Copy JSON</button>
+            <button type="button" id="reset">Reset</button>
+          </div>
+          <pre><code id="settings-json"></code></pre>
+        </aside>
+      </div>
+
+      <footer>Design System 01 &middot; gaze tuning &middot; values persist locally</footer>
+    </div>
+    <script type="module" src="/src/davebot-gaze-main.ts"></script>
+  </body>
+</html>
