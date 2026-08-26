@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 import { InspectorCard, PanelTitle } from '@/app/components/common'
-import { NumericField } from '@/app/components/controls'
+import { ColorField, NumericField } from '@/app/components/controls'
 import { getPreviewGeometry, scaleSurface } from '@/app/studio-utils'
 import { bodyPrimitiveTypes, MAX_BODY_NODES, type BodyNode } from '@/features/avatar/body'
 import { SurfaceThumbnail } from '@/features/avatar/components/ExpressionWorkspace'
@@ -24,13 +24,17 @@ function BodyStructureThumbnail({
   bodyNodes,
   activeNodeId,
   expression,
+  bodyColor,
 }: {
   surface: SurfaceConfig
   bodyNodes: BodyNode[]
   activeNodeId: string
   expression: StudioController['expression']
+  bodyColor: string
 }) {
   const geometry = getPreviewGeometry(expression, surface, bodyNodes)
+  const pathColor = (nodeId: string | null | undefined) =>
+    bodyNodes.find(node => node.id === nodeId)?.color ?? bodyColor
   const pathClassName = (nodeId: string | null) =>
     activeNodeId === 'primary'
       ? nodeId === null
@@ -47,14 +51,16 @@ function BodyStructureThumbnail({
           <path
             className={pathClassName(geometry.backNodeIds[index] ?? null)}
             d={pathValue}
+            style={{ fill: pathColor(geometry.backNodeIds[index]) }}
             key={`back-${geometry.backNodeIds[index] ?? index}`}
           />
         ))}
-        <path className={pathClassName(null)} d={geometry.headPath} />
+        <path className={pathClassName(null)} d={geometry.headPath} style={{ fill: bodyColor }} />
         {geometry.frontPaths.map((pathValue, index) => (
           <path
             className={pathClassName(geometry.frontNodeIds[index] ?? null)}
             d={pathValue}
+            style={{ fill: pathColor(geometry.frontNodeIds[index]) }}
             key={`front-${geometry.frontNodeIds[index] ?? index}`}
           />
         ))}
@@ -73,6 +79,7 @@ export function BodyConstructionAccordion({
   const [addOpen, setAddOpen] = useState(false)
   const {
     addBodyNode,
+    activeAvatar,
     bodyNodes,
     deleteSelectedBodyNode,
     duplicateSelectedBodyNode,
@@ -109,6 +116,7 @@ export function BodyConstructionAccordion({
               bodyNodes={bodyNodes}
               activeNodeId="primary"
               expression={expression}
+              bodyColor={activeAvatar.colors.body}
             />
             <span className="body-node-summary">
               <span className="body-node-title-line">
@@ -176,12 +184,14 @@ export function BodyConstructionAccordion({
                 unit="u"
                 onChange={depth => updateSurface({ ...surface, depth })}
               />
-              {(surface.type === 'cube' || surface.type === 'diamond') && (
+              {(surface.type === 'cube' ||
+                surface.type === 'diamond' ||
+                surface.type === 'trapezoid') && (
                 <NumericField
                   label="Rondeur"
                   value={surface.roundness}
                   min={0}
-                  max={2}
+                  max={surface.type === 'trapezoid' ? 5 : 2}
                   step={0.01}
                   onActiveChange={active => controller.updateHighlight(active ? 'head' : null)}
                   onChange={roundness => updateSurface({ ...surface, roundness })}
@@ -231,6 +241,26 @@ export function BodyConstructionAccordion({
                   />
                 </>
               )}
+              {surface.type === 'trapezoid' && (
+                <NumericField
+                  label="Largeur du sommet"
+                  value={(surface.topScale ?? 0.82) * 100}
+                  min={5}
+                  max={150}
+                  unit="%"
+                  onChange={value => updateSurface({ ...surface, topScale: value / 100 })}
+                />
+              )}
+              {surface.type === 'trapezoid' && (
+                <NumericField
+                  label="Largeur de la base"
+                  value={(surface.bottomScale ?? 1.08) * 100}
+                  min={5}
+                  max={150}
+                  unit="%"
+                  onChange={value => updateSurface({ ...surface, bottomScale: value / 100 })}
+                />
+              )}
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -243,6 +273,7 @@ export function BodyConstructionAccordion({
                 bodyNodes={bodyNodes}
                 activeNodeId={node.id}
                 expression={expression}
+                bodyColor={activeAvatar.colors.body}
               />
               <span className="body-node-summary">
                 <strong>{t(node.name)}</strong>
@@ -278,6 +309,28 @@ export function BodyConstructionAccordion({
                     <Badge variant="outline">{t('Gizmo local')}</Badge>
                     {t('Glisse un axe pour déplacer la forme, ou un anneau pour la faire tourner.')}
                   </p>
+                  <div className="color-panel">
+                    <ColorField
+                      label="Couleur de la forme"
+                      value={selectedBodyNode.color ?? activeAvatar.colors.body}
+                      onChange={color =>
+                        updateSelectedBodyNode(currentNode => ({ ...currentNode, color }))
+                      }
+                    />
+                    <Button
+                      className="inherit-colors"
+                      variant={selectedBodyNode.color ? 'outline' : 'secondary'}
+                      type="button"
+                      onClick={() =>
+                        updateSelectedBodyNode(currentNode => {
+                          const { color: _color, ...inheritedNode } = currentNode
+                          return inheritedNode
+                        })
+                      }
+                    >
+                      {t('Couleur héritée')}
+                    </Button>
+                  </div>
                   <div className="surface-fields">
                     <NumericField
                       label="Échelle"
@@ -320,12 +373,13 @@ export function BodyConstructionAccordion({
                     ))}
                     {(selectedBodyNode.surface.type === 'cube' ||
                       selectedBodyNode.surface.type === 'diamond' ||
+                      selectedBodyNode.surface.type === 'trapezoid' ||
                       selectedBodyNode.surface.type === 'cylinder') && (
                       <NumericField
                         label="Rondeur"
                         value={selectedBodyNode.surface.roundness}
                         min={0}
-                        max={2}
+                        max={selectedBodyNode.surface.type === 'trapezoid' ? 5 : 2}
                         step={0.01}
                         onChange={roundness =>
                           updateSelectedBodyNode(currentNode => ({
@@ -380,6 +434,36 @@ export function BodyConstructionAccordion({
                           }
                         />
                       </>
+                    )}
+                    {selectedBodyNode.surface.type === 'trapezoid' && (
+                      <NumericField
+                        label="Largeur du sommet"
+                        value={(selectedBodyNode.surface.topScale ?? 0.82) * 100}
+                        min={5}
+                        max={150}
+                        unit="%"
+                        onChange={value =>
+                          updateSelectedBodyNode(currentNode => ({
+                            ...currentNode,
+                            surface: { ...currentNode.surface, topScale: value / 100 },
+                          }))
+                        }
+                      />
+                    )}
+                    {selectedBodyNode.surface.type === 'trapezoid' && (
+                      <NumericField
+                        label="Largeur de la base"
+                        value={(selectedBodyNode.surface.bottomScale ?? 1.08) * 100}
+                        min={5}
+                        max={150}
+                        unit="%"
+                        onChange={value =>
+                          updateSelectedBodyNode(currentNode => ({
+                            ...currentNode,
+                            surface: { ...currentNode.surface, bottomScale: value / 100 },
+                          }))
+                        }
+                      />
                     )}
                   </div>
                   <div className="body-transform-grid">

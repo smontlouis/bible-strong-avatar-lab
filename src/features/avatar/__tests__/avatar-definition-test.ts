@@ -34,6 +34,7 @@ const avatarFixture = (): StudioAvatar => ({
       {
         id: 'shape-private',
         name: 'Private label',
+        color: '#12abef',
         surface: { ...surfacePresets.cylinder, roundness: 0.45, morphRoundness: 0.2 },
         position: [1.25, -2.5, 3.75],
         rotation: [-10, 20, 30],
@@ -186,7 +187,7 @@ describe('avatar definition validation', () => {
     ],
     [
       'roundness maximum',
-      (value: AvatarDefinition) => (value.body.primary.roundness = 2.1),
+      (value: AvatarDefinition) => (value.body.primary.roundness = 5.1),
       'maximum',
     ],
     [
@@ -284,11 +285,11 @@ describe('avatar definition validation', () => {
     const definition = definitionFixture()
     definition.body.primary.width = 0.001
     definition.body.primary.height = 10000
-    definition.body.primary.roundness = 0
+    definition.body.primary.roundness = 5
     definition.body.primary.morphRoundness = 2
     definition.body.primary.tipRoundness = 2
     definition.body.primary.baseRoundness = 2
-    definition.body.nodes[0].surface.roundness = 2
+    definition.body.nodes[0].surface.roundness = 5
     definition.body.nodes[0].surface.morphRoundness = 2
     definition.body.nodes[0].surface.tipRoundness = 2
     definition.body.nodes[0].surface.baseRoundness = 2
@@ -305,6 +306,18 @@ describe('avatar definition validation', () => {
       minIntervalMs: 250,
       maxIntervalMs: 120000,
       durationMs: 2000,
+    }
+
+    expect(validateAvatarDefinition(definition).ok).toBe(true)
+  })
+
+  it('accepts the complete trapezoid taper range', () => {
+    const definition = definitionFixture()
+    definition.body.primary = {
+      ...surfacePresets.trapezoid,
+      roundness: 5,
+      topScale: 0.05,
+      bottomScale: 1.5,
     }
 
     expect(validateAvatarDefinition(definition).ok).toBe(true)
@@ -539,6 +552,7 @@ describe('Studio to avatar definition conversion', () => {
     expect(result.value.body.primary).toEqual(avatar.body.primary)
     expect(result.value.body.nodes).toEqual([
       {
+        color: avatar.body.nodes[0].color,
         surface: avatar.body.nodes[0].surface,
         position: avatar.body.nodes[0].position,
         rotation: avatar.body.nodes[0].rotation,
@@ -626,6 +640,74 @@ describe('Studio to avatar definition conversion', () => {
     expect(JSON.stringify({ avatar, behavior })).toBe(before)
     expect(defaultAvatarColors).toEqual({ body: '#5b7fe5', eyes: '#111316' })
   })
+
+  it('exports neutral facial features, expression overrides and the vector outline', () => {
+    const avatar = avatarFixture()
+    avatar.eyes = {
+      ...avatar.eyes,
+      eyeShape: 'ellipse',
+      noseEnabled: true,
+      mouthEnabled: true,
+      mouthCurve: 45,
+    }
+    avatar.renderStyle = {
+      type: 'vector',
+      outline: { enabled: true, color: '#223344', width: 7, opacity: 0.8 },
+    }
+    const behavior = behaviorFixture()
+    behavior.expressions[0] = {
+      ...behavior.expressions[0],
+      eyeShape: 'rounded',
+      mouthEnabled: false,
+      mouthShape: 'ellipse',
+    }
+
+    const result = createAvatarDefinition({ avatar, behavior })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.expressions.neutral.eyes.shape).toBe('ellipse')
+    expect(result.value.expressions.neutral.nose?.enabled).toBe(true)
+    expect(result.value.expressions.neutral.mouth?.curve).toBe(45)
+    expect(result.value.expressions['happy-smile'].eyes.shape ?? 'rounded').toBe('rounded')
+    expect(result.value.expressions['happy-smile'].mouth?.enabled).toBe(false)
+    expect(result.value.expressions['happy-smile'].mouth?.shape).toBe('ellipse')
+    expect(result.value.style?.outline).toEqual({
+      enabled: true,
+      color: '#223344',
+      width: 7,
+      opacity: 0.8,
+    })
+  })
+
+  it.each(['curve', 'ellipse', 'rounded', 'rounded-triangle'] as const)(
+    'persists inherited neutral %s mouth geometry in expression definitions',
+    mouthShape => {
+      const avatar = avatarFixture()
+      avatar.eyes = {
+        ...avatar.eyes,
+        mouthEnabled: true,
+        mouthShape,
+        mouthCurve: 61,
+        mouthWidth: 39,
+        mouthHeight: 12,
+        mouthX: 3,
+        mouthY: 34,
+        mouthAngle: -7,
+      }
+      const behavior = behaviorFixture()
+      delete behavior.expressions[0].mouthEnabled
+      delete behavior.expressions[0].mouthShape
+
+      const result = createAvatarDefinition({ avatar, behavior })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.value.expressions['happy-smile'].mouth).toEqual(
+        result.value.expressions.neutral.mouth
+      )
+    }
+  )
 })
 
 describe('runtime definition filenames', () => {

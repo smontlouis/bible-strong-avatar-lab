@@ -41,6 +41,8 @@ export type SurfaceDefinition<TType extends SurfaceType = SurfaceType> = {
   morphRoundness?: number
   tipRoundness?: number
   baseRoundness?: number
+  topScale?: number
+  bottomScale?: number
 }
 
 export type BodyNodeSurfaceType = Exclude<SurfaceType, 'mickey' | 'cursor'>
@@ -48,6 +50,7 @@ export type PrimarySurfaceDefinition = SurfaceDefinition<SurfaceType>
 export type BodyNodeSurfaceDefinition = SurfaceDefinition<BodyNodeSurfaceType>
 
 export type AvatarBodyNodeDefinition = {
+  color?: HexColor
   surface: BodyNodeSurfaceDefinition
   position: [number, number, number]
   rotation: [number, number, number]
@@ -58,12 +61,43 @@ export type AvatarBodyDefinition = {
   nodes: AvatarBodyNodeDefinition[]
 }
 
+export type AvatarStyleDefinition = {
+  outline?: {
+    enabled: boolean
+    color: HexColor
+    width: number
+    opacity: number
+  }
+}
+
 export type AvatarExpressionDefinition = {
   head: { x: number; y: number; z: number }
   eyes: {
     left: { width: number; height: number; x: number; y: number; angle: number }
     right: { width: number; height: number; x: number; y: number; angle: number }
     spacing: number
+    shape?: 'rounded' | 'ellipse'
+    roundness?: number
+  }
+  nose?: {
+    enabled: boolean
+    shape: 'ellipse' | 'inverted-triangle' | 'rounded'
+    roundness?: number
+    width: number
+    height: number
+    x: number
+    y: number
+    angle: number
+  }
+  mouth?: {
+    enabled: boolean
+    shape: 'curve' | 'ellipse' | 'rounded' | 'rounded-triangle'
+    curve: number
+    width: number
+    height: number
+    x: number
+    y: number
+    angle: number
   }
   perspective: number
   motion: {
@@ -103,6 +137,7 @@ export type AvatarDefinition = {
   name?: string
   body: AvatarBodyDefinition
   colors: AvatarColorsDefinition
+  style?: AvatarStyleDefinition
   expressions: Record<ExpressionKey, AvatarExpressionDefinition>
   expressionOrder: ExpressionKey[]
   animations: Record<AnimationKey, AvatarAnimationDefinition>

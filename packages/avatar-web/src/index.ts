@@ -131,13 +131,36 @@ export function createAvatar(
   const initialScene = renderAvatarDefinition(definition)
   const backPaths = Array.from({ length: bodyPathSlots }, () => createSvgElement('path'))
   const headPath = createSvgElement('path')
+  const backOutlines = Array.from({ length: bodyPathSlots }, () => createSvgElement('path'))
+  const headOutline = createSvgElement('path')
   const eyeGroup = createSvgElement('g')
   eyeGroup.setAttribute('clip-path', `url(#${clipId})`)
   const leftPath = createSvgElement('path')
   const rightPath = createSvgElement('path')
-  eyeGroup.append(leftPath, rightPath)
+  const nosePath = createSvgElement('path')
+  const mouthPath = createSvgElement('path')
+  eyeGroup.append(leftPath, rightPath, nosePath, mouthPath)
   const frontPaths = Array.from({ length: bodyPathSlots }, () => createSvgElement('path'))
-  svg.append(...backPaths, headPath, eyeGroup, ...frontPaths)
+  const frontOutlines = Array.from({ length: bodyPathSlots }, () => createSvgElement('path'))
+  const outline = definition.style?.outline?.enabled ? definition.style.outline : undefined
+  ;[...backOutlines, headOutline, ...frontOutlines].forEach(element => {
+    element.setAttribute('fill', 'none')
+  })
+  if (outline) {
+    ;[...backOutlines, headOutline, ...frontOutlines].forEach(element => {
+      element.setAttribute('stroke', outline.color)
+      element.setAttribute('stroke-width', String(outline.width))
+      element.setAttribute('stroke-opacity', String(outline.opacity))
+      element.setAttribute('stroke-linejoin', 'round')
+    })
+  }
+  svg.append(
+    ...(outline ? [...backOutlines, headOutline, ...frontOutlines] : []),
+    ...backPaths,
+    headPath,
+    eyeGroup,
+    ...frontPaths
+  )
   host.append(svg)
   mount.append(host)
 
@@ -148,6 +171,7 @@ export function createAvatar(
   const paint = (scene: ReturnType<typeof renderAvatarDefinition>) => {
     clipHeadPath.setAttribute('d', scene.geometry.headPath)
     headPath.setAttribute('d', scene.geometry.headPath)
+    headOutline.setAttribute('d', scene.geometry.headPath)
     headPath.setAttribute('fill', scene.colors.body)
     leftPath.setAttribute('d', scene.geometry.leftPath)
     leftPath.setAttribute('fill', scene.colors.eyes)
@@ -155,13 +179,26 @@ export function createAvatar(
     rightPath.setAttribute('d', scene.geometry.rightPath)
     rightPath.setAttribute('fill', scene.colors.eyes)
     rightPath.setAttribute('opacity', scene.geometry.rightVisible ? '1' : '0')
+    nosePath.setAttribute('d', scene.geometry.nosePath)
+    nosePath.setAttribute('fill', scene.colors.eyes)
+    mouthPath.setAttribute('d', scene.geometry.mouthPath)
+    mouthPath.setAttribute('fill', scene.geometry.mouthStrokeWidth > 0 ? 'none' : scene.colors.eyes)
+    mouthPath.setAttribute(
+      'stroke',
+      scene.geometry.mouthStrokeWidth > 0 ? scene.colors.eyes : 'none'
+    )
+    mouthPath.setAttribute('stroke-width', String(scene.geometry.mouthStrokeWidth))
+    mouthPath.setAttribute('stroke-linecap', 'round')
+    mouthPath.setAttribute('stroke-linejoin', 'round')
     backPaths.forEach((element, index) => {
       element.setAttribute('d', scene.geometry.backPaths[index] ?? '')
-      element.setAttribute('fill', scene.colors.body)
+      element.setAttribute('fill', scene.bodyColors.back[index] ?? scene.colors.body)
+      backOutlines[index].setAttribute('d', scene.geometry.backPaths[index] ?? '')
     })
     frontPaths.forEach((element, index) => {
       element.setAttribute('d', scene.geometry.frontPaths[index] ?? '')
-      element.setAttribute('fill', scene.colors.body)
+      element.setAttribute('fill', scene.bodyColors.front[index] ?? scene.colors.body)
+      frontOutlines[index].setAttribute('d', scene.geometry.frontPaths[index] ?? '')
     })
   }
 

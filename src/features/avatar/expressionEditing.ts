@@ -1,4 +1,4 @@
-import type { Expression } from './geometry'
+import { expressionFields, type Expression } from './geometry'
 
 export type EyeSide = 'Left' | 'Right'
 export type EyeLinks = { width: boolean; height: boolean; size: boolean; position?: boolean }
@@ -57,4 +57,23 @@ export const updateEyePosition = (
     'positionXLeft' | 'positionXRight' | 'positionYLeft' | 'positionYRight'
   const otherField = `position${axis}${opposite(side)}` as typeof field
   return { ...expression, [field]: value, ...(linked ? { [otherField]: value } : {}) }
+}
+
+const mouthShapeGeometryFieldSet = new Set<string>(['mouthCurve', 'mouthWidth', 'mouthHeight'])
+
+export const blendExpressionTransitionTarget = (
+  from: Expression,
+  to: Expression,
+  progress: number,
+  snapMouthGeometry: boolean
+): Expression => {
+  const blended = { ...to }
+  expressionFields.forEach(field => {
+    blended[field] =
+      snapMouthGeometry && mouthShapeGeometryFieldSet.has(field)
+        ? to[field]
+        : from[field] + (to[field] - from[field]) * progress
+  })
+  if (snapMouthGeometry) blended.mouthShape = to.mouthShape
+  return blended
 }

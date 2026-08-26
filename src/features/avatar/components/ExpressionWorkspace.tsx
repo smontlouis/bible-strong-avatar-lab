@@ -6,6 +6,13 @@ import { Card } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
@@ -18,6 +25,10 @@ import { ControlSection } from '@/app/components/common'
 import { AmbientMotionField, ColorField, LinkButton, NumericField } from '@/app/components/controls'
 import { emptyBodyNodes, getPreviewGeometry, resolveColors, type Side } from '@/app/studio-utils'
 import {
+  applyAvatarEyeDefaults,
+  defaultAvatarEyes,
+  mouthNumericDefaultFields,
+  overrideExpressionMouthNumeric,
   type AvatarColors,
   type AvatarEyeDefaults,
   type AvatarRenderStyle,
@@ -59,6 +70,8 @@ export function ExpressionPreview({
 }) {
   const geometry = getPreviewGeometry(expression, surface, bodyNodes, avatarEyes)
   const resolvedColors = resolveColors(expression, colors)
+  const bodyPathColor = (nodeId: string | null | undefined) =>
+    bodyNodes.find(node => node.id === nodeId)?.color ?? resolvedColors.body
   if (renderStyle.type === 'pixel') {
     return (
       <StaticPixelAvatarCanvas
@@ -81,6 +94,17 @@ export function ExpressionPreview({
     )
   }
   const clipId = `preview-${id}`
+  const outline =
+    renderStyle.type === 'vector' && renderStyle.outline?.enabled ? renderStyle.outline : null
+  const outlineProps = outline
+    ? {
+        fill: 'none',
+        stroke: outline.color,
+        strokeWidth: outline.width,
+        strokeOpacity: outline.opacity,
+        strokeLinejoin: 'round' as const,
+      }
+    : {}
   return (
     <svg className="avatar-preview" viewBox="-150 -150 300 300" aria-hidden="true">
       <defs>
@@ -88,12 +112,23 @@ export function ExpressionPreview({
           <path d={geometry.headPath} />
         </clipPath>
       </defs>
+      {outline && (
+        <g aria-hidden="true" pointerEvents="none">
+          {geometry.backPaths.map((pathValue, index) => (
+            <path {...outlineProps} d={pathValue} key={`outline-back-${index}`} />
+          ))}
+          <path {...outlineProps} d={geometry.headPath} />
+          {geometry.frontPaths.map((pathValue, index) => (
+            <path {...outlineProps} d={pathValue} key={`outline-front-${index}`} />
+          ))}
+        </g>
+      )}
       {geometry.backPaths.map((pathValue, index) => (
         <path
           className="preview-head"
           d={pathValue}
           key={index}
-          style={{ fill: resolvedColors.body }}
+          style={{ fill: bodyPathColor(geometry.backNodeIds[index]) }}
         />
       ))}
       <path className="preview-head" d={geometry.headPath} style={{ fill: resolvedColors.body }} />
@@ -110,13 +145,23 @@ export function ExpressionPreview({
           opacity={geometry.rightVisible ? 1 : 0}
           style={{ fill: resolvedColors.eyes }}
         />
+        <path className="preview-eye" d={geometry.nosePath} style={{ fill: resolvedColors.eyes }} />
+        <path
+          className="preview-eye"
+          d={geometry.mouthPath}
+          fill={geometry.mouthStrokeWidth > 0 ? 'none' : resolvedColors.eyes}
+          stroke={geometry.mouthStrokeWidth > 0 ? resolvedColors.eyes : 'none'}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={geometry.mouthStrokeWidth}
+        />
       </g>
       {geometry.frontPaths.map((pathValue, index) => (
         <path
           className="preview-head"
           d={pathValue}
           key={`front-${index}`}
-          style={{ fill: resolvedColors.body }}
+          style={{ fill: bodyPathColor(geometry.frontNodeIds[index]) }}
         />
       ))}
     </svg>
@@ -233,6 +278,7 @@ export function ExpressionCard({
 export function ExpressionWorkspace({
   editing,
   avatarColors,
+  avatarEyes,
   backButtonRef,
   onChange,
   onCancel,
@@ -243,6 +289,7 @@ export function ExpressionWorkspace({
 }: {
   editing: { index: number | null; draft: Expression }
   avatarColors: AvatarColors
+  avatarEyes: AvatarEyeDefaults
   backButtonRef: RefObject<HTMLButtonElement | null>
   onChange: (draft: Expression) => void
   onCancel: () => void
@@ -259,6 +306,9 @@ export function ExpressionWorkspace({
     rotation: true,
   })
   const update = (changes: Partial<Expression>) => onChange({ ...editing.draft, ...changes })
+  const resolvedDraft = applyAvatarEyeDefaults(editing.draft, avatarEyes)
+  const updateMouthNumeric = (field: (typeof mouthNumericDefaultFields)[number], value: number) =>
+    onChange(overrideExpressionMouthNumeric(editing.draft, avatarEyes, field, value))
   const updateDimension = (side: Side, dimension: 'width' | 'height', value: number) => {
     onChange(updateEyeDimension(editing.draft, side, dimension, value, linked[dimension]))
   }
@@ -408,6 +458,42 @@ export function ExpressionWorkspace({
             subtitle="Forme, placement et orientation propres au regard."
             compact
           >
+            <Card className="dialog-group">
+              <h3>{t('Forme des yeux')}</h3>
+              <Select
+                value={editing.draft.eyeShape ?? 'inherit'}
+                items={[
+                  { value: 'inherit', label: t('Hériter du visage neutre') },
+                  { value: 'rounded', label: t('Rectangle arrondi') },
+                  { value: 'ellipse', label: t('Ellipse') },
+                ]}
+                onValueChange={value => {
+                  const draft = { ...editing.draft }
+                  if (!value || value === 'inherit') delete draft.eyeShape
+                  else draft.eyeShape = value as 'rounded' | 'ellipse'
+                  onChange(draft)
+                }}
+              >
+                <SelectTrigger aria-label={t('Forme des yeux')}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inherit">{t('Hériter du visage neutre')}</SelectItem>
+                  <SelectItem value="rounded">{t('Rectangle arrondi')}</SelectItem>
+                  <SelectItem value="ellipse">{t('Ellipse')}</SelectItem>
+                </SelectContent>
+              </Select>
+              {(editing.draft.eyeShape ?? 'rounded') === 'rounded' && (
+                <NumericField
+                  label="Rondeur"
+                  value={editing.draft.eyeRoundness}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  onChange={eyeRoundness => update({ eyeRoundness })}
+                />
+              )}
+            </Card>
             <Card className="dialog-group color-panel">
               <h3>{t('Couleur des yeux')}</h3>
               <ColorField
@@ -552,6 +638,114 @@ export function ExpressionWorkspace({
                 />
               </div>
             </Card>
+          </ControlSection>
+          <ControlSection
+            title="Bouche"
+            subtitle="Surcharge la bouche neutre pour cette expression."
+            compact
+          >
+            <Card className="dialog-group">
+              <h3>{t('Visibilité')}</h3>
+              <Select
+                value={
+                  editing.draft.mouthEnabled === undefined
+                    ? 'inherit'
+                    : editing.draft.mouthEnabled
+                      ? 'show'
+                      : 'hide'
+                }
+                items={[
+                  { value: 'inherit', label: t('Hériter du visage neutre') },
+                  { value: 'show', label: t('Afficher') },
+                  { value: 'hide', label: t('Masquer') },
+                ]}
+                onValueChange={value => {
+                  const draft = { ...editing.draft }
+                  if (!value || value === 'inherit') delete draft.mouthEnabled
+                  else draft.mouthEnabled = value === 'show'
+                  onChange(draft)
+                }}
+              >
+                <SelectTrigger aria-label={t('Visibilité de la bouche')}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inherit">{t('Hériter du visage neutre')}</SelectItem>
+                  <SelectItem value="show">{t('Afficher')}</SelectItem>
+                  <SelectItem value="hide">{t('Masquer')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </Card>
+            {editing.draft.mouthEnabled !== false && (
+              <Card className="dialog-group">
+                <h3>{t('Forme de la bouche')}</h3>
+                <Select
+                  value={editing.draft.mouthShape ?? 'inherit'}
+                  items={[
+                    { value: 'inherit', label: t('Hériter du visage neutre') },
+                    { value: 'curve', label: t('Courbe') },
+                    { value: 'ellipse', label: t('Ellipse') },
+                    { value: 'rounded', label: t('Arrondi') },
+                    { value: 'rounded-triangle', label: t('Triangle arrondi') },
+                  ]}
+                  onValueChange={value => {
+                    const draft = { ...editing.draft }
+                    if (!value || value === 'inherit') delete draft.mouthShape
+                    else {
+                      if (draft.mouthShape === undefined) {
+                        mouthNumericDefaultFields.forEach(field => {
+                          draft[field] = defaultAvatarEyes[field]
+                        })
+                      }
+                      draft.mouthShape = value as NonNullable<Expression['mouthShape']>
+                    }
+                    onChange(draft)
+                  }}
+                >
+                  <SelectTrigger aria-label={t('Forme de la bouche')}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="inherit">{t('Hériter du visage neutre')}</SelectItem>
+                    <SelectItem value="curve">{t('Courbe')}</SelectItem>
+                    <SelectItem value="ellipse">{t('Ellipse')}</SelectItem>
+                    <SelectItem value="rounded">{t('Arrondi')}</SelectItem>
+                    <SelectItem value="rounded-triangle">{t('Triangle arrondi')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                {(editing.draft.mouthShape ?? avatarEyes.mouthShape) === 'curve' && (
+                  <NumericField
+                    label="Courbure"
+                    value={resolvedDraft.mouthCurve}
+                    min={-100}
+                    max={100}
+                    unit="%"
+                    onChange={mouthCurve => updateMouthNumeric('mouthCurve', mouthCurve)}
+                  />
+                )}
+                {(['mouthWidth', 'mouthHeight', 'mouthX', 'mouthY', 'mouthAngle'] as const).map(
+                  field => (
+                    <NumericField
+                      key={field}
+                      label={t(
+                        {
+                          mouthWidth: 'Largeur',
+                          mouthHeight: 'Hauteur',
+                          mouthX: 'Position X',
+                          mouthY: 'Position Y',
+                          mouthAngle: 'Rotation',
+                        }[field]
+                      )}
+                      value={resolvedDraft[field]}
+                      min={field === 'mouthWidth' || field === 'mouthHeight' ? 2 : -120}
+                      max={120}
+                      unit={field === 'mouthAngle' ? '°' : 'u'}
+                      onChange={value => updateMouthNumeric(field, value)}
+                    />
+                  )
+                )}
+              </Card>
+            )}
           </ControlSection>
           <ControlSection
             title="Projection"

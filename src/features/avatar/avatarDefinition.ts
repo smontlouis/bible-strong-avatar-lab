@@ -31,6 +31,8 @@ const mapSurface = <TType extends SurfaceType>(
   ...(surface.morphRoundness === undefined ? {} : { morphRoundness: surface.morphRoundness }),
   ...(surface.tipRoundness === undefined ? {} : { tipRoundness: surface.tipRoundness }),
   ...(surface.baseRoundness === undefined ? {} : { baseRoundness: surface.baseRoundness }),
+  ...(surface.topScale === undefined ? {} : { topScale: surface.topScale }),
+  ...(surface.bottomScale === undefined ? {} : { bottomScale: surface.bottomScale }),
 })
 
 const mapExpression = (expression: Expression): AvatarExpressionDefinition => ({
@@ -51,7 +53,51 @@ const mapExpression = (expression: Expression): AvatarExpressionDefinition => ({
       angle: expression.rightAngle,
     },
     spacing: expression.spacing,
+    ...((expression.eyeShape ?? 'rounded') === 'rounded' ? {} : { shape: expression.eyeShape }),
+    ...(expression.eyeRoundness === 100 ? {} : { roundness: expression.eyeRoundness }),
   },
+  ...(expression.noseEnabled ||
+  expression.noseShape !== 'inverted-triangle' ||
+  expression.noseRoundness !== 50 ||
+  expression.noseWidth !== 14 ||
+  expression.noseHeight !== 11 ||
+  expression.noseX !== 0 ||
+  expression.noseY !== 22 ||
+  expression.noseAngle !== 0
+    ? {
+        nose: {
+          enabled: expression.noseEnabled,
+          shape: expression.noseShape,
+          roundness: expression.noseRoundness,
+          width: expression.noseWidth,
+          height: expression.noseHeight,
+          x: expression.noseX,
+          y: expression.noseY,
+          angle: expression.noseAngle,
+        },
+      }
+    : {}),
+  ...(expression.mouthEnabled ||
+  (expression.mouthShape ?? 'curve') !== 'curve' ||
+  expression.mouthCurve !== 45 ||
+  expression.mouthWidth !== 20 ||
+  expression.mouthHeight !== 6 ||
+  expression.mouthX !== 0 ||
+  expression.mouthY !== 35 ||
+  expression.mouthAngle !== 0
+    ? {
+        mouth: {
+          enabled: expression.mouthEnabled ?? false,
+          shape: expression.mouthShape ?? 'curve',
+          curve: expression.mouthCurve,
+          width: expression.mouthWidth,
+          height: expression.mouthHeight,
+          x: expression.mouthX,
+          y: expression.mouthY,
+          angle: expression.mouthAngle,
+        },
+      }
+    : {}),
   perspective: expression.perspective,
   motion: { eyes: expression.eyeMotion, body: expression.bodyMotion },
   ...(expression.bodyColor || expression.eyeColor
@@ -177,6 +223,7 @@ export const createAvatarDefinition = ({
     body: {
       primary: mapSurface(avatar.body.primary),
       nodes: avatar.body.nodes.map((node): AvatarBodyNodeDefinition => ({
+        ...(node.color ? { color: node.color as HexColor } : {}),
         surface: mapSurface(node.surface as SurfaceDefinition<BodyNodeSurfaceType>),
         position: [...node.position],
         rotation: [...node.rotation],
@@ -186,6 +233,16 @@ export const createAvatarDefinition = ({
       body: avatar.colors.body as HexColor,
       eyes: avatar.colors.eyes as HexColor,
     },
+    ...(avatar.renderStyle.type === 'vector' && avatar.renderStyle.outline
+      ? {
+          style: {
+            outline: {
+              ...avatar.renderStyle.outline,
+              color: avatar.renderStyle.outline.color as HexColor,
+            },
+          },
+        }
+      : {}),
     expressions,
     expressionOrder: [
       'neutral',

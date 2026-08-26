@@ -5,6 +5,7 @@ export type BodyVector = readonly [number, number, number]
 export type BodyNode = {
   id: string
   name: string
+  color?: string
   surface: SurfaceConfig
   position: BodyVector
   rotation: BodyVector
@@ -22,6 +23,7 @@ export const bodyPrimitiveTypes = [
   'cylinder',
   'cone',
   'diamond',
+  'trapezoid',
 ] as const
 
 export const MAX_BODY_NODES = 16
@@ -31,6 +33,7 @@ const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 const vector = (value: unknown): value is BodyVector =>
   Array.isArray(value) && value.length === 3 && value.every(finite)
+const hexColor = /^#[0-9a-f]{6}$/i
 
 export const parseSurfaceConfig = (value: unknown, fallback: SurfaceConfig): SurfaceConfig => {
   if (!value || typeof value !== 'object') return { ...fallback }
@@ -46,6 +49,8 @@ export const parseSurfaceConfig = (value: unknown, fallback: SurfaceConfig): Sur
     return { ...fallback }
   if (candidate.baseRoundness !== undefined && !finite(candidate.baseRoundness))
     return { ...fallback }
+  if (candidate.topScale !== undefined && !finite(candidate.topScale)) return { ...fallback }
+  if (candidate.bottomScale !== undefined && !finite(candidate.bottomScale)) return { ...fallback }
   return { ...preset, ...candidate, type }
 }
 
@@ -65,6 +70,9 @@ export const parseAvatarBody = (value: unknown, fallbackPrimary: SurfaceConfig):
             typeof (node as BodyNode).id === 'string' &&
             id &&
             typeof (node as BodyNode).name === 'string' &&
+            ((node as BodyNode).color === undefined ||
+              (typeof (node as BodyNode).color === 'string' &&
+                hexColor.test((node as BodyNode).color!))) &&
             surface &&
             bodyPrimitiveTypes.includes(surface.type as (typeof bodyPrimitiveTypes)[number]) &&
             finite(surface.width) &&

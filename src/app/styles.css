@@ -457,6 +457,9 @@ input {
 .avatar:active {
   cursor: grabbing;
 }
+.avatar-rotation-zone {
+  fill: transparent;
+}
 
 .export-avatar-summary {
   display: flex;
@@ -1177,7 +1180,7 @@ input {
 }
 .avatar-head,
 .preview-head {
-  fill: var(--avatar-body-color, #5b7fe5);
+  fill: var(--avatar-node-color, var(--avatar-body-color, #5b7fe5));
 }
 .avatar-eye,
 .preview-eye {
@@ -1186,6 +1189,9 @@ input {
 .avatar-head,
 .avatar-eye {
   transition: fill 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.avatar-body-node {
+  transition: none;
 }
 .avatar-eye {
   cursor: pointer;

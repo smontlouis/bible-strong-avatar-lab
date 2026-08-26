@@ -198,6 +198,11 @@ export function Avatar({
   const headPathRef = useRef<SVGPathElement>(null)
   const leftPathRef = useRef<SVGPathElement>(null)
   const rightPathRef = useRef<SVGPathElement>(null)
+  const nosePathRef = useRef<SVGPathElement>(null)
+  const mouthPathRef = useRef<SVGPathElement>(null)
+  const headOutlineRef = useRef<SVGPathElement>(null)
+  const backOutlineRefs = useRef<(SVGPathElement | null)[]>([])
+  const frontOutlineRefs = useRef<(SVGPathElement | null)[]>([])
   const backPathRefs = useRef<(SVGPathElement | null)[]>([])
   const frontPathRefs = useRef<(SVGPathElement | null)[]>([])
   const defaultPlaybackStarted = useRef(false)
@@ -219,13 +224,32 @@ export function Avatar({
     rightPathRef.current?.setAttribute('d', frameScene.geometry.rightPath)
     rightPathRef.current?.setAttribute('fill', frameScene.colors.eyes)
     rightPathRef.current?.setAttribute('opacity', frameScene.geometry.rightVisible ? '1' : '0')
+    nosePathRef.current?.setAttribute('d', frameScene.geometry.nosePath)
+    nosePathRef.current?.setAttribute('fill', frameScene.colors.eyes)
+    mouthPathRef.current?.setAttribute('d', frameScene.geometry.mouthPath)
+    mouthPathRef.current?.setAttribute(
+      'fill',
+      frameScene.geometry.mouthStrokeWidth > 0 ? 'none' : frameScene.colors.eyes
+    )
+    mouthPathRef.current?.setAttribute(
+      'stroke',
+      frameScene.geometry.mouthStrokeWidth > 0 ? frameScene.colors.eyes : 'none'
+    )
+    mouthPathRef.current?.setAttribute('stroke-width', String(frameScene.geometry.mouthStrokeWidth))
+    headOutlineRef.current?.setAttribute('d', frameScene.geometry.headPath)
+    backOutlineRefs.current.forEach((element, index) => {
+      element?.setAttribute('d', frameScene.geometry.backPaths[index] ?? '')
+    })
+    frontOutlineRefs.current.forEach((element, index) => {
+      element?.setAttribute('d', frameScene.geometry.frontPaths[index] ?? '')
+    })
     backPathRefs.current.forEach((element, index) => {
       element?.setAttribute('d', frameScene.geometry.backPaths[index] ?? '')
-      element?.setAttribute('fill', frameScene.colors.body)
+      element?.setAttribute('fill', frameScene.bodyColors.back[index] ?? frameScene.colors.body)
     })
     frontPathRefs.current.forEach((element, index) => {
       element?.setAttribute('d', frameScene.geometry.frontPaths[index] ?? '')
-      element?.setAttribute('fill', frameScene.colors.body)
+      element?.setAttribute('fill', frameScene.bodyColors.front[index] ?? frameScene.colors.body)
     })
   }
 
@@ -470,6 +494,16 @@ export function Avatar({
   }))
 
   const scene = renderAvatarDefinition(definition)
+  const outline = definition.style?.outline?.enabled ? definition.style.outline : undefined
+  const outlineProps = outline
+    ? {
+        fill: 'none',
+        stroke: outline.color,
+        strokeWidth: outline.width,
+        strokeOpacity: outline.opacity,
+        strokeLinejoin: 'round' as const,
+      }
+    : {}
   return (
     <div
       className={['bs-avatar', className ?? ''].filter(Boolean).join(' ')}
@@ -487,13 +521,38 @@ export function Avatar({
             <path ref={clipPathRef} d={scene.geometry.headPath} />
           </clipPath>
         </defs>
+        {outline && (
+          <g aria-hidden="true" pointerEvents="none">
+            {Array.from({ length: bodyPathSlots }, (_, index) => (
+              <path
+                {...outlineProps}
+                ref={element => {
+                  backOutlineRefs.current[index] = element
+                }}
+                d={scene.geometry.backPaths[index] ?? ''}
+                key={`outline-back-${index}`}
+              />
+            ))}
+            <path {...outlineProps} ref={headOutlineRef} d={scene.geometry.headPath} />
+            {Array.from({ length: bodyPathSlots }, (_, index) => (
+              <path
+                {...outlineProps}
+                ref={element => {
+                  frontOutlineRefs.current[index] = element
+                }}
+                d={scene.geometry.frontPaths[index] ?? ''}
+                key={`outline-front-${index}`}
+              />
+            ))}
+          </g>
+        )}
         {Array.from({ length: bodyPathSlots }, (_, index) => (
           <path
             ref={element => {
               backPathRefs.current[index] = element
             }}
             d={scene.geometry.backPaths[index] ?? ''}
-            fill={scene.colors.body}
+            fill={scene.bodyColors.back[index] ?? scene.colors.body}
             key={`back-${index}`}
           />
         ))}
@@ -509,6 +568,16 @@ export function Avatar({
             d={scene.geometry.rightPath}
             opacity={scene.geometry.rightVisible ? 1 : 0}
           />
+          <path ref={nosePathRef} d={scene.geometry.nosePath} />
+          <path
+            ref={mouthPathRef}
+            d={scene.geometry.mouthPath}
+            fill={scene.geometry.mouthStrokeWidth > 0 ? 'none' : scene.colors.eyes}
+            stroke={scene.geometry.mouthStrokeWidth > 0 ? scene.colors.eyes : 'none'}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={scene.geometry.mouthStrokeWidth}
+          />
         </g>
         {Array.from({ length: bodyPathSlots }, (_, index) => (
           <path
@@ -516,7 +585,7 @@ export function Avatar({
               frontPathRefs.current[index] = element
             }}
             d={scene.geometry.frontPaths[index] ?? ''}
-            fill={scene.colors.body}
+            fill={scene.bodyColors.front[index] ?? scene.colors.body}
             key={`front-${index}`}
           />
         ))}

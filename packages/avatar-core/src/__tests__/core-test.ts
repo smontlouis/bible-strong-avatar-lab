@@ -241,6 +241,38 @@ describe('@bible-strong/avatar-core', () => {
     expect(scene.colors).toEqual(definition.colors)
   })
 
+  it('keeps custom body-node colors while inherited nodes follow the expression body color', () => {
+    const coloredNodes: AvatarDefinition = {
+      ...definition,
+      body: {
+        ...definition.body,
+        nodes: [
+          {
+            color: '#00aaff',
+            surface: { type: 'sphere', width: 42, height: 42, depth: 42, roundness: 1 },
+            position: [-70, -65, -15],
+            rotation: [0, 0, 0],
+          },
+          {
+            surface: { type: 'sphere', width: 42, height: 42, depth: 42, roundness: 1 },
+            position: [70, -65, -15],
+            rotation: [0, 0, 0],
+          },
+        ],
+      },
+      expressions: {
+        ...definition.expressions,
+        neutral: { ...definition.expressions.neutral, colors: { body: '#ff3355' } },
+      },
+    }
+
+    const scene = renderAvatarDefinition(coloredNodes)
+
+    expect([...scene.bodyColors.back, ...scene.bodyColors.front]).toEqual(
+      expect.arrayContaining(['#00aaff', '#ff3355'])
+    )
+  })
+
   it('does not alias cached geometry for surfaces that differ beyond four decimals', () => {
     const narrow: AvatarDefinition = {
       ...definition,

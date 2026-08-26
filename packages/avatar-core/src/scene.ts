@@ -27,6 +27,24 @@ export const expressionFromDefinition = (
   positionYRight: expression.eyes.right.y,
   leftAngle: expression.eyes.left.angle,
   rightAngle: expression.eyes.right.angle,
+  eyeShape: expression.eyes.shape ?? 'rounded',
+  eyeRoundness: expression.eyes.roundness ?? 100,
+  mouthEnabled: expression.mouth?.enabled ?? false,
+  mouthShape: expression.mouth?.shape ?? 'curve',
+  mouthCurve: expression.mouth?.curve ?? 45,
+  mouthWidth: expression.mouth?.width ?? 20,
+  mouthHeight: expression.mouth?.height ?? 6,
+  mouthX: expression.mouth?.x ?? 0,
+  mouthY: expression.mouth?.y ?? 35,
+  mouthAngle: expression.mouth?.angle ?? 0,
+  noseEnabled: expression.nose?.enabled ?? false,
+  noseShape: expression.nose?.shape ?? 'inverted-triangle',
+  noseRoundness: expression.nose?.roundness ?? 50,
+  noseWidth: expression.nose?.width ?? 14,
+  noseHeight: expression.nose?.height ?? 11,
+  noseX: expression.nose?.x ?? 0,
+  noseY: expression.nose?.y ?? 22,
+  noseAngle: expression.nose?.angle ?? 0,
   perspective: expression.perspective,
   eyeMotion: expression.motion.eyes,
   bodyMotion: expression.motion.body,
@@ -39,6 +57,7 @@ export const bodyFromDefinition = (body: AvatarBodyDefinition): AvatarBody => ({
   nodes: body.nodes.map((node, index) => ({
     id: `runtime-node-${index}`,
     name: `Runtime node ${index + 1}`,
+    ...(node.color ? { color: node.color } : {}),
     surface: { ...node.surface },
     position: [...node.position],
     rotation: [...node.rotation],
@@ -48,6 +67,7 @@ export const bodyFromDefinition = (body: AvatarBodyDefinition): AvatarBody => ({
 export type AvatarScene = {
   geometry: AvatarGeometry
   colors: { body: string; eyes: string }
+  bodyColors: { back: string[]; front: string[] }
 }
 
 export const renderAvatarExpression = (
@@ -57,13 +77,20 @@ export const renderAvatarExpression = (
   blink = 1
 ): AvatarScene => {
   const body = bodyFromDefinition(definition.body)
+  const geometry = renderAvatar(poseFromExpression(expression), body.primary, blink, {
+    bodyNodes: body.nodes,
+  })
+  const bodyColor = colors.body ?? expression.bodyColor ?? definition.colors.body
+  const nodeColors = new Map(body.nodes.map(node => [node.id, node.color ?? bodyColor]))
   return {
-    geometry: renderAvatar(poseFromExpression(expression), body.primary, blink, {
-      bodyNodes: body.nodes,
-    }),
+    geometry,
     colors: {
-      body: colors.body ?? expression.bodyColor ?? definition.colors.body,
+      body: bodyColor,
       eyes: colors.eyes ?? expression.eyeColor ?? definition.colors.eyes,
+    },
+    bodyColors: {
+      back: geometry.backNodeIds.map(id => (id ? (nodeColors.get(id) ?? bodyColor) : bodyColor)),
+      front: geometry.frontNodeIds.map(id => (id ? (nodeColors.get(id) ?? bodyColor) : bodyColor)),
     },
   }
 }

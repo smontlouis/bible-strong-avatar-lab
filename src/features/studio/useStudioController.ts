@@ -60,10 +60,12 @@ import {
   createAvatar,
   createUnkeyedExpressionCopy,
   defaultAvatarEyes,
+  prepareMouthTransition,
   resolveAvatarBehavior,
   type AvatarBehaviorLibrary,
   type AvatarColors,
   type AvatarEyeDefaults,
+  type AvatarRenderStyle,
   type StudioAvatar,
 } from '@/features/avatar/avatars'
 import {
@@ -78,6 +80,7 @@ import {
   type BodyNode,
 } from '@/features/avatar/body'
 import {
+  blendExpressionTransitionTarget,
   scaleEye,
   updateEyeDimension,
   updateEyePosition,
@@ -119,6 +122,7 @@ import {
 import {
   createRenderedColors,
   createRenderedScene,
+  paintRenderedBodyColors,
   paintRenderedColors,
   paintRenderedOffset,
   paintRenderedScene,
@@ -133,6 +137,8 @@ import {
   type StatePlaybackSelection,
   type StudioDocument,
 } from '@/features/studio/studioDocument'
+
+const mouthShapeGeometryFieldSet = new Set<string>(['mouthCurve', 'mouthWidth', 'mouthHeight'])
 
 export function useStudioController() {
   const { language, setLanguage, t } = useStudioLanguage()
@@ -338,6 +344,7 @@ export function useStudioController() {
   const retargetFrom = useRef<Expression | null>(null)
   const retargetTo = useRef<Expression | null>(null)
   const retargetStartedAt = useRef<number | null>(null)
+  const transitionMouthShapeChanges = useRef(false)
   const [transitionVelocity] = useState(
     () =>
       Object.fromEntries(expressionFields.map(field => [field, 0])) as Record<
@@ -362,7 +369,12 @@ export function useStudioController() {
   const blinkControls = useRef<ReturnType<typeof animate> | null>(null)
   const blinkAnimating = useRef(false)
   const blinkValue = useMotionValue(1)
-  const [renderedScene] = useState(() => createRenderedScene(initialGeometry))
+  const [renderedScene] = useState(() =>
+    createRenderedScene(initialGeometry, bodyNodes, initialDisplayColors.body)
+  )
+  useMotionValueEvent(renderedColors.body, 'change', latest =>
+    paintRenderedBodyColors(renderedScene, bodyNodesRef.current, latest)
+  )
   const [renderedRotationGizmo] = useState(() => createRenderedRotationGizmo(initialExpression))
   const bodyColorAnimation = useRef<ReturnType<typeof animate> | null>(null)
   const eyeColorAnimation = useRef<ReturnType<typeof animate> | null>(null)
@@ -419,7 +431,7 @@ export function useStudioController() {
       bodyNodes: bodyNodesRef.current,
       eyeOffset,
     })
-    paintRenderedScene(renderedScene, geometry)
+    paintRenderedScene(renderedScene, geometry, bodyNodesRef.current, renderedColors.body.get())
     paintRenderedOffset(
       renderedScene,
       bodyAmbientEnabled
@@ -473,6 +485,7 @@ export function useStudioController() {
     retargetFrom.current = null
     retargetTo.current = null
     retargetStartedAt.current = null
+    transitionMouthShapeChanges.current = false
     lastInspectorFrame.current = 0
     if (resetVelocity) {
       expressionFields.forEach(field => {
@@ -541,6 +554,17 @@ export function useStudioController() {
       return
     }
     const current = displayedPose.current.expression
+    const preparedMouthTransition = prepareMouthTransition(
+      current,
+      next,
+      avatar?.eyes ?? defaultAvatarEyes
+    )
+    const transitionSource = preparedMouthTransition.from
+    const transitionDestination = preparedMouthTransition.to
+    const mouthShapeChanges = preparedMouthTransition.changesShape
+    if (transitionSource !== current) {
+      displayedPose.current = poseFromExpression(transitionSource)
+    }
     const nearestAngle = (target: number, from: number) => {
       let resolved = target
       while (resolved - from > 180) resolved -= 360
@@ -549,12 +573,12 @@ export function useStudioController() {
     }
     canonicalTarget.current = next
     const resolvedTarget = {
-      ...next,
-      headX: nearestAngle(next.headX, current.headX),
-      headY: nearestAngle(next.headY, current.headY),
-      headZ: nearestAngle(next.headZ, current.headZ),
-      leftAngle: nearestAngle(next.leftAngle, current.leftAngle),
-      rightAngle: nearestAngle(next.rightAngle, current.rightAngle),
+      ...transitionDestination,
+      headX: nearestAngle(transitionDestination.headX, transitionSource.headX),
+      headY: nearestAngle(transitionDestination.headY, transitionSource.headY),
+      headZ: nearestAngle(transitionDestination.headZ, transitionSource.headZ),
+      leftAngle: nearestAngle(transitionDestination.leftAngle, transitionSource.leftAngle),
+      rightAngle: nearestAngle(transitionDestination.rightAngle, transitionSource.rightAngle),
     }
 
     if (transitionSettings) {
@@ -562,7 +586,7 @@ export function useStudioController() {
       stopColorTransitions()
       const durationMs = transitionSettings.transitionMs
       lastAmbientStrength.current = 0
-      const from = { ...current }
+      const from = { ...transitionSource }
       const fromColors = {
         body: renderedColors.body.get(),
         eyes: renderedColors.eyes.get(),
@@ -587,8 +611,12 @@ export function useStudioController() {
               : 1 - Math.exp(-6 * progress) * Math.cos(8 * progress)
         const animated = { ...from, eyeMotion: next.eyeMotion, bodyMotion: next.bodyMotion }
         expressionFields.forEach(field => {
-          animated[field] = from[field] + (resolvedTarget[field] - from[field]) * eased
+          animated[field] =
+            mouthShapeChanges && mouthShapeGeometryFieldSet.has(field)
+              ? resolvedTarget[field]
+              : from[field] + (resolvedTarget[field] - from[field]) * eased
         })
+        if (mouthShapeChanges) animated.mouthShape = resolvedTarget.mouthShape
         activeSequenceTransition.current = {
           target: next,
           index,
@@ -635,6 +663,7 @@ export function useStudioController() {
       })
     }
 
+    transitionMouthShapeChanges.current = mouthShapeChanges
     if (transitionFrame.current !== null) {
       retargetFrom.current = { ...transitionTarget.current }
       retargetTo.current = resolvedTarget
@@ -644,7 +673,7 @@ export function useStudioController() {
     transitionTarget.current = resolvedTarget
     lastAmbientStrength.current = 0
     const initialTransitionDistance = expressionFields.reduce(
-      (total, field) => total + Math.abs(resolvedTarget[field] - current[field]),
+      (total, field) => total + Math.abs(resolvedTarget[field] - transitionSource[field]),
       0
     )
     let transitionProgress = 0
@@ -664,12 +693,12 @@ export function useStudioController() {
         const linearProgress = Math.min((time - retargetStartedAt.current) / RETARGET_BLEND_MS, 1)
         const smoothProgress =
           linearProgress ** 3 * (linearProgress * (linearProgress * 6 - 15) + 10)
-        const blendedTarget = { ...retargetTo.current }
-        expressionFields.forEach(field => {
-          blendedTarget[field] =
-            retargetFrom.current![field] +
-            (retargetTo.current![field] - retargetFrom.current![field]) * smoothProgress
-        })
+        const blendedTarget = blendExpressionTransitionTarget(
+          retargetFrom.current,
+          retargetTo.current,
+          smoothProgress,
+          transitionMouthShapeChanges.current
+        )
         transitionTarget.current = blendedTarget
         if (linearProgress === 1) {
           transitionTarget.current = retargetTo.current
@@ -694,6 +723,11 @@ export function useStudioController() {
       animated.bodyMotion = target.bodyMotion
 
       expressionFields.forEach(field => {
+        if (transitionMouthShapeChanges.current && mouthShapeGeometryFieldSet.has(field)) {
+          transitionVelocity[field] = 0
+          animated[field] = target[field]
+          return
+        }
         const displacement = target[field] - currentExpression[field]
         const acceleration = (stiffness * displacement - damping * transitionVelocity[field]) / mass
         const velocity = transitionVelocity[field] + acceleration * deltaTime
@@ -703,6 +737,12 @@ export function useStudioController() {
         const tolerance = field === 'perspective' ? 0.0001 : 0.005
         if (Math.abs(displacement) > tolerance || Math.abs(velocity) > tolerance) settled = false
       })
+      if (transitionMouthShapeChanges.current) animated.mouthShape = target.mouthShape
+      if (transitionProgress >= 0.5) {
+        animated.eyeShape = target.eyeShape
+        animated.mouthEnabled = target.mouthEnabled
+        if (!transitionMouthShapeChanges.current) animated.mouthShape = target.mouthShape
+      }
 
       if (settled) {
         const finalExpression = canonicalTarget.current
@@ -792,6 +832,10 @@ export function useStudioController() {
     const colors = { ...avatar.colors, ...changes }
     updateActiveAvatar(current => ({ ...current, colors }))
     setDisplayColors(resolveColors(expression, colors))
+  }
+
+  const updateAvatarRenderStyle = (renderStyle: AvatarRenderStyle) => {
+    updateActiveAvatar(avatar => ({ ...avatar, renderStyle }))
   }
 
   const updateAvatarEyes = (changes: Partial<AvatarEyeDefaults>) => {
@@ -1325,7 +1369,9 @@ export function useStudioController() {
             includeWire: showWireRef.current || highlightRef.current === 'head',
             bodyNodes: bodyNodesRef.current,
           }
-        )
+        ),
+        bodyNodesRef.current,
+        renderedColors.body.get()
       )
       return
     }
@@ -1690,7 +1736,9 @@ export function useStudioController() {
         colorTo: snapshotColorTo,
         size: Number(snapshotSize),
         composition: snapshotComposition,
-      }
+        renderStyle: activeAvatar.renderStyle,
+      },
+      activeAvatar.body.nodes
     )
 
   const createPixelSnapshotCanvas = () => {
@@ -2107,6 +2155,7 @@ export function useStudioController() {
     updateAvatarEyePosition,
     updateAvatarEyeSize,
     updateAvatarEyes,
+    updateAvatarRenderStyle,
     updateDimension,
     updateHighlight,
     updateImmediate,

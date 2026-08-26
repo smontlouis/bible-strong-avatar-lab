@@ -189,6 +189,17 @@ export function SnapshotPreview({
     delete event.currentTarget.dataset.dragging
     commitComposition()
   }
+  const outline =
+    renderStyle.type === 'vector' && renderStyle.outline?.enabled ? renderStyle.outline : null
+  const outlineProps = outline
+    ? {
+        fill: 'none',
+        stroke: outline.color,
+        strokeWidth: outline.width,
+        strokeOpacity: outline.opacity,
+        strokeLinejoin: 'round' as const,
+      }
+    : {}
 
   const nudge = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const distance = event.shiftKey ? 10 : 2
@@ -266,8 +277,19 @@ export function SnapshotPreview({
             )}
             <g ref={compositionGroupRef}>
               <motion.g style={{ x: scene.offsetX, y: scene.offsetY }}>
+                {outline && (
+                  <g aria-hidden="true" pointerEvents="none">
+                    {scene.backPaths.map((pathValue, index) => (
+                      <motion.path {...outlineProps} d={pathValue} key={`outline-back-${index}`} />
+                    ))}
+                    <motion.path {...outlineProps} d={scene.headPath} />
+                    {scene.frontPaths.map((pathValue, index) => (
+                      <motion.path {...outlineProps} d={pathValue} key={`outline-front-${index}`} />
+                    ))}
+                  </g>
+                )}
                 {scene.backPaths.map((pathValue, index) => (
-                  <motion.path d={pathValue} fill={colors.body} key={`back-${index}`} />
+                  <motion.path d={pathValue} fill={scene.backColors[index]} key={`back-${index}`} />
                 ))}
                 <motion.path d={scene.headPath} fill={colors.body} />
                 <g clipPath={`url(#${clipId})`}>
@@ -277,9 +299,23 @@ export function SnapshotPreview({
                     fill={colors.eyes}
                     opacity={scene.rightOpacity}
                   />
+                  <motion.path d={scene.nosePath} fill={colors.eyes} />
+                  <motion.path
+                    d={scene.mouthPath}
+                    fill={colors.eyes}
+                    fillOpacity={scene.mouthFillOpacity}
+                    stroke={colors.eyes}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={scene.mouthStrokeWidth}
+                  />
                 </g>
                 {scene.frontPaths.map((pathValue, index) => (
-                  <motion.path d={pathValue} fill={colors.body} key={`front-${index}`} />
+                  <motion.path
+                    d={pathValue}
+                    fill={scene.frontColors[index]}
+                    key={`front-${index}`}
+                  />
                 ))}
               </motion.g>
             </g>

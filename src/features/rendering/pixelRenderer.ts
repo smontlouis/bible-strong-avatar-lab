@@ -6,6 +6,9 @@ export type PixelAvatarFrame = {
   frontPaths: string[]
   leftPath: string
   rightPath: string
+  nosePath?: string
+  mouthPath?: string
+  mouthStrokeWidth?: number
   leftOpacity: number
   rightOpacity: number
   offsetX: number
@@ -19,6 +22,20 @@ const fillPath = (context: CanvasRenderingContext2D, path: string, color: string
   context.globalAlpha = opacity
   context.fillStyle = color
   context.fill(new Path2D(path))
+}
+
+const strokePath = (
+  context: CanvasRenderingContext2D,
+  path: string,
+  color: string,
+  width: number
+) => {
+  if (!path || width <= 0) return
+  context.strokeStyle = color
+  context.lineWidth = width
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  context.stroke(new Path2D(path))
 }
 
 const colorChannels = (color: string): readonly [number, number, number] => [
@@ -82,6 +99,12 @@ export const paintPixelAvatar = (
   context.clip(new Path2D(frame.headPath))
   fillPath(context, frame.leftPath, frame.eyeColor, frame.leftOpacity)
   fillPath(context, frame.rightPath, frame.eyeColor, frame.rightOpacity)
+  fillPath(context, frame.nosePath ?? '', frame.eyeColor)
+  if ((frame.mouthStrokeWidth ?? 0) > 0) {
+    strokePath(context, frame.mouthPath ?? '', frame.eyeColor, frame.mouthStrokeWidth ?? 0)
+  } else {
+    fillPath(context, frame.mouthPath ?? '', frame.eyeColor)
+  }
   context.restore()
 
   frame.frontPaths.forEach(path => fillPath(context, path, frame.bodyColor))

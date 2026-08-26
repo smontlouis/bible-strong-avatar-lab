@@ -550,11 +550,17 @@ export function AvatarCanvas({
     wirePaths,
     backPaths,
     frontPaths,
+    backColors,
+    frontColors,
     backNodeIds,
     frontNodeIds,
     headPath,
     leftPath,
     rightPath,
+    nosePath,
+    mouthPath,
+    mouthStrokeWidth,
+    mouthFillOpacity,
     leftOpacity,
     rightOpacity,
     offsetX,
@@ -593,6 +599,17 @@ export function AvatarCanvas({
     if (!bodyEditing || !selectedBodyNodeId) return null
     return findBodyNodePath(scene, selectedBodyNodeId)
   })()
+  const outline =
+    renderStyle.type === 'vector' && renderStyle.outline?.enabled ? renderStyle.outline : null
+  const bodyOutlineProps = outline
+    ? {
+        fill: 'none',
+        stroke: outline.color,
+        strokeWidth: outline.width,
+        strokeOpacity: outline.opacity,
+        strokeLinejoin: 'round' as const,
+      }
+    : {}
 
   const toSvg = (event: React.PointerEvent<SVGElement>): readonly [number, number] => {
     const rectangle = svgRef.current!.getBoundingClientRect()
@@ -808,11 +825,32 @@ export function AvatarCanvas({
             <motion.path d={headPath} />
           </clipPath>
         </defs>
+        <rect
+          className="avatar-rotation-zone"
+          x="-150"
+          y="-150"
+          width="300"
+          height="300"
+          aria-hidden="true"
+          onPointerDown={startDrag}
+        />
         <motion.g style={{ x: offsetX, y: offsetY }}>
+          {outline && (
+            <g aria-hidden="true" pointerEvents="none">
+              {backPaths.map((pathValue, index) => (
+                <motion.path {...bodyOutlineProps} d={pathValue} key={`outline-back-${index}`} />
+              ))}
+              <motion.path {...bodyOutlineProps} d={headPath} />
+              {frontPaths.map((pathValue, index) => (
+                <motion.path {...bodyOutlineProps} d={pathValue} key={`outline-front-${index}`} />
+              ))}
+            </g>
+          )}
           {backPaths.map((pathValue, index) => (
             <motion.path
-              className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+              className={`avatar-head avatar-body-node ${highlight === 'head' ? 'cyan-outline' : ''}`}
               d={pathValue}
+              style={{ '--avatar-node-color': backColors[index] } as unknown as React.CSSProperties}
               key={index}
               onPointerDown={event => selectBodyPath(event, backNodeIds.current[index])}
             />
@@ -842,11 +880,25 @@ export function AvatarCanvas({
               opacity={rightOpacity}
               onPointerDown={event => selectEye(1, event)}
             />
+            <motion.path className="avatar-eye" d={nosePath} pointerEvents="none" />
+            <motion.path
+              className="avatar-eye"
+              d={mouthPath}
+              pointerEvents="none"
+              fillOpacity={mouthFillOpacity}
+              stroke={colors.eyes}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={mouthStrokeWidth}
+            />
           </g>
           {frontPaths.map((pathValue, index) => (
             <motion.path
-              className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+              className={`avatar-head avatar-body-node ${highlight === 'head' ? 'cyan-outline' : ''}`}
               d={pathValue}
+              style={
+                { '--avatar-node-color': frontColors[index] } as unknown as React.CSSProperties
+              }
               key={index}
               onPointerDown={event => selectBodyPath(event, frontNodeIds.current[index])}
             />
