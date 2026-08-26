@@ -1382,7 +1382,7 @@ const headPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   return path(convexHull(projectedSamples))
 }
 
-const accessoryPath = (pose: AvatarPose, node: BodyNode) => {
+const accessoryGeometry = (pose: AvatarPose, node: BodyNode) => {
   const key = surfaceCacheKey(node.surface)
   let localSamples = accessorySamplesCache.get(key)
   if (!localSamples) {
@@ -1415,10 +1415,12 @@ const accessoryPath = (pose: AvatarPose, node: BodyNode) => {
     (node.surface.type === 'cube' || node.surface.type === 'diamond') &&
     node.surface.roundness <= 0
   ) {
-    return path(hull)
+    return { hull, path: path(hull) }
   }
-  return smoothClosedPath(densifyClosedPoints(hull))
+  return { hull, path: smoothClosedPath(densifyClosedPoints(hull)) }
 }
+
+type Point2 = readonly [number, number]
 
 const ACCESSORY_FRONT_CROSSING_RATIO = 0.1
 
@@ -1444,18 +1446,83 @@ const accessoryCameraDepthRadius = (pose: AvatarPose, node: BodyNode) => {
   )
 }
 
-const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[]) => {
+const polygonSignedArea = (points: readonly Point2[]) =>
+  points.reduce((total, point, index) => {
+    const next = points[(index + 1) % points.length]
+    return total + point[0] * next[1] - next[0] * point[1]
+  }, 0) / 2
+
+const convexPolygonIntersection = (subject: Point2[], clip: Point2[]) => {
+  let output = subject
+  const orientation = Math.sign(polygonSignedArea(clip)) || 1
+  const inside = (point: Point2, start: Point2, end: Point2) =>
+    orientation *
+      ((end[0] - start[0]) * (point[1] - start[1]) - (end[1] - start[1]) * (point[0] - start[0])) >=
+    0
+  const crossing = (from: Point2, to: Point2, start: Point2, end: Point2): Point2 => {
+    const deltaX = to[0] - from[0]
+    const deltaY = to[1] - from[1]
+    const edgeX = end[0] - start[0]
+    const edgeY = end[1] - start[1]
+    const denominator = deltaX * edgeY - deltaY * edgeX
+    const amount =
+      denominator === 0
+        ? 0
+        : ((start[0] - from[0]) * edgeY - (start[1] - from[1]) * edgeX) / denominator
+    return [from[0] + amount * deltaX, from[1] + amount * deltaY]
+  }
+
+  clip.forEach((start, index) => {
+    const end = clip[(index + 1) % clip.length]
+    const input = output
+    output = []
+    input.forEach((current, currentIndex) => {
+      const previous = input[(currentIndex + input.length - 1) % input.length]
+      const currentInside = inside(current, start, end)
+      const previousInside = inside(previous, start, end)
+      if (currentInside) {
+        if (!previousInside) output.push(crossing(previous, current, start, end))
+        output.push(current)
+      } else if (previousInside) {
+        output.push(crossing(previous, current, start, end))
+      }
+    })
+  })
+  return output
+}
+
+const AUTO_ACCESSORY_EYE_OCCLUSION_RATIO = 0.08
+
+const eyeOcclusionRatio = (accessory: Point2[], eye: Point2[]) => {
+  const eyeArea = Math.abs(polygonSignedArea(eye))
+  if (eyeArea === 0) return 0
+  return Math.abs(polygonSignedArea(convexPolygonIntersection(eye, accessory))) / eyeArea
+}
+
+const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[], visibleEyes: Point2[][]) => {
   const layers = nodes
     .map(node => {
       const depth = rotateWithQuaternion(pose.orientation, node.position)[2]
+      const geometry = accessoryGeometry(pose, node)
+      const stronglyOccludesEye =
+        node.layer === 'auto' &&
+        visibleEyes.some(
+          eye =>
+            eyeOcclusionRatio(
+              geometry.hull.map(point => [point[0], point[1]] as Point2),
+              eye
+            ) >= AUTO_ACCESSORY_EYE_OCCLUSION_RATIO
+        )
       return {
         id: node.id,
-        path: accessoryPath(pose, node),
+        path: geometry.path,
         depth,
         front:
           node.layer === 'front' ||
-          (node.layer !== 'back' &&
-            depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO),
+          (node.layer === 'auto'
+            ? !stronglyOccludesEye
+            : node.layer !== 'back' &&
+              depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO),
       }
     })
     .sort((left, right) => left.depth - right.depth)
@@ -1477,7 +1544,12 @@ export const renderAvatar = (
   const rightSamples = eyePoints(pose, surface, 1, blink, options.eyeOffset)
   const left = leftSamples.map(sample => sample.point)
   const right = rightSamples.map(sample => sample.point)
-  const accessories = accessoryLayers(pose, options.bodyNodes ?? [])
+  const leftVisible = leftSamples.reduce((total, sample) => total + sample.normal[2], 0) > 0
+  const rightVisible = rightSamples.reduce((total, sample) => total + sample.normal[2], 0) > 0
+  const visibleEyes = [leftVisible ? left : null, rightVisible ? right : null]
+    .filter((eye): eye is Point3[] => eye !== null)
+    .map(eye => eye.map(point => [point[0], point[1]] as Point2))
+  const accessories = accessoryLayers(pose, options.bodyNodes ?? [], visibleEyes)
   const compositePaths = compositeBackPaths(pose, surface)
   return {
     backPaths: [...compositePaths, ...accessories.backPaths],
@@ -1487,8 +1559,8 @@ export const renderAvatar = (
     headPath: headPath(pose, surface),
     leftPath: path(left),
     rightPath: path(right),
-    leftVisible: leftSamples.reduce((total, sample) => total + sample.normal[2], 0) > 0,
-    rightVisible: rightSamples.reduce((total, sample) => total + sample.normal[2], 0) > 0,
+    leftVisible,
+    rightVisible,
     wirePaths: options.includeWire === false ? [] : wirePaths(pose, surface),
   }
 }

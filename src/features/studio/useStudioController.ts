@@ -1573,12 +1573,7 @@ export function useStudioController() {
     activeSequence && playbackVisual.position !== null
       ? expressionById.get(activeSequence.steps[playbackVisual.position]?.expressionId ?? '')
       : null
-  const activeSequenceUsesBodyColor =
-    activeSequence?.steps.some(step => expressionById.get(step.expressionId)?.bodyColor) ?? false
-  const renderedExpressionBodyColor =
-    playbackExpression?.bodyColor ??
-    expression.bodyColor ??
-    (activeSequenceUsesBodyColor ? renderedColors.body.get() : undefined)
+  const renderedExpressionBodyColor = playbackExpression?.bodyColor ?? expression.bodyColor
   const semanticKeyIssueMessage = (issue: SemanticKeyIssueCode | 'duplicate_semantic_key') =>
     t(
       issue === 'missing_semantic_key'

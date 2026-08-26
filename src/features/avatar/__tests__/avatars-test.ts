@@ -85,10 +85,10 @@ describe('OneWorks animal construction', () => {
       library.avatars.find(avatar => avatar.id === id)?.body.nodes.map(node => node.layer)
 
     expect(layers('oneworks-cat')).toBeUndefined()
-    expect(layers('oneworks-dog')).toEqual(['front', 'front'])
+    expect(layers('oneworks-dog')).toEqual(['auto', 'auto'])
     expect(layers('oneworks-bear')).toEqual(['back', 'back'])
     expect(layers('oneworks-rabbit')).toEqual(['back', 'back'])
-    expect(layers('oneworks-bun')).toEqual(['front'])
+    expect(layers('oneworks-bun')).toEqual(['back'])
   })
 
   it('keeps the unfinished piglet hidden and removes a persisted copy', () => {
@@ -153,7 +153,7 @@ describe('OneWorks animal construction', () => {
       avatar => avatar.id === 'oneworks-dog'
     )!
 
-    expect(dog.body.nodes.map(node => node.layer)).toEqual(['front', 'front'])
+    expect(dog.body.nodes.map(node => node.layer)).toEqual(['auto', 'auto'])
     expect(dog.body.nodes.map(node => node.position)).toEqual([
       [-82, -65, 0],
       [82, -65, 0],

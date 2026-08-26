@@ -32,6 +32,7 @@ import {
   avatarBodyOutlineWidth,
   resolveAvatarNodeColor,
   useAvatarBodyColorOverride,
+  useRenderedSceneNodeOrder,
 } from '@/features/rendering/avatarAppearance'
 import {
   LivePixelAvatarCanvas,
@@ -199,6 +200,7 @@ export function LiveExpressionPreview({
   expressionBodyColor?: string
   id: string
 }) {
+  useRenderedSceneNodeOrder(scene)
   const bodyColorIsOverridden = useAvatarBodyColorOverride(colors.body, baseBodyColor)
 
   if (renderStyle.type === 'pixel') {

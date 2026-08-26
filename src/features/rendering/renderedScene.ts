@@ -10,6 +10,7 @@ export type RenderedScene = {
   frontPaths: MotionValue<string>[]
   backNodeIds: { current: (string | null)[] }
   frontNodeIds: { current: (string | null)[] }
+  nodeOrderVersion: MotionValue<number>
   leftPath: MotionValue<string>
   rightPath: MotionValue<string>
   leftOpacity: MotionValue<number>
@@ -36,6 +37,7 @@ export const createRenderedScene = (geometry: AvatarGeometry): RenderedScene => 
   ),
   backNodeIds: { current: geometry.backNodeIds },
   frontNodeIds: { current: geometry.frontNodeIds },
+  nodeOrderVersion: motionValue(0),
   leftPath: motionValue(geometry.leftPath),
   rightPath: motionValue(geometry.rightPath),
   leftOpacity: motionValue(geometry.leftVisible ? 1 : 0),
@@ -62,8 +64,14 @@ export const paintRenderedOffset = (scene: RenderedScene, offset: { x: number; y
 
 export const paintRenderedScene = (scene: RenderedScene, geometry: AvatarGeometry) => {
   scene.headPath.set(geometry.headPath)
+  const nodeOrderChanged =
+    scene.backNodeIds.current.length !== geometry.backNodeIds.length ||
+    scene.frontNodeIds.current.length !== geometry.frontNodeIds.length ||
+    scene.backNodeIds.current.some((id, index) => id !== geometry.backNodeIds[index]) ||
+    scene.frontNodeIds.current.some((id, index) => id !== geometry.frontNodeIds[index])
   scene.backNodeIds.current = geometry.backNodeIds
   scene.frontNodeIds.current = geometry.frontNodeIds
+  if (nodeOrderChanged) scene.nodeOrderVersion.set(scene.nodeOrderVersion.get() + 1)
   scene.backPaths.forEach((path, index) => path.set(geometry.backPaths[index] ?? ''))
   scene.frontPaths.forEach((path, index) => path.set(geometry.frontPaths[index] ?? ''))
   scene.leftPath.set(geometry.leftPath)

@@ -44,6 +44,7 @@ import {
 } from '@/features/avatar/manipulationSession'
 import { type SurfaceConfig } from '@/features/avatar/surfaces'
 import { type CanvasPreviewTarget } from '@/features/rendering/canvasPreview'
+import { useRenderedSceneNodeOrder } from '@/features/rendering/avatarAppearance'
 import { LivePixelAvatarCanvas } from '@/features/rendering/components/PixelAvatarCanvas'
 import { type RenderedRotationGizmo } from '@/features/rendering/renderedRotationGizmo'
 import {
@@ -550,6 +551,7 @@ export function AvatarCanvas({
   onManipulationStart: () => Expression
 }) {
   const { t } = useStudioLanguage()
+  useRenderedSceneNodeOrder(scene)
   const {
     wirePaths,
     backPaths,

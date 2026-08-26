@@ -39,6 +39,7 @@ describe('rendered avatar scene', () => {
       bodyNodes: [node],
     })
     const scene = createRenderedScene(first)
+    const initialNodeOrderVersion = scene.nodeOrderVersion.get()
     const rotated = renderAvatar(
       poseFromExpression({ ...defaultExpression, headY: 35 }),
       surfacePresets.sphere,
@@ -51,6 +52,11 @@ describe('rendered avatar scene', () => {
     expect(findBodyNodePath(scene, 'primary')).toBe(scene.headPath)
     expect(findBodyNodePath(scene, node.id)).not.toBeNull()
     expect(scene.headPath.get()).toBe(rotated.headPath)
+    expect(scene.nodeOrderVersion.get()).toBeGreaterThan(initialNodeOrderVersion)
+
+    const stableNodeOrderVersion = scene.nodeOrderVersion.get()
+    paintRenderedScene(scene, rotated)
+    expect(scene.nodeOrderVersion.get()).toBe(stableNodeOrderVersion)
   })
 
   it('updates animated colors without replacing their motion values', () => {
@@ -98,12 +104,10 @@ describe('rendered avatar scene', () => {
     expect(forcedFront.frontNodeIds).toContain(avatar.body.nodes[0].id)
   })
 
-  it('moves dog ears between front and back with head depth', () => {
+  it('moves a dog ear behind the head only when it strongly overlaps an eye', () => {
     const studio = loadStudioDocument({ getItem: () => null })
     const avatar = studio.library.avatars.find(item => item.id === 'oneworks-dog')!
     const detachedEars: string[] = []
-
-    let splitDepthExpressions = 0
 
     studio.expressions.forEach(expression => {
       const geometry = renderAvatar(
@@ -115,12 +119,6 @@ describe('rendered avatar scene', () => {
       const head = pathBounds(geometry.headPath)
 
       const earIds = ['dog-ear-left', 'dog-ear-right'] as const
-      if (
-        geometry.frontNodeIds.some(id => earIds.includes(id as (typeof earIds)[number])) &&
-        geometry.backNodeIds.some(id => earIds.includes(id as (typeof earIds)[number]))
-      ) {
-        splitDepthExpressions += 1
-      }
       earIds.forEach(nodeId => {
         const frontIndex = geometry.frontNodeIds.indexOf(nodeId)
         const backIndex = geometry.backNodeIds.indexOf(nodeId)
@@ -137,8 +135,25 @@ describe('rendered avatar scene', () => {
       })
     })
 
-    expect(splitDepthExpressions).toBeGreaterThan(0)
     expect(detachedEars, 'detached dog ears').toEqual([])
+
+    const expressionById = new Map(
+      studio.expressions.map(expression => [expression.id, expression])
+    )
+    const geometryFor = (sequenceId: string) => {
+      const sequence = studio.sequences.find(item => item.id === sequenceId)!
+      const expression = expressionById.get(sequence.steps[0].expressionId) as Expression
+      return renderAvatar(poseFromExpression(expression), avatar.body.primary as SurfaceConfig, 1, {
+        bodyNodes: avatar.body.nodes as BodyNode[],
+      })
+    }
+
+    ;['idle', 'shy', 'proud'].forEach(sequenceId => {
+      expect(geometryFor(sequenceId).backNodeIds, sequenceId).toContain('dog-ear-right')
+    })
+    expect(geometryFor('angry').frontNodeIds).toEqual(
+      expect.arrayContaining(['dog-ear-left', 'dog-ear-right'])
+    )
   })
 
   it('keeps bear ears attached behind the head across expressions', () => {

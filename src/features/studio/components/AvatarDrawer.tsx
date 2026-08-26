@@ -15,6 +15,7 @@ import { defaultExpression } from '@/features/avatar/presets'
 import {
   avatarBodyOutlineWidth,
   useAvatarBodyColorOverride,
+  useRenderedSceneNodeOrder,
 } from '@/features/rendering/avatarAppearance'
 import { LivePixelAvatarCanvas } from '@/features/rendering/components/PixelAvatarCanvas'
 import type { RenderedColors, RenderedScene } from '@/features/rendering/renderedScene'
@@ -31,6 +32,7 @@ function LiveAvatarPreview({
   scene: RenderedScene
   expressionBodyColor?: string
 }) {
+  useRenderedSceneNodeOrder(scene)
   const outlineWidth = avatarBodyOutlineWidth()
   const filled = avatar.renderStyle.type === 'vector' && avatar.renderStyle.filled === true
   const fixedSkinColors =

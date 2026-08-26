@@ -1,6 +1,8 @@
 import { useMotionValueEvent, type MotionValue } from 'motion/react'
 import { useEffect, useState } from 'react'
 
+import type { RenderedScene } from './renderedScene'
+
 export const avatarBodyOutlineWidth = () => 12
 
 const colorsMatch = (left: string, right: string) =>
@@ -24,6 +26,14 @@ export const useAvatarBodyColorOverride = (
   })
 
   return overridden
+}
+
+export const useRenderedSceneNodeOrder = (scene: RenderedScene) => {
+  const [, setVersion] = useState(0)
+
+  useMotionValueEvent(scene.nodeOrderVersion, 'change', () => {
+    setVersion(version => version + 1)
+  })
 }
 
 export const resolveAvatarNodeColor = ({

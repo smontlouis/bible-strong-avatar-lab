@@ -746,7 +746,7 @@ const oneWorksBundledAvatars: StudioAvatar[] = [
       nodes: [
         oneWorksNode('bun-crown', 'Rounded bun crown', 'cone', [0, -46, -14], 0.5, 0.23, {
           scaleZ: 0.5,
-          layer: 'front',
+          layer: 'back',
           surface: { roundness: 0.92, topScale: 0.82 },
         }),
       ],
