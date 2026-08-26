@@ -30,6 +30,7 @@ describe('Studio document', () => {
   const storage = (value: string | null = null) => ({ getItem: () => value })
   const bundledAvatarNames = [
     'Memento',
+    'Memento · Headset',
     'Apple Bite',
     'Lock',
     'Siamese',
@@ -79,7 +80,8 @@ describe('Studio document', () => {
         .filter(avatar => avatar.renderStyle.type !== 'vector' || !avatar.renderStyle.filled)
         .every(avatar => avatar.colors.body === avatar.colors.eyes)
     ).toBe(true)
-    expect(document.library.avatars.slice(0, 13).map(avatar => avatar.body.primary.type)).toEqual([
+    expect(document.library.avatars.slice(0, 14).map(avatar => avatar.body.primary.type)).toEqual([
+      'ghost',
       'ghost',
       'apple-bite',
       'lock',
@@ -224,7 +226,7 @@ describe('Studio document', () => {
     ])
     expect(
       document.library.avatars
-        .filter(avatar => avatar.id !== 'primitive-ghost')
+        .filter(avatar => !['primitive-ghost', 'primitive-ghost-headset'].includes(avatar.id))
         .every(avatar => avatar.colors.body !== '#ff9d45')
     ).toBe(true)
     expect(memento?.eyes.positionYLeft).toBe(defaultAvatarEyes.positionYLeft - 20)
@@ -242,7 +244,7 @@ describe('Studio document', () => {
         .filter(expression => expression.bodyColor || expression.eyeColor)
         .map(expression => [expression.semanticKey, expression.bodyColor, expression.eyeColor])
     ).toEqual([['angry-brows', '#ba3636', '#610000']])
-    expect(document.expressions).toHaveLength(28)
+    expect(document.expressions).toHaveLength(29)
     expect(document.sequences).toHaveLength(24)
     expect(document.sequences.find(sequence => sequence.id === 'angry')?.steps).toHaveLength(2)
     expect(
@@ -465,6 +467,39 @@ describe('Studio document', () => {
     const restored = loadStudioDocument(storage(JSON.stringify(localDocument)))
 
     expect(restored.expressions.at(-1)?.semanticKey).toBe('joyful-arc')
+  })
+
+  it('adds the front-facing expression to existing base and avatar libraries', () => {
+    const fallback = loadStudioDocument(storage())
+    const withoutFront = fallback.expressions.filter(
+      expression => expression.semanticKey !== 'front-facing'
+    )
+    const localDocument = {
+      ...fallback,
+      expressions: withoutFront,
+      library: {
+        ...fallback.library,
+        avatars: fallback.library.avatars.map(avatar =>
+          avatar.behavior
+            ? { ...avatar, behavior: { ...avatar.behavior, expressions: withoutFront } }
+            : avatar
+        ),
+      },
+    }
+
+    const restored = loadStudioDocument(storage(JSON.stringify(localDocument)))
+    const front = restored.expressions.find(expression => expression.semanticKey === 'front-facing')
+
+    expect(front).toMatchObject({ headX: 0, headY: 0, headZ: 0 })
+    expect(front?.widthLeft).toBe(front?.widthRight)
+    expect(front?.heightLeft).toBe(front?.heightRight)
+    expect(
+      restored.library.avatars
+        .filter(avatar => avatar.behavior)
+        .every(avatar =>
+          avatar.behavior?.expressions.some(expression => expression.semanticKey === 'front-facing')
+        )
+    ).toBe(true)
   })
 
   it('adds the joyful animation to an existing local project', () => {

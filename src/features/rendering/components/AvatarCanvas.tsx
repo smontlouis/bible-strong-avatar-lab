@@ -1,6 +1,7 @@
 import { RotateCcw } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import type { MotionValue } from 'motion'
 
 import { Button } from '@/components/ui/button'
 import { useStudioLanguage } from '@/i18n'
@@ -225,6 +226,23 @@ export function RotationGizmo({
 }
 
 type TransformAxis = 'x' | 'y' | 'z'
+
+export function SvgTransformPath({
+  svgTransform,
+  ...props
+}: Omit<React.ComponentProps<typeof motion.path>, 'transform'> & {
+  svgTransform: MotionValue<string>
+}) {
+  const ref = useRef<SVGPathElement>(null)
+
+  useLayoutEffect(() => {
+    const applyTransform = (value: string) => ref.current?.setAttribute('transform', value)
+    applyTransform(svgTransform.get())
+    return svgTransform.on('change', applyTransform)
+  }, [svgTransform])
+
+  return <motion.path {...props} ref={ref} />
+}
 
 export function BodyNodeGizmo({
   svgRef,
@@ -555,7 +573,9 @@ export function AvatarCanvas({
   const {
     wirePaths,
     backPaths,
+    backTransforms,
     frontPaths,
+    frontTransforms,
     backNodeIds,
     frontNodeIds,
     headPath,
@@ -823,9 +843,10 @@ export function AvatarCanvas({
         </defs>
         <motion.g style={{ x: offsetX, y: offsetY }}>
           {backPaths.map((pathValue, index) => (
-            <motion.path
+            <SvgTransformPath
               className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
               d={pathValue}
+              svgTransform={backTransforms[index]}
               key={index}
               style={nodeColorStyle(backNodeIds.current[index])}
               onPointerDown={event => selectBodyPath(event, backNodeIds.current[index])}
@@ -858,9 +879,10 @@ export function AvatarCanvas({
             />
           </g>
           {frontPaths.map((pathValue, index) => (
-            <motion.path
-              className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+            <SvgTransformPath
+              className={`avatar-head${scene.headsetFrontIndex.current === index ? ' avatar-headset' : ''} ${highlight === 'head' ? 'cyan-outline' : ''}`}
               d={pathValue}
+              svgTransform={frontTransforms[index]}
               key={index}
               style={nodeColorStyle(frontNodeIds.current[index])}
               onPointerDown={event => selectBodyPath(event, frontNodeIds.current[index])}

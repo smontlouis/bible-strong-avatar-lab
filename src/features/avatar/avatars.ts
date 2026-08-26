@@ -31,7 +31,12 @@ export type PixelRenderStyle = {
   type: 'pixel'
   resolution: number
 }
-export type VectorRenderStyle = { type: 'vector'; filled?: boolean }
+export type VectorAccessory = 'headset'
+export type VectorRenderStyle = {
+  type: 'vector'
+  filled?: boolean
+  accessory?: VectorAccessory
+}
 export type AvatarRenderStyle = VectorRenderStyle | PixelRenderStyle
 export type AvatarEyeDefaults = Pick<
   Expression,
@@ -68,6 +73,11 @@ export const defaultAvatarColors: AvatarColors = {
 }
 export const defaultAvatarRenderStyle: AvatarRenderStyle = { type: 'vector' }
 export const filledAvatarRenderStyle: VectorRenderStyle = { type: 'vector', filled: true }
+export const headsetAvatarRenderStyle: VectorRenderStyle = {
+  type: 'vector',
+  filled: true,
+  accessory: 'headset',
+}
 const filledAvatarEyeColor = '#111316'
 export const defaultPixelRenderStyle: PixelRenderStyle = {
   type: 'pixel',
@@ -154,6 +164,7 @@ const bundledAvatarColorMigrations: Record<string, { from: AvatarColors; to: Ava
 
 export const simpleBundledAvatarIds = [
   'primitive-ghost',
+  'primitive-ghost-headset',
   'primitive-apple-bite',
   'primitive-lock',
   'oneworks-cat',
@@ -225,6 +236,7 @@ const primitiveBundledAvatarSpecs = [
   ['primitive-diamond', 'Diamond', 'diamond', deslopAccentColors.pink, 1],
   ['primitive-apple-bite', 'Apple Bite', 'apple-bite', deslopAccentColors.red, 0.9],
   ['primitive-ghost', 'Memento', 'ghost', deslopAccentColors.orange, 0.9],
+  ['primitive-ghost-headset', 'Memento · Headset', 'ghost', deslopAccentColors.orange, 0.9],
   ['primitive-lock', 'Lock', 'lock', deslopAccentColors.blue, 0.9],
 ] as const
 
@@ -843,9 +855,11 @@ const primitiveBundledAvatars: StudioAvatar[] = [
               }
             : { ...defaultAvatarEyes },
     renderStyle:
-      surface === 'ghost' || surface === 'apple-bite' || surface === 'lock'
-        ? { ...filledAvatarRenderStyle }
-        : { ...defaultAvatarRenderStyle },
+      id === 'primitive-ghost-headset'
+        ? { ...headsetAvatarRenderStyle }
+        : surface === 'ghost' || surface === 'apple-bite' || surface === 'lock'
+          ? { ...filledAvatarRenderStyle }
+          : { ...defaultAvatarRenderStyle },
     ...(surface === 'ghost'
       ? { behavior: mementoBehavior() }
       : surface === 'apple-bite'
@@ -931,12 +945,14 @@ const filledBundledAvatarIds = new Set([
   ...Object.keys(oneWorksBundledAnimalColors),
   ...Object.keys(mementoAnimalColors),
   'primitive-ghost',
+  'primitive-ghost-headset',
   'primitive-apple-bite',
   'primitive-lock',
 ])
 const oneWorksOriginalAnimalIds = new Set(Object.keys(oneWorksBundledAnimalColors))
 const filledPrimitiveAvatarColors: Record<string, AvatarColors> = {
   'primitive-ghost': { body: deslopAccentColors.orange, eyes: filledAvatarEyeColor },
+  'primitive-ghost-headset': { body: deslopAccentColors.orange, eyes: filledAvatarEyeColor },
   'primitive-apple-bite': { body: deslopAccentColors.red, eyes: filledAvatarEyeColor },
   'primitive-lock': { body: deslopAccentColors.blue, eyes: filledAvatarEyeColor },
 }
@@ -975,7 +991,7 @@ export const ensurePrimitiveBundledAvatars = (library: AvatarLibrary): AvatarLib
   )
   if (!visibleLibraryAvatars.some(avatar => originalSimpleBundledAvatarIds.has(avatar.id))) {
     const avatarsWithCurrentColorBehavior = visibleLibraryAvatars.map(avatar => {
-      if (avatar.id === 'primitive-ghost') {
+      if (['primitive-ghost', 'primitive-ghost-headset'].includes(avatar.id)) {
         return { ...avatar, behavior: mementoBehavior(avatar.behavior) }
       }
       if (filledBundledAvatarIds.has(avatar.id)) {
@@ -1106,7 +1122,7 @@ export const ensurePrimitiveBundledAvatars = (library: AvatarLibrary): AvatarLib
         ? { ...avatarWithCurrentNodes, name: bundled.name }
         : avatarWithCurrentNodes
     const avatarWithCurrentEyes =
-      avatarWithCurrentName.id === 'primitive-ghost' &&
+      ['primitive-ghost', 'primitive-ghost-headset'].includes(avatarWithCurrentName.id) &&
       [defaultAvatarEyes.positionYLeft, defaultAvatarEyes.positionYLeft - 12].includes(
         avatarWithCurrentName.eyes.positionYLeft
       ) &&
@@ -1121,21 +1137,25 @@ export const ensurePrimitiveBundledAvatars = (library: AvatarLibrary): AvatarLib
       avatarWithCurrentEyes.eyes.positionXRight === defaultAvatarEyes.positionXRight
         ? { ...avatarWithCurrentEyes, eyes: { ...bundled.eyes } }
         : avatarWithCurrentEyes
-    const avatarWithFixedColorBehavior =
-      avatarWithAppleBiteEyes.id === 'primitive-ghost'
+    const avatarWithFixedColorBehavior = ['primitive-ghost', 'primitive-ghost-headset'].includes(
+      avatarWithAppleBiteEyes.id
+    )
+      ? {
+          ...avatarWithAppleBiteEyes,
+          behavior: mementoBehavior(avatarWithAppleBiteEyes.behavior),
+        }
+      : filledBundledAvatarIds.has(avatarWithAppleBiteEyes.id)
         ? {
             ...avatarWithAppleBiteEyes,
-            behavior: mementoBehavior(avatarWithAppleBiteEyes.behavior),
+            behavior: fixedSkinColorBehavior(avatarWithAppleBiteEyes.behavior),
           }
-        : filledBundledAvatarIds.has(avatarWithAppleBiteEyes.id)
-          ? {
-              ...avatarWithAppleBiteEyes,
-              behavior: fixedSkinColorBehavior(avatarWithAppleBiteEyes.behavior),
-            }
-          : avatarWithAppleBiteEyes
-    const avatarWithCurrentRenderStyle = filledBundledAvatarIds.has(avatarWithFixedColorBehavior.id)
-      ? { ...avatarWithFixedColorBehavior, renderStyle: { ...filledAvatarRenderStyle } }
-      : avatarWithFixedColorBehavior
+        : avatarWithAppleBiteEyes
+    const avatarWithCurrentRenderStyle =
+      avatarWithFixedColorBehavior.id === 'primitive-ghost-headset'
+        ? { ...avatarWithFixedColorBehavior, renderStyle: { ...headsetAvatarRenderStyle } }
+        : filledBundledAvatarIds.has(avatarWithFixedColorBehavior.id)
+          ? { ...avatarWithFixedColorBehavior, renderStyle: { ...filledAvatarRenderStyle } }
+          : avatarWithFixedColorBehavior
     const bundledFilledColors =
       mementoAnimalColors[avatarWithCurrentRenderStyle.id] ??
       oneWorksBundledAnimalColors[avatarWithCurrentRenderStyle.id] ??
@@ -1215,9 +1235,18 @@ const finiteBounded = (value: unknown, fallback: number, min: number, max: numbe
     : fallback
 
 export const parseAvatarRenderStyle = (value: unknown): AvatarRenderStyle => {
-  const candidate = value as { type?: unknown; filled?: unknown; resolution?: unknown } | null
+  const candidate = value as {
+    type?: unknown
+    filled?: unknown
+    accessory?: unknown
+    resolution?: unknown
+  } | null
   if (candidate?.type === 'vector') {
-    return candidate.filled === true ? { type: 'vector', filled: true } : { type: 'vector' }
+    return {
+      type: 'vector',
+      ...(candidate.filled === true ? { filled: true } : {}),
+      ...(candidate.accessory === 'headset' ? { accessory: 'headset' as const } : {}),
+    }
   }
   if (!PIXEL_RENDERING_ENABLED || candidate?.type !== 'pixel') {
     return { ...defaultAvatarRenderStyle }

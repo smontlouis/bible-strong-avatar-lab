@@ -868,6 +868,37 @@
         "eyes": "none",
         "body": "none"
       }
+    },
+    "front-facing": {
+      "head": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "eyes": {
+        "left": {
+          "width": 20,
+          "height": 50,
+          "curvature": 0,
+          "x": 0,
+          "y": -7,
+          "angle": 0
+        },
+        "right": {
+          "width": 20,
+          "height": 50,
+          "curvature": 0,
+          "x": 0,
+          "y": -7,
+          "angle": 0
+        },
+        "spacing": 35
+      },
+      "perspective": 1,
+      "motion": {
+        "eyes": "none",
+        "body": "none"
+      }
     }
   },
   "expressionOrder": [
@@ -899,7 +930,8 @@
     "shy-downward",
     "angry-brows",
     "uneasy-left",
-    "joyful-arc"
+    "joyful-arc",
+    "front-facing"
   ],
   "animations": {
     "sleeping": {

@@ -80,7 +80,6 @@ import {
 import {
   expressionFields,
   poseFromExpression,
-  renderAvatar,
   type AvatarPose,
   type Expression,
 } from '@/features/avatar/geometry'
@@ -119,6 +118,7 @@ import {
   paintRenderedScene,
 } from '@/features/rendering/renderedScene'
 import { paintPixelAvatar } from '@/features/rendering/pixelRenderer'
+import { renderAvatarByStyle } from '@/features/rendering/avatarAccessories'
 import {
   createStudioDocumentStore,
   loadStudioDocument,
@@ -309,10 +309,11 @@ export function useStudioController() {
     const pose = poseFromExpression(initialExpression)
     return {
       pose,
-      geometry: renderAvatar(
+      geometry: renderAvatarByStyle(
         poseWithAvatarEyes(initialExpression, initialAvatar.eyes),
         surface,
         1,
+        initialAvatar.renderStyle,
         { bodyNodes }
       ),
     }
@@ -411,11 +412,17 @@ export function useStudioController() {
     const renderPose = avatar
       ? poseWithAvatarEyes(renderedExpression, avatar.eyes ?? defaultAvatarEyes)
       : poseFromExpression(renderedExpression)
-    const geometry = renderAvatar(renderPose, surfaceRef.current, blink ?? blinkValue.get(), {
-      includeWire: showWireRef.current || highlightRef.current === 'head',
-      bodyNodes: bodyNodesRef.current,
-      eyeOffset,
-    })
+    const geometry = renderAvatarByStyle(
+      renderPose,
+      surfaceRef.current,
+      blink ?? blinkValue.get(),
+      avatar?.renderStyle ?? { type: 'vector' },
+      {
+        includeWire: showWireRef.current || highlightRef.current === 'head',
+        bodyNodes: bodyNodesRef.current,
+        eyeOffset,
+      }
+    )
     paintRenderedScene(renderedScene, geometry)
     paintRenderedOffset(
       renderedScene,
@@ -1325,6 +1332,7 @@ export function useStudioController() {
 
   const previewCanvasExpression = (next: Expression, target: CanvasPreviewTarget) => {
     const now = performance.now()
+    const avatar = avatarsRef.current.find(item => item.id === activeAvatarIdRef.current)
     const updateInspector =
       shouldSyncCanvasPreviewToReact(bodyEditing, target) &&
       now - lastInspectorFrame.current >= INSPECTOR_FRAME_MS
@@ -1340,12 +1348,13 @@ export function useStudioController() {
       paintRenderedRotationGizmo(renderedRotationGizmo, next)
       paintRenderedScene(
         renderedScene,
-        renderAvatar(
+        renderAvatarByStyle(
           poseFromExpression(
             resolveCanvasPreviewExpression(next, activeAvatarEyes, bodyEditing, target)
           ),
           surfaceRef.current,
           blinkValue.get(),
+          avatar?.renderStyle ?? { type: 'vector' },
           {
             includeWire: showWireRef.current || highlightRef.current === 'head',
             bodyNodes: bodyNodesRef.current,
@@ -1354,7 +1363,6 @@ export function useStudioController() {
       )
       return
     }
-    const avatar = avatarsRef.current.find(item => item.id === activeAvatarIdRef.current)
     if (avatar) setDisplayColors(resolveColors(next, avatar.colors))
     paintPose(poseFromExpression(next))
   }

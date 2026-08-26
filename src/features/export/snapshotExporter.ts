@@ -28,8 +28,10 @@ const escapeXml = (value: string) =>
     return entities[character]
   })
 
-const path = (value: string, fill: string, opacity = 1) =>
-  value ? `<path d="${escapeXml(value)}" fill="${fill}" opacity="${opacity}"/>` : ''
+const path = (value: string, fill: string, opacity = 1, transform?: string) =>
+  value
+    ? `<path d="${escapeXml(value)}" fill="${fill}" opacity="${opacity}"${transform ? ` transform="${escapeXml(transform)}"` : ''}/>`
+    : ''
 
 const backgroundMarkup = (options: SnapshotOptions) => {
   if (options.background === 'transparent') return ''
@@ -62,21 +64,30 @@ export const serializeAvatarSnapshot = (
     options.composition ?? defaultSnapshotComposition
   )
   const headPath = scene.headPath.get()
-  const backPaths = scene.backPaths.flatMap(item => {
+  const backPaths = scene.backPaths.flatMap((item, index) => {
     const value = item.get()
-    return value ? [value] : []
+    return value ? [{ value, index }] : []
   })
-  const frontPaths = scene.frontPaths.flatMap(item => {
+  const frontPaths = scene.frontPaths.flatMap((item, index) => {
     const value = item.get()
-    return value ? [value] : []
+    return value ? [{ value, index }] : []
   })
   const offsetX = scene.offsetX.get()
   const offsetY = scene.offsetY.get()
   const body = [
-    ...backPaths.map(value => path(value, colors.body)),
-    path(headPath, colors.body),
-    `<g clip-path="url(#snapshot-head-clip)">${path(scene.leftPath.get(), colors.eyes, scene.leftOpacity.get())}${path(scene.rightPath.get(), colors.eyes, scene.rightOpacity.get())}</g>`,
-    ...frontPaths.map(value => path(value, colors.body)),
+    ...backPaths.map(({ value, index }) =>
+      path(value, colors.body, 1, scene.backTransforms[index].get())
+    ),
+    path(headPath, colors.body, 1, scene.headTransform.get()),
+    `<g clip-path="url(#snapshot-head-clip)">${path(scene.leftPath.get(), colors.eyes, scene.leftOpacity.get(), scene.leftTransform.get())}${path(scene.rightPath.get(), colors.eyes, scene.rightOpacity.get(), scene.rightTransform.get())}</g>`,
+    ...frontPaths.map(({ value, index }) =>
+      path(
+        value,
+        scene.headsetFrontIndex.current === index ? '#111316' : colors.body,
+        1,
+        scene.frontTransforms[index].get()
+      )
+    ),
   ].join('')
 
   return `<?xml version="1.0" encoding="UTF-8"?>

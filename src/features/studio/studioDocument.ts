@@ -175,6 +175,7 @@ const restoreSignatureExpressions = (
   addMissing = true
 ) => {
   const signatureKeys = new Set(['joyful-arc'])
+  const additiveKeys = new Set(['joyful-arc', 'front-facing'])
   const fallbackByKey = new Map(
     fallback
       .filter(expression => expression.semanticKey && signatureKeys.has(expression.semanticKey))
@@ -206,12 +207,20 @@ const restoreSignatureExpressions = (
     ? fallback.filter(
         expression =>
           expression.semanticKey &&
-          signatureKeys.has(expression.semanticKey) &&
+          additiveKeys.has(expression.semanticKey) &&
           !existingKeys.has(expression.semanticKey)
       )
     : []
   if (missing.length) return [...restored, ...missing.map(expression => ({ ...expression }))]
   return changed ? restored : expressions
+}
+
+const restoreFrontFacingExpression = (expressions: Expression[], fallback: Expression[]) => {
+  if (expressions.some(expression => expression.semanticKey === 'front-facing')) {
+    return expressions
+  }
+  const frontFacing = fallback.find(expression => expression.semanticKey === 'front-facing')
+  return frontFacing ? [...expressions, { ...frontFacing }] : expressions
 }
 
 const restoreAvatarSignatureBehavior = (
@@ -222,10 +231,9 @@ const restoreAvatarSignatureBehavior = (
   let changed = false
   const avatars = library.avatars.map(avatar => {
     if (!avatar.behavior) return avatar
-    const expressions = restoreSignatureExpressions(
-      avatar.behavior.expressions,
-      fallbackExpressions,
-      false
+    const expressions = restoreFrontFacingExpression(
+      restoreSignatureExpressions(avatar.behavior.expressions, fallbackExpressions, false),
+      fallbackExpressions
     )
     const availableExpressionIds = new Set(expressions.map(expression => expression.id))
     const joyful = fallbackSequences.find(sequence => sequence.id === 'joyful')

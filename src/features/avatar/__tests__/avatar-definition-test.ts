@@ -486,8 +486,9 @@ describe('Studio to avatar definition conversion', () => {
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(result.value.expressionOrder).toHaveLength(31)
+    expect(result.value.expressionOrder).toHaveLength(32)
     expect(result.value.expressionOrder[0]).toBe('neutral')
+    expect(result.value.expressionOrder).toContain('front-facing')
     expect(result.value.animationOrder).toHaveLength(25)
     expect(result.value.animationOrder).toContain('idle')
     expect(result.value.animations.idle.steps.map(step => step.expression)).toEqual([

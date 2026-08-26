@@ -1219,6 +1219,11 @@ input {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.avatar-headset {
+  fill: #111316 !important;
+  opacity: 1;
+  stroke: none !important;
+}
 .avatar-eye,
 .preview-eye {
   fill: var(--avatar-eye-color, #ffffff);

@@ -14,10 +14,10 @@ import { ExpressionPreview } from '@/features/avatar/components/ExpressionWorksp
 import { defaultExpression } from '@/features/avatar/presets'
 import {
   avatarBodyOutlineWidth,
-  useAvatarBodyColorOverride,
   useRenderedSceneNodeOrder,
 } from '@/features/rendering/avatarAppearance'
 import { LivePixelAvatarCanvas } from '@/features/rendering/components/PixelAvatarCanvas'
+import { SvgTransformPath } from '@/features/rendering/components/AvatarCanvas'
 import type { RenderedColors, RenderedScene } from '@/features/rendering/renderedScene'
 import type { StudioController } from '@/features/studio/useStudioController'
 
@@ -35,14 +35,9 @@ function LiveAvatarPreview({
   useRenderedSceneNodeOrder(scene)
   const outlineWidth = avatarBodyOutlineWidth()
   const filled = avatar.renderStyle.type === 'vector' && avatar.renderStyle.filled === true
-  const fixedSkinColors =
-    avatar.behavior?.expressions.every(
-      expression => !expression.bodyColor && !expression.eyeColor
-    ) ?? false
-  const bodyColorIsOverridden = useAvatarBodyColorOverride(colors.body, avatar.colors.body)
-  const bodyColor = fixedSkinColors && !bodyColorIsOverridden ? avatar.colors.body : colors.body
-  const eyeColor = fixedSkinColors ? avatar.colors.eyes : colors.eyes
-  const inheritBodyColor = Boolean(expressionBodyColor) || bodyColorIsOverridden
+  const bodyColor = expressionBodyColor ? colors.body : avatar.colors.body
+  const eyeColor = expressionBodyColor ? colors.eyes : avatar.colors.eyes
+  const inheritBodyColor = Boolean(expressionBodyColor)
   const nodeColor = (id: string | null | undefined) =>
     inheritBodyColor
       ? bodyColor
@@ -76,9 +71,10 @@ function LiveAvatarPreview({
         {scene.backPaths.map((pathValue, index) => {
           const color = nodeColor(scene.backNodeIds.current[index])
           return (
-            <motion.path
+            <SvgTransformPath
               className="preview-head"
               d={pathValue}
+              svgTransform={scene.backTransforms[index]}
               key={`back-${index}`}
               style={{ fill: filled ? color : bodyFill, stroke: color, strokeWidth: outlineWidth }}
             />
@@ -110,9 +106,10 @@ function LiveAvatarPreview({
         {scene.frontPaths.map((pathValue, index) => {
           const color = nodeColor(scene.frontNodeIds.current[index])
           return (
-            <motion.path
-              className="preview-head"
+            <SvgTransformPath
+              className={`preview-head${scene.headsetFrontIndex.current === index ? ' avatar-headset' : ''}`}
               d={pathValue}
+              svgTransform={scene.frontTransforms[index]}
               key={`front-${index}`}
               style={{ fill: filled ? color : bodyFill, stroke: color, strokeWidth: outlineWidth }}
             />

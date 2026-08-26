@@ -38,6 +38,7 @@ import {
   LivePixelAvatarCanvas,
   StaticPixelAvatarCanvas,
 } from '@/features/rendering/components/PixelAvatarCanvas'
+import { SvgTransformPath } from '@/features/rendering/components/AvatarCanvas'
 import type { RenderedColors, RenderedScene } from '@/features/rendering/renderedScene'
 export function SurfaceThumbnail({ surface }: { surface: SurfaceConfig }) {
   const geometry = getPreviewGeometry(defaultExpression, surface, emptyBodyNodes)
@@ -82,7 +83,7 @@ export function ExpressionPreview({
   renderStyle: AvatarRenderStyle
   id: string
 }) {
-  const geometry = getPreviewGeometry(expression, surface, bodyNodes, avatarEyes)
+  const geometry = getPreviewGeometry(expression, surface, bodyNodes, avatarEyes, renderStyle)
   const resolvedColors = resolveColors(expression, colors)
   const outlineWidth = avatarBodyOutlineWidth()
   const filled = renderStyle.type === 'vector' && renderStyle.filled === true
@@ -129,6 +130,7 @@ export function ExpressionPreview({
           <path
             className="preview-head"
             d={pathValue}
+            transform={geometry.pathTransforms?.back[index]}
             key={index}
             style={{
               fill: filled ? color : bodyFill,
@@ -167,8 +169,9 @@ export function ExpressionPreview({
         const color = nodeColor(geometry.frontNodeIds[index])
         return (
           <path
-            className="preview-head"
+            className={`preview-head${geometry.headsetFrontIndex === index ? ' avatar-headset' : ''}`}
             d={pathValue}
+            transform={geometry.pathTransforms?.front[index]}
             key={`front-${index}`}
             style={{
               fill: filled ? color : bodyFill,
@@ -234,8 +237,10 @@ export function LiveExpressionPreview({
         {scene.backPaths.map((pathValue, index) => {
           const color = nodeColor(scene.backNodeIds.current[index])
           return (
-            <motion.path
+            <SvgTransformPath
+              className="preview-head"
               d={pathValue}
+              svgTransform={scene.backTransforms[index]}
               strokeLinecap="round"
               strokeLinejoin="round"
               style={{
@@ -272,8 +277,10 @@ export function LiveExpressionPreview({
         {scene.frontPaths.map((pathValue, index) => {
           const color = nodeColor(scene.frontNodeIds.current[index])
           return (
-            <motion.path
+            <SvgTransformPath
+              className={`preview-head${scene.headsetFrontIndex.current === index ? ' avatar-headset' : ''}`}
               d={pathValue}
+              svgTransform={scene.frontTransforms[index]}
               strokeLinecap="round"
               strokeLinejoin="round"
               style={{

@@ -7,9 +7,11 @@ import {
   defaultAvatarEyes,
   type AvatarColors,
   type AvatarEyeDefaults,
+  type AvatarRenderStyle,
 } from '@/features/avatar/avatars'
 import { type BodyNode } from '@/features/avatar/body'
-import { poseFromExpression, renderAvatar, type Expression } from '@/features/avatar/geometry'
+import { poseFromExpression, type Expression } from '@/features/avatar/geometry'
+import { renderAvatarByStyle } from '@/features/rendering/avatarAccessories'
 import { type SurfaceConfig } from '@/features/avatar/surfaces'
 
 export type Mode = 'avatars' | 'manual' | 'expressions' | 'states' | 'export' | 'photo'
@@ -51,7 +53,7 @@ const previewGeometryCache = new WeakMap<
   Expression,
   WeakMap<
     SurfaceConfig,
-    WeakMap<BodyNode[], { positionKey: string; geometry: ReturnType<typeof renderAvatar> }>
+    WeakMap<BodyNode[], { positionKey: string; geometry: ReturnType<typeof renderAvatarByStyle> }>
   >
 >()
 
@@ -62,7 +64,8 @@ export const getPreviewGeometry = (
   expression: Expression,
   surface: SurfaceConfig,
   bodyNodes: BodyNode[],
-  eyes: AvatarEyeDefaults = defaultAvatarEyes
+  eyes: AvatarEyeDefaults = defaultAvatarEyes,
+  renderStyle: AvatarRenderStyle = { type: 'vector' }
 ) => {
   let surfaceCache = previewGeometryCache.get(expression)
   if (!surfaceCache) {
@@ -74,13 +77,19 @@ export const getPreviewGeometry = (
     bodyCache = new WeakMap()
     surfaceCache.set(surface, bodyCache)
   }
-  const positionKey = JSON.stringify(eyes)
+  const positionKey = JSON.stringify([eyes, renderStyle])
   const cached = bodyCache.get(bodyNodes)
   if (cached?.positionKey === positionKey) return cached.geometry
-  const geometry = renderAvatar(poseWithAvatarEyes(expression, eyes), surface, 1, {
-    includeWire: false,
-    bodyNodes,
-  })
+  const geometry = renderAvatarByStyle(
+    poseWithAvatarEyes(expression, eyes),
+    surface,
+    1,
+    renderStyle,
+    {
+      includeWire: false,
+      bodyNodes,
+    }
+  )
   bodyCache.set(bodyNodes, { positionKey, geometry })
   return geometry
 }

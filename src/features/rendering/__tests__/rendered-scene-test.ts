@@ -9,6 +9,7 @@ import {
   paintRenderedScene,
 } from '@/features/rendering/renderedScene'
 import { surfacePresets } from '@/features/avatar/surfaces'
+import { renderAvatarByStyle } from '@/features/rendering/avatarAccessories'
 import { loadStudioDocument } from '@/features/studio/studioDocument'
 import defaultStudioDocument from '@/features/studio/defaultStudioDocument.json'
 import type { BodyNode } from '@/features/avatar/body'
@@ -33,6 +34,41 @@ const overlap = (first: ReturnType<typeof pathBounds>, second: ReturnType<typeof
 })
 
 describe('rendered avatar scene', () => {
+  it('keeps the Memento headset in front of the face and moves it with the pose', () => {
+    const studio = loadStudioDocument({ getItem: () => null })
+    const avatar = studio.library.avatars.find(item => item.id === 'primitive-ghost-headset')!
+    const neutralPose = poseFromExpression(defaultExpression)
+    const turnedPose = poseFromExpression({ ...defaultExpression, headY: 22, headZ: -8 })
+    const neutral = renderAvatarByStyle(
+      neutralPose,
+      avatar.body.primary as SurfaceConfig,
+      1,
+      avatar.renderStyle,
+      { bodyNodes: avatar.body.nodes as BodyNode[] }
+    )
+    const turned = renderAvatarByStyle(
+      turnedPose,
+      avatar.body.primary as SurfaceConfig,
+      1,
+      avatar.renderStyle,
+      { bodyNodes: avatar.body.nodes as BodyNode[] }
+    )
+
+    expect(avatar.name).toBe('Memento · Headset')
+    expect(avatar.colors).toEqual({ body: '#ff9d45', eyes: '#111316' })
+    expect(avatar.renderStyle).toEqual({ type: 'vector', filled: true, accessory: 'headset' })
+    expect(neutral.headsetFrontIndex).toBe(neutral.frontPaths.length - 1)
+    expect(neutral.frontPaths.at(-1)).toContain('M12 1.875C17.7 1.875')
+    expect(neutral.pathTransforms?.front.at(-1)).not.toBe(turned.pathTransforms?.front.at(-1))
+
+    const scene = createRenderedScene(neutral)
+    paintRenderedScene(scene, turned)
+    expect(scene.headsetFrontIndex.current).toBe(turned.frontPaths.length - 1)
+    expect(scene.frontTransforms[scene.headsetFrontIndex.current!].get()).toBe(
+      turned.pathTransforms?.front.at(-1)
+    )
+  })
+
   it('keeps layer identity and hit mapping behind the scene seam', () => {
     const node = createBodyNode('sphere', 0)
     const first = renderAvatar(poseFromExpression(defaultExpression), surfacePresets.sphere, 1, {

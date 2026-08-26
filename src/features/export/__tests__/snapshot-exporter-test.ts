@@ -7,6 +7,8 @@ import {
   snapshotFileName,
 } from '@/features/export/snapshotExporter'
 import { surfacePresets } from '@/features/avatar/surfaces'
+import { renderAvatarByStyle } from '@/features/rendering/avatarAccessories'
+import { loadStudioDocument } from '@/features/studio/studioDocument'
 
 describe('avatar snapshot export', () => {
   const geometry = renderAvatar(poseFromExpression(defaultExpression), surfacePresets.sphere, 1)
@@ -27,6 +29,29 @@ describe('avatar snapshot export', () => {
     expect(svg).toContain(`d="${geometry.headPath}" fill="#5b7fe5"`)
     expect(svg).toContain('fill="#111316"')
     expect(svg).not.toContain('width="300" height="300" fill=')
+  })
+
+  it('exports the Memento headset as a transformed translucent front layer', () => {
+    const studio = loadStudioDocument({ getItem: () => null })
+    const avatar = studio.library.avatars.find(item => item.id === 'primitive-ghost-headset')!
+    const headsetGeometry = renderAvatarByStyle(
+      poseFromExpression({ ...defaultExpression, headY: 18, headZ: 6 }),
+      avatar.body.primary,
+      1,
+      avatar.renderStyle,
+      { bodyNodes: avatar.body.nodes }
+    )
+    const headsetScene = createRenderedScene(headsetGeometry)
+    const svg = serializeAvatarSnapshot('Memento · Headset', headsetScene, avatar.colors, {
+      background: 'transparent',
+      colorFrom: '#ffffff',
+      colorTo: '#000000',
+      size: 1024,
+    })
+
+    expect(svg).toContain('fill="#111316" opacity="1"')
+    expect(svg).toContain(`transform="${headsetGeometry.pathTransforms?.front.at(-1)}"`)
+    expect(svg).not.toContain('stroke=')
   })
 
   it('applies logo framing without changing the rendered avatar scene', () => {
