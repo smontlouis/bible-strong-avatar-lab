@@ -318,11 +318,37 @@ const fixedSkinColorBehavior = (behavior?: AvatarBehaviorLibrary): AvatarBehavio
   return { expressions: [...expressions, ...scaredExpressions], sequences }
 }
 
-const mementoBehavior = (behavior?: AvatarBehaviorLibrary): AvatarBehaviorLibrary => {
+const mementoHeadsetWorkingExpressionId = 'memento-headset-working-joyful-eyes'
+const mementoHeadsetShyExpressionId = 'memento-headset-shy-left'
+
+const copyExpressionEyes = (target: Expression, source: Expression): Expression => ({
+  ...target,
+  widthLeft: source.widthLeft,
+  widthRight: source.widthRight,
+  heightLeft: source.heightLeft,
+  heightRight: source.heightRight,
+  curvatureLeft: source.curvatureLeft,
+  curvatureRight: source.curvatureRight,
+  spacing: source.spacing,
+  positionXLeft: source.positionXLeft,
+  positionXRight: source.positionXRight,
+  positionYLeft: source.positionYLeft,
+  positionYRight: source.positionYRight,
+  leftAngle: source.leftAngle,
+  rightAngle: source.rightAngle,
+  eyeMotion: source.eyeMotion,
+})
+
+const mementoBehavior = (
+  behavior?: AvatarBehaviorLibrary,
+  customizeHeadsetExpressions = false
+): AvatarBehaviorLibrary => {
   const sourceExpressions = (behavior?.expressions ?? initialExpressions).filter(
     expression =>
       expression.semanticKey !== 'onboarding-listening' &&
-      expression.semanticKey !== 'onboarding-curious'
+      expression.semanticKey !== 'onboarding-curious' &&
+      expression.semanticKey !== mementoHeadsetWorkingExpressionId &&
+      expression.semanticKey !== mementoHeadsetShyExpressionId
   )
   const expressions = sourceExpressions.map(expression => {
     const fixedColorExpression = { ...expression }
@@ -366,10 +392,53 @@ const mementoBehavior = (behavior?: AvatarBehaviorLibrary): AvatarBehaviorLibrar
     steps: sequence.steps.map(step => ({ ...step })),
     blink: { ...sequence.blink },
   }))
+  const workingPose = expressions.find(expression => expression.semanticKey === 'angry-right')
+  const joyfulEyes = expressions.find(expression => expression.semanticKey === 'joyful-wide')
+  const headsetWorkingExpression =
+    customizeHeadsetExpressions && workingPose && joyfulEyes
+      ? {
+          ...copyExpressionEyes(workingPose, joyfulEyes),
+          id: mementoHeadsetWorkingExpressionId,
+          semanticKey: mementoHeadsetWorkingExpressionId,
+        }
+      : undefined
+  const shySource = expressions.find(expression => expression.semanticKey === 'upward-side-glance')
+  const headsetShyExpression =
+    customizeHeadsetExpressions && shySource
+      ? {
+          ...shySource,
+          id: mementoHeadsetShyExpressionId,
+          semanticKey: mementoHeadsetShyExpressionId,
+          headY: -Math.abs(shySource.headY),
+          spacing: shySource.spacing - 10,
+          positionYLeft: shySource.positionYLeft + 10,
+          positionYRight: shySource.positionYRight + 10,
+        }
+      : undefined
+  const sequenceFirstExpression = new Map<string, string>([
+    ...(headsetWorkingExpression ? [['working', headsetWorkingExpression.id] as const] : []),
+    ...(headsetShyExpression ? [['shy', headsetShyExpression.id] as const] : []),
+  ])
+  const resolvedSequences = sequences.map(sequence => {
+    const expressionId = sequenceFirstExpression.get(sequence.semanticKey ?? '')
+    return expressionId
+      ? {
+          ...sequence,
+          steps: sequence.steps.map((step, index) =>
+            index === 0 ? { ...step, expressionId } : step
+          ),
+        }
+      : sequence
+  })
   return {
-    expressions: [...expressions, ...onboardingExpressions],
+    expressions: [
+      ...expressions,
+      ...(headsetWorkingExpression ? [headsetWorkingExpression] : []),
+      ...(headsetShyExpression ? [headsetShyExpression] : []),
+      ...onboardingExpressions,
+    ],
     sequences: [
-      ...sequences.filter(sequence => sequence.semanticKey !== 'onboarding'),
+      ...resolvedSequences.filter(sequence => sequence.semanticKey !== 'onboarding'),
       ...(onboardingExpressions.length === 2
         ? [
             {
@@ -884,7 +953,7 @@ const primitiveBundledAvatars: StudioAvatar[] = [
             ? { ...filledAvatarRenderStyle }
             : { ...defaultAvatarRenderStyle },
     ...(surface === 'ghost'
-      ? { behavior: mementoBehavior() }
+      ? { behavior: mementoBehavior(undefined, id === 'primitive-ghost-headset') }
       : surface === 'apple-bite'
         ? { behavior: fixedSkinColorBehavior() }
         : surface === 'lock'
@@ -1023,7 +1092,10 @@ export const ensurePrimitiveBundledAvatars = (library: AvatarLibrary): AvatarLib
           avatar.id
         )
       ) {
-        return { ...avatar, behavior: mementoBehavior(avatar.behavior) }
+        return {
+          ...avatar,
+          behavior: mementoBehavior(avatar.behavior, avatar.id === 'primitive-ghost-headset'),
+        }
       }
       if (filledBundledAvatarIds.has(avatar.id)) {
         return { ...avatar, behavior: fixedSkinColorBehavior(avatar.behavior) }
@@ -1177,7 +1249,10 @@ export const ensurePrimitiveBundledAvatars = (library: AvatarLibrary): AvatarLib
     ].includes(avatarWithAppleBiteEyes.id)
       ? {
           ...avatarWithAppleBiteEyes,
-          behavior: mementoBehavior(avatarWithAppleBiteEyes.behavior),
+          behavior: mementoBehavior(
+            avatarWithAppleBiteEyes.behavior,
+            avatarWithAppleBiteEyes.id === 'primitive-ghost-headset'
+          ),
         }
       : filledBundledAvatarIds.has(avatarWithAppleBiteEyes.id)
         ? {

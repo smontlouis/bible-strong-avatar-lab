@@ -221,6 +221,53 @@ describe('Studio document', () => {
     expect(memento?.colors).toEqual({ body: '#ff9d45', eyes: '#111316' })
     expect(headsetMemento?.colors).toEqual({ body: '#ff9d45', eyes: '#222222' })
     expect(strokeMemento?.colors).toEqual({ body: '#ff9d45', eyes: '#ff9d45' })
+    const headsetWorkingFirst = headsetMemento?.behavior?.sequences.find(
+      sequence => sequence.semanticKey === 'working'
+    )?.steps[0]
+    const headsetJoyfulFirst = headsetMemento?.behavior?.sequences.find(
+      sequence => sequence.semanticKey === 'joyful'
+    )?.steps[0]
+    const headsetShyFirst = headsetMemento?.behavior?.sequences.find(
+      sequence => sequence.semanticKey === 'shy'
+    )?.steps[0]
+    const headsetWorkingExpression = headsetMemento?.behavior?.expressions.find(
+      expression => expression.id === headsetWorkingFirst?.expressionId
+    )
+    const headsetJoyfulExpression = headsetMemento?.behavior?.expressions.find(
+      expression => expression.id === headsetJoyfulFirst?.expressionId
+    )
+    const headsetShyExpression = headsetMemento?.behavior?.expressions.find(
+      expression => expression.id === headsetShyFirst?.expressionId
+    )
+    expect(headsetWorkingExpression).toMatchObject({
+      widthLeft: headsetJoyfulExpression?.widthLeft,
+      widthRight: headsetJoyfulExpression?.widthRight,
+      heightLeft: headsetJoyfulExpression?.heightLeft,
+      heightRight: headsetJoyfulExpression?.heightRight,
+      spacing: headsetJoyfulExpression?.spacing,
+      leftAngle: headsetJoyfulExpression?.leftAngle,
+      rightAngle: headsetJoyfulExpression?.rightAngle,
+    })
+    expect(headsetWorkingExpression).toMatchObject({
+      headX: initialExpressions[7].headX,
+      headY: initialExpressions[7].headY,
+      headZ: initialExpressions[7].headZ,
+    })
+    expect(headsetJoyfulFirst?.expressionId).toBe('expression-11')
+    expect(headsetShyExpression).toMatchObject({
+      headY: -Math.abs(initialExpressions[0].headY),
+      spacing: initialExpressions[0].spacing - 10,
+      positionYLeft: initialExpressions[0].positionYLeft + 10,
+      positionYRight: initialExpressions[0].positionYRight + 10,
+    })
+    expect(
+      memento?.behavior?.sequences.find(sequence => sequence.semanticKey === 'joyful')?.steps[0]
+        .expressionId
+    ).toBe('expression-11')
+    expect(
+      strokeMemento?.behavior?.sequences.find(sequence => sequence.semanticKey === 'joyful')
+        ?.steps[0].expressionId
+    ).toBe('expression-11')
     expect(
       strokeMemento?.behavior?.sequences.some(sequence => sequence.semanticKey === 'onboarding')
     ).toBe(true)
