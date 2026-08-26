@@ -224,6 +224,17 @@ describe('Studio document', () => {
     expect(
       strokeMemento?.behavior?.sequences.some(sequence => sequence.semanticKey === 'onboarding')
     ).toBe(true)
+    const onboarding = strokeMemento?.behavior?.sequences.find(
+      sequence => sequence.semanticKey === 'onboarding'
+    )
+    expect(onboarding?.steps.map(step => step.holdMs)).toEqual([2000, 2000])
+    expect(onboarding?.blink).toEqual({
+      enabled: true,
+      initialDelayMs: 350,
+      minIntervalMs: 2070,
+      maxIntervalMs: 2070,
+      durationMs: 280,
+    })
     expect(
       document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.colors
     ).toEqual({ body: '#ff5558', eyes: '#111316' })
