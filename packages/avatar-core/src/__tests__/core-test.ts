@@ -110,6 +110,7 @@ describe('@bible-strong/avatar-core', () => {
       'trapezoid',
       'frustum',
       'half-cone',
+      'lock',
     ]
     const neutral = poseFromExpression(expressionFromDefinition('neutral', expression))
 

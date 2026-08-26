@@ -1345,6 +1345,56 @@ const projectedAppleBitePath = (pose: AvatarPose, surface: SurfaceConfig) => {
   ].join('')
 }
 
+// Adapted from the supplied 24px lock icon. The second, reverse-wound subpath
+// keeps the shackle opening transparent while the character body stays filled.
+const projectedLockPath = (pose: AvatarPose, surface: SurfaceConfig) => {
+  const halfWidth = surface.width / 2
+  const halfHeight = surface.height / 2
+  const point = (x: number, y: number) => projectLocalPoint(pose, [x, y, 0])
+  const format = ([x, y]: Point3) => `${x.toFixed(2)} ${y.toFixed(2)}`
+  const move = (x: number, y: number) => `M${format(point(x, y))}`
+  const line = (x: number, y: number) => `L${format(point(x, y))}`
+  const cubicTo = (
+    firstX: number,
+    firstY: number,
+    secondX: number,
+    secondY: number,
+    endX: number,
+    endY: number
+  ) =>
+    `C${format(point(firstX, firstY))} ${format(point(secondX, secondY))} ${format(point(endX, endY))}`
+
+  const x = (iconX: number) => ((iconX - 12) / 10) * halfWidth
+  const y = (iconY: number) => ((iconY - 12) / 10) * halfHeight
+
+  return [
+    // Outer silhouette: shackle and rounded lock body as one continuous shape.
+    move(x(7), y(9)),
+    line(x(7), y(7)),
+    cubicTo(x(7), y(4.24), x(9.24), y(2), x(12), y(2)),
+    cubicTo(x(14.76), y(2), x(17), y(4.24), x(17), y(7)),
+    line(x(17), y(9)),
+    line(x(18), y(9)),
+    cubicTo(x(20.21), y(9), x(22), y(10.79), x(22), y(13)),
+    line(x(22), y(18)),
+    cubicTo(x(22), y(20.21), x(20.21), y(22), x(18), y(22)),
+    line(x(6), y(22)),
+    cubicTo(x(3.79), y(22), x(2), y(20.21), x(2), y(18)),
+    line(x(2), y(13)),
+    cubicTo(x(2), y(10.79), x(3.79), y(9), x(6), y(9)),
+    line(x(7), y(9)),
+    'Z',
+    // Inner shackle opening, intentionally wound in the opposite direction.
+    move(x(9), y(9)),
+    line(x(15), y(9)),
+    line(x(15), y(7)),
+    cubicTo(x(15), y(5.34), x(13.66), y(4), x(12), y(4)),
+    cubicTo(x(10.34), y(4), x(9), y(5.34), x(9), y(7)),
+    line(x(9), y(9)),
+    'Z',
+  ].join('')
+}
+
 const headPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   if (surface.type === 'sphere' || surface.type === 'mickey') {
     const exactPath = projectedEllipsoidPath(pose, surface)
@@ -1363,6 +1413,7 @@ const headPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   if (surface.type === 'diamond') return projectedDiamondPath(pose, surface)
   if (surface.type === 'ghost') return projectedGhostPath(pose, surface)
   if (surface.type === 'apple-bite') return projectedAppleBitePath(pose, surface)
+  if (surface.type === 'lock') return projectedLockPath(pose, surface)
 
   const key = surfaceCacheKey(surface)
   let localSamples = headSamplesCache.get(key)

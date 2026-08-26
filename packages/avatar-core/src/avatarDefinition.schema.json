@@ -83,7 +83,8 @@
             "half-cone",
             "diamond",
             "ghost",
-            "apple-bite"
+            "apple-bite",
+            "lock"
           ]
         },
         "width": { "$ref": "#/$defs/dimension" },

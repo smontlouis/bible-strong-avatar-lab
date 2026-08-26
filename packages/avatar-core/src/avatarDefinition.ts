@@ -45,7 +45,10 @@ export type SurfaceDefinition<TType extends SurfaceType = SurfaceType> = {
   cutAngle?: number
 }
 
-export type BodyNodeSurfaceType = Exclude<SurfaceType, 'mickey' | 'cursor' | 'ghost' | 'apple-bite'>
+export type BodyNodeSurfaceType = Exclude<
+  SurfaceType,
+  'mickey' | 'cursor' | 'ghost' | 'apple-bite' | 'lock'
+>
 export type PrimarySurfaceDefinition = SurfaceDefinition<SurfaceType>
 export type BodyNodeSurfaceDefinition = SurfaceDefinition<BodyNodeSurfaceType>
 

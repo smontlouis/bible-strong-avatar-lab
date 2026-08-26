@@ -31,6 +31,7 @@ describe('Studio document', () => {
   const bundledAvatarNames = [
     'Memento',
     'Apple Bite',
+    'Lock',
     'Siamese',
     'British Shorthair',
     'Russian Blue',
@@ -78,9 +79,10 @@ describe('Studio document', () => {
         .filter(avatar => avatar.renderStyle.type !== 'vector' || !avatar.renderStyle.filled)
         .every(avatar => avatar.colors.body === avatar.colors.eyes)
     ).toBe(true)
-    expect(document.library.avatars.slice(0, 12).map(avatar => avatar.body.primary.type)).toEqual([
+    expect(document.library.avatars.slice(0, 13).map(avatar => avatar.body.primary.type)).toEqual([
       'ghost',
       'apple-bite',
+      'lock',
       'ellipse',
       'ellipse',
       'ellipse',
@@ -107,9 +109,7 @@ describe('Studio document', () => {
     expect(
       document.library.avatars
         .filter(avatar =>
-          ['dog', 'dog-brown', 'bear', 'rabbit', 'bun'].some(
-            id => avatar.id === `oneworks-${id}`
-          )
+          ['dog', 'dog-brown', 'bear', 'rabbit', 'bun'].some(id => avatar.id === `oneworks-${id}`)
         )
         .every(avatar => avatar.renderStyle.type === 'vector' && avatar.renderStyle.filled === true)
     ).toBe(true)
@@ -123,11 +123,17 @@ describe('Studio document', () => {
       document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.renderStyle
     ).toEqual({ type: 'vector', filled: true })
     expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-lock')?.renderStyle
+    ).toEqual({ type: 'vector', filled: true })
+    expect(
       document.library.avatars.find(avatar => avatar.id === 'primitive-ghost')?.body.primary
     ).toMatchObject({ width: 225, height: 220.5, depth: 171 })
     expect(
       document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.body.primary
     ).toMatchObject({ width: 216, height: 225, depth: 171 })
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-lock')?.body.primary
+    ).toMatchObject({ type: 'lock', width: 225, height: 225, depth: 171 })
     expect(
       document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.eyes
         .positionXLeft
@@ -199,6 +205,12 @@ describe('Studio document', () => {
     expect(
       document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.colors
     ).toEqual({ body: '#ff5558', eyes: '#111316' })
+    expect(document.library.avatars.find(avatar => avatar.id === 'primitive-lock')?.colors).toEqual(
+      { body: '#1a9cff', eyes: '#111316' }
+    )
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-lock')?.eyes.positionYLeft
+    ).toBe(defaultAvatarEyes.positionYLeft + 22)
     expect(
       document.library.avatars
         .find(avatar => avatar.id === 'primitive-apple-bite')
@@ -296,6 +308,7 @@ describe('Studio document', () => {
     const filledIds = new Set([
       'primitive-ghost',
       'primitive-apple-bite',
+      'primitive-lock',
       ...fallback.library.avatars
         .filter(avatar => avatar.id.startsWith('oneworks-'))
         .map(avatar => avatar.id),
@@ -340,12 +353,20 @@ describe('Studio document', () => {
       type: 'vector',
       filled: true,
     })
+    expect(restoredById.get('primitive-lock')?.renderStyle).toEqual({
+      type: 'vector',
+      filled: true,
+    })
     expect(restoredById.get('primitive-ghost')?.colors).toEqual({
       body: '#ff9d45',
       eyes: '#111316',
     })
     expect(restoredById.get('primitive-apple-bite')?.colors).toEqual({
       body: '#ff5558',
+      eyes: '#111316',
+    })
+    expect(restoredById.get('primitive-lock')?.colors).toEqual({
+      body: '#1a9cff',
       eyes: '#111316',
     })
     expect(restoredById.get('primitive-apple-bite')?.eyes.positionXLeft).toBe(-18)

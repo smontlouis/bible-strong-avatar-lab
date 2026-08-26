@@ -155,6 +155,7 @@ const bundledAvatarColorMigrations: Record<string, { from: AvatarColors; to: Ava
 export const simpleBundledAvatarIds = [
   'primitive-ghost',
   'primitive-apple-bite',
+  'primitive-lock',
   'oneworks-cat',
   'oneworks-cat-siamese',
   'oneworks-cat-british-shorthair',
@@ -224,6 +225,7 @@ const primitiveBundledAvatarSpecs = [
   ['primitive-diamond', 'Diamond', 'diamond', deslopAccentColors.pink, 1],
   ['primitive-apple-bite', 'Apple Bite', 'apple-bite', deslopAccentColors.red, 0.9],
   ['primitive-ghost', 'Memento', 'ghost', deslopAccentColors.orange, 0.9],
+  ['primitive-lock', 'Lock', 'lock', deslopAccentColors.blue, 0.9],
 ] as const
 
 const fixedSkinColorBehavior = (behavior?: AvatarBehaviorLibrary): AvatarBehaviorLibrary => {
@@ -815,7 +817,10 @@ const primitiveBundledAvatars: StudioAvatar[] = [
     },
     colors: {
       body: color,
-      eyes: surface === 'ghost' || surface === 'apple-bite' ? filledAvatarEyeColor : color,
+      eyes:
+        surface === 'ghost' || surface === 'apple-bite' || surface === 'lock'
+          ? filledAvatarEyeColor
+          : color,
     },
     eyes:
       surface === 'ghost'
@@ -830,16 +835,24 @@ const primitiveBundledAvatars: StudioAvatar[] = [
               positionXLeft: defaultAvatarEyes.positionXLeft - 18,
               positionXRight: defaultAvatarEyes.positionXRight - 18,
             }
-          : { ...defaultAvatarEyes },
+          : surface === 'lock'
+            ? {
+                ...defaultAvatarEyes,
+                positionYLeft: defaultAvatarEyes.positionYLeft + 22,
+                positionYRight: defaultAvatarEyes.positionYRight + 22,
+              }
+            : { ...defaultAvatarEyes },
     renderStyle:
-      surface === 'ghost' || surface === 'apple-bite'
+      surface === 'ghost' || surface === 'apple-bite' || surface === 'lock'
         ? { ...filledAvatarRenderStyle }
         : { ...defaultAvatarRenderStyle },
     ...(surface === 'ghost'
       ? { behavior: mementoBehavior() }
       : surface === 'apple-bite'
         ? { behavior: fixedSkinColorBehavior() }
-        : {}),
+        : surface === 'lock'
+          ? { behavior: fixedSkinColorBehavior() }
+          : {}),
   })),
   mementoPigletAvatar,
   {
@@ -919,11 +932,13 @@ const filledBundledAvatarIds = new Set([
   ...Object.keys(mementoAnimalColors),
   'primitive-ghost',
   'primitive-apple-bite',
+  'primitive-lock',
 ])
 const oneWorksOriginalAnimalIds = new Set(Object.keys(oneWorksBundledAnimalColors))
 const filledPrimitiveAvatarColors: Record<string, AvatarColors> = {
   'primitive-ghost': { body: deslopAccentColors.orange, eyes: filledAvatarEyeColor },
   'primitive-apple-bite': { body: deslopAccentColors.red, eyes: filledAvatarEyeColor },
+  'primitive-lock': { body: deslopAccentColors.blue, eyes: filledAvatarEyeColor },
 }
 
 const clonePrimitiveBundledAvatar = (avatar: StudioAvatar): StudioAvatar => ({
