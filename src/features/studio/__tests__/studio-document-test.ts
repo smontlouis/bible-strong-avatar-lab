@@ -230,6 +230,9 @@ describe('Studio document', () => {
     const headsetShyFirst = headsetMemento?.behavior?.sequences.find(
       sequence => sequence.semanticKey === 'shy'
     )?.steps[0]
+    const headsetShySecond = headsetMemento?.behavior?.sequences.find(
+      sequence => sequence.semanticKey === 'shy'
+    )?.steps[1]
     const headsetWorkingExpression = headsetMemento?.behavior?.expressions.find(
       expression => expression.id === headsetWorkingFirst?.expressionId
     )
@@ -238,6 +241,9 @@ describe('Studio document', () => {
     )
     const headsetShyExpression = headsetMemento?.behavior?.expressions.find(
       expression => expression.id === headsetShyFirst?.expressionId
+    )
+    const headsetShyTiltExpression = headsetMemento?.behavior?.expressions.find(
+      expression => expression.id === headsetShySecond?.expressionId
     )
     expect(headsetWorkingExpression).toMatchObject({
       widthLeft: headsetJoyfulExpression?.widthLeft,
@@ -259,6 +265,11 @@ describe('Studio document', () => {
       spacing: initialExpressions[0].spacing - 10,
       positionYLeft: initialExpressions[0].positionYLeft + 10,
       positionYRight: initialExpressions[0].positionYRight + 10,
+    })
+    expect(headsetShyTiltExpression).toMatchObject({
+      headX: initialExpressions[24].headX,
+      headY: initialExpressions[24].headY,
+      headZ: -Math.abs(initialExpressions[24].headZ),
     })
     expect(
       memento?.behavior?.sequences.find(sequence => sequence.semanticKey === 'joyful')?.steps[0]

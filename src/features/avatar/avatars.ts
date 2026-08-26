@@ -320,6 +320,7 @@ const fixedSkinColorBehavior = (behavior?: AvatarBehaviorLibrary): AvatarBehavio
 
 const mementoHeadsetWorkingExpressionId = 'memento-headset-working-joyful-eyes'
 const mementoHeadsetShyExpressionId = 'memento-headset-shy-left'
+const mementoHeadsetShyTiltExpressionId = 'memento-headset-shy-left-tilt'
 
 const copyExpressionEyes = (target: Expression, source: Expression): Expression => ({
   ...target,
@@ -348,7 +349,8 @@ const mementoBehavior = (
       expression.semanticKey !== 'onboarding-listening' &&
       expression.semanticKey !== 'onboarding-curious' &&
       expression.semanticKey !== mementoHeadsetWorkingExpressionId &&
-      expression.semanticKey !== mementoHeadsetShyExpressionId
+      expression.semanticKey !== mementoHeadsetShyExpressionId &&
+      expression.semanticKey !== mementoHeadsetShyTiltExpressionId
   )
   const expressions = sourceExpressions.map(expression => {
     const fixedColorExpression = { ...expression }
@@ -415,12 +417,34 @@ const mementoBehavior = (
           positionYRight: shySource.positionYRight + 10,
         }
       : undefined
+  const shyTiltSource = expressions.find(expression => expression.semanticKey === 'shy-downward')
+  const headsetShyTiltExpression =
+    customizeHeadsetExpressions && shyTiltSource
+      ? {
+          ...shyTiltSource,
+          id: mementoHeadsetShyTiltExpressionId,
+          semanticKey: mementoHeadsetShyTiltExpressionId,
+          headZ: -Math.abs(shyTiltSource.headZ),
+        }
+      : undefined
   const sequenceFirstExpression = new Map<string, string>([
     ...(headsetWorkingExpression ? [['working', headsetWorkingExpression.id] as const] : []),
     ...(headsetShyExpression ? [['shy', headsetShyExpression.id] as const] : []),
   ])
   const resolvedSequences = sequences.map(sequence => {
     const expressionId = sequenceFirstExpression.get(sequence.semanticKey ?? '')
+    if (sequence.semanticKey === 'shy' && headsetShyTiltExpression) {
+      return {
+        ...sequence,
+        steps: sequence.steps.map((step, index) =>
+          index === 0 && expressionId
+            ? { ...step, expressionId }
+            : index === 1
+              ? { ...step, expressionId: headsetShyTiltExpression.id }
+              : step
+        ),
+      }
+    }
     return expressionId
       ? {
           ...sequence,
@@ -435,6 +459,7 @@ const mementoBehavior = (
       ...expressions,
       ...(headsetWorkingExpression ? [headsetWorkingExpression] : []),
       ...(headsetShyExpression ? [headsetShyExpression] : []),
+      ...(headsetShyTiltExpression ? [headsetShyTiltExpression] : []),
       ...onboardingExpressions,
     ],
     sequences: [
