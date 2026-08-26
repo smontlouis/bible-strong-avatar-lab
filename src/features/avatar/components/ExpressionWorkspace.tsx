@@ -40,7 +40,13 @@ import {
   LivePixelAvatarCanvas,
   StaticPixelAvatarCanvas,
 } from '@/features/rendering/components/PixelAvatarCanvas'
-import { SvgTransformPath } from '@/features/rendering/components/AvatarCanvas'
+import {
+  headsetHeadOcclusionMaskValue,
+  headsetOcclusionMaskValue,
+  LiveHeadsetOcclusionMask,
+  StaticHeadsetOcclusionMask,
+  SvgTransformPath,
+} from '@/features/rendering/components/AvatarCanvas'
 import type { RenderedColors, RenderedScene } from '@/features/rendering/renderedScene'
 export function SurfaceThumbnail({ surface }: { surface: SurfaceConfig }) {
   const geometry = getPreviewGeometry(defaultExpression, surface, emptyBodyNodes)
@@ -125,12 +131,21 @@ export function ExpressionPreview({
     )
   }
   const clipId = `preview-${id}`
+  const headsetOcclusionId = `${clipId}-headset-occlusion`
   return (
     <svg className="avatar-preview" viewBox="-150 -150 300 300" aria-hidden="true">
       <defs>
         <clipPath id={clipId}>
           <path d={geometry.headPath} transform={geometry.pathTransforms?.head} />
         </clipPath>
+        {geometry.headsetOcclusion && (
+          <StaticHeadsetOcclusionMask
+            id={headsetOcclusionId}
+            headPath={geometry.headPath}
+            headsetPath={geometry.frontPaths[geometry.headsetFrontIndex!]}
+            occlusion={geometry.headsetOcclusion}
+          />
+        )}
       </defs>
       {geometry.backPaths.map((pathValue, index) => {
         const color = nodeColor(geometry.backNodeIds[index])
@@ -153,6 +168,9 @@ export function ExpressionPreview({
         className="preview-head"
         d={geometry.headPath}
         transform={geometry.pathTransforms?.head}
+        mask={
+          geometry.headsetOcclusion ? headsetHeadOcclusionMaskValue(headsetOcclusionId) : undefined
+        }
         style={{
           fill: bodyFill,
           stroke: resolvedColors.body,
@@ -197,6 +215,11 @@ export function ExpressionPreview({
             className={`preview-head${headset && !strokeOnly ? ' avatar-headset' : ''}`}
             d={pathValue}
             transform={geometry.pathTransforms?.front[index]}
+            mask={
+              headset && geometry.headsetOcclusion
+                ? headsetOcclusionMaskValue(headsetOcclusionId)
+                : undefined
+            }
             key={`front-${index}`}
             style={{
               fill: headset && strokeOnly ? 'none' : filled ? color : bodyFill,
@@ -244,6 +267,7 @@ export function LiveExpressionPreview({
   }
 
   const clipId = `live-preview-${id}`
+  const headsetOcclusionId = `${clipId}-headset-occlusion`
   const filled = renderStyle.filled === true
   const strokeOnly = isStrokeOnlyRenderStyle(renderStyle)
   const outlineWidth = avatarOutlineWidth(renderStyle)
@@ -263,6 +287,14 @@ export function LiveExpressionPreview({
         <clipPath id={clipId}>
           <SvgTransformPath d={scene.headPath} svgTransform={scene.headTransform} />
         </clipPath>
+        {scene.headsetOcclusion.current && (
+          <LiveHeadsetOcclusionMask
+            id={headsetOcclusionId}
+            headPath={scene.headPath}
+            headsetPath={scene.frontPaths[scene.headsetFrontIndex.current!]}
+            occlusion={scene.headsetOcclusion.current}
+          />
+        )}
       </defs>
       <motion.g style={{ x: scene.offsetX, y: scene.offsetY }}>
         {scene.backPaths.map((pathValue, index) => {
@@ -290,6 +322,11 @@ export function LiveExpressionPreview({
         <SvgTransformPath
           d={scene.headPath}
           svgTransform={scene.headTransform}
+          mask={
+            scene.headsetOcclusion.current
+              ? headsetHeadOcclusionMaskValue(headsetOcclusionId)
+              : undefined
+          }
           strokeLinecap="round"
           strokeLinejoin="round"
           style={{
@@ -333,6 +370,11 @@ export function LiveExpressionPreview({
               className={`preview-head${headset && !strokeOnly ? ' avatar-headset' : ''}`}
               d={pathValue}
               svgTransform={scene.frontTransforms[index]}
+              mask={
+                headset && scene.headsetOcclusion.current
+                  ? headsetOcclusionMaskValue(headsetOcclusionId)
+                  : undefined
+              }
               strokeLinecap="round"
               strokeLinejoin="round"
               style={{

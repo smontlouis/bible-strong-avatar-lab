@@ -12,6 +12,7 @@ export type RenderedScene = {
   frontPaths: MotionValue<string>[]
   frontTransforms: MotionValue<string>[]
   headsetFrontIndex: { current: number | null }
+  headsetOcclusion: { current: StudioAvatarGeometry['headsetOcclusion'] }
   backNodeIds: { current: (string | null)[] }
   frontNodeIds: { current: (string | null)[] }
   nodeOrderVersion: MotionValue<number>
@@ -49,6 +50,7 @@ export const createRenderedScene = (geometry: StudioAvatarGeometry): RenderedSce
     motionValue(geometry.pathTransforms?.front[index] ?? identityTransform)
   ),
   headsetFrontIndex: { current: geometry.headsetFrontIndex ?? null },
+  headsetOcclusion: { current: geometry.headsetOcclusion },
   backNodeIds: { current: geometry.backNodeIds },
   frontNodeIds: { current: geometry.frontNodeIds },
   nodeOrderVersion: motionValue(0),
@@ -89,6 +91,7 @@ export const paintRenderedScene = (scene: RenderedScene, geometry: StudioAvatarG
   scene.backNodeIds.current = geometry.backNodeIds
   scene.frontNodeIds.current = geometry.frontNodeIds
   scene.headsetFrontIndex.current = geometry.headsetFrontIndex ?? null
+  scene.headsetOcclusion.current = geometry.headsetOcclusion
   if (nodeOrderChanged) scene.nodeOrderVersion.set(scene.nodeOrderVersion.get() + 1)
   scene.backPaths.forEach((path, index) => path.set(geometry.backPaths[index] ?? ''))
   scene.backTransforms.forEach((transform, index) =>

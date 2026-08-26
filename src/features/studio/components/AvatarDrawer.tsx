@@ -17,7 +17,12 @@ import {
   useRenderedSceneNodeOrder,
 } from '@/features/rendering/avatarAppearance'
 import { LivePixelAvatarCanvas } from '@/features/rendering/components/PixelAvatarCanvas'
-import { SvgTransformPath } from '@/features/rendering/components/AvatarCanvas'
+import {
+  headsetHeadOcclusionMaskValue,
+  headsetOcclusionMaskValue,
+  LiveHeadsetOcclusionMask,
+  SvgTransformPath,
+} from '@/features/rendering/components/AvatarCanvas'
 import type { RenderedColors, RenderedScene } from '@/features/rendering/renderedScene'
 import type { StudioController } from '@/features/studio/useStudioController'
 
@@ -54,6 +59,7 @@ function LiveAvatarPreview({
       : (avatar.body.nodes.find(node => node.id === id)?.color ?? bodyColor)
   const bodyFill = strokeOnly ? 'none' : filled ? bodyColor : '#ffffff'
   const clipId = `live-avatar-${avatar.id}`
+  const headsetOcclusionId = `${clipId}-headset-occlusion`
 
   if (avatar.renderStyle.type === 'pixel') {
     return (
@@ -76,6 +82,14 @@ function LiveAvatarPreview({
         <clipPath id={clipId}>
           <SvgTransformPath d={scene.headPath} svgTransform={scene.headTransform} />
         </clipPath>
+        {scene.headsetOcclusion.current && (
+          <LiveHeadsetOcclusionMask
+            id={headsetOcclusionId}
+            headPath={scene.headPath}
+            headsetPath={scene.frontPaths[scene.headsetFrontIndex.current!]}
+            occlusion={scene.headsetOcclusion.current}
+          />
+        )}
       </defs>
       <motion.g style={{ x: scene.offsetX, y: scene.offsetY }}>
         {scene.backPaths.map((pathValue, index) => {
@@ -94,6 +108,11 @@ function LiveAvatarPreview({
           className="preview-head"
           d={scene.headPath}
           svgTransform={scene.headTransform}
+          mask={
+            scene.headsetOcclusion.current
+              ? headsetHeadOcclusionMaskValue(headsetOcclusionId)
+              : undefined
+          }
           style={{
             fill: bodyFill,
             stroke: bodyColor,
@@ -133,6 +152,11 @@ function LiveAvatarPreview({
               className={`preview-head${headset && !strokeOnly ? ' avatar-headset' : ''}`}
               d={pathValue}
               svgTransform={scene.frontTransforms[index]}
+              mask={
+                headset && scene.headsetOcclusion.current
+                  ? headsetOcclusionMaskValue(headsetOcclusionId)
+                  : undefined
+              }
               key={`front-${index}`}
               style={{
                 fill: strokeOnly ? 'none' : filled ? color : bodyFill,

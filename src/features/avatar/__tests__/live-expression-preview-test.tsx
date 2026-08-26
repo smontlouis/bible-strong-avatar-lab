@@ -33,9 +33,23 @@ it('keeps the headset visible and transformed in a live animation preview', () =
   )
 
   const headset = view.container.querySelector('.avatar-headset')
+  const head = view.container.querySelector(
+    'path[mask="url(#live-preview-animated-headset-headset-occlusion-head-mask)"]'
+  )
   expect(headset).not.toBeNull()
+  expect(head?.getAttribute('mask')).toBe(
+    'url(#live-preview-animated-headset-headset-occlusion-head-mask)'
+  )
   expect(headset?.getAttribute('d')).toBe(geometry.frontPaths.at(-1))
   expect(headset?.getAttribute('transform')).toBe(geometry.pathTransforms?.front.at(-1))
+  expect(headset?.getAttribute('mask')).toBe(
+    'url(#live-preview-animated-headset-headset-occlusion-mask)'
+  )
+  expect(
+    view.container
+      .querySelector('#live-preview-animated-headset-headset-occlusion-left-half rect')
+      ?.getAttribute('width')
+  ).toBe('573.13')
 })
 
 it('keeps the stroked Frame 172 skin unfilled in a live animation preview', () => {
@@ -72,4 +86,7 @@ it('keeps the stroked Frame 172 skin unfilled in a live animation preview', () =
   expect(Array.from(eyes).every(eye => eye.style.fill === 'none')).toBe(true)
   expect(headset.style.fill).toBe('none')
   expect(headset?.getAttribute('transform')).toBe(geometry.pathTransforms?.front.at(-1))
+  expect(headset?.getAttribute('mask')).toBe(
+    'url(#live-preview-animated-stroke-headset-headset-occlusion-mask)'
+  )
 })

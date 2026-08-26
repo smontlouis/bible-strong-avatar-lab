@@ -51,7 +51,12 @@ describe('avatar snapshot export', () => {
 
     expect(svg).toContain('fill="#111316" opacity="1"')
     expect(svg).toContain(`transform="${headsetGeometry.pathTransforms?.front.at(-1)}"`)
-    expect(svg).not.toContain('stroke=')
+    expect(svg).toContain('mask="url(#snapshot-headset-mask)"')
+    expect(svg).toContain('mask="url(#snapshot-headset-head-mask)"')
+    expect(svg).toContain('<clipPath id="snapshot-headset-left-half">')
+    expect(svg).toContain('width="573.13" height="936"')
+    expect(svg).toContain('maskContentUnits="userSpaceOnUse"')
+    expect(svg).toContain('stroke-width="2.4"')
   })
 
   it('applies logo framing without changing the rendered avatar scene', () => {

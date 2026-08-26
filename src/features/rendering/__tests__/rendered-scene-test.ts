@@ -62,6 +62,13 @@ describe('rendered avatar scene', () => {
       artwork: 'frame-172-colored',
     })
     expect(neutral.headsetFrontIndex).toBe(neutral.frontPaths.length - 1)
+    expect(neutral.headsetOcclusion).toEqual({
+      side: 'left',
+      strokeWidth: 2.4,
+      width: 1145,
+      height: 936,
+      splitX: 573.13,
+    })
     expect(neutral.headPath).toContain('M575.918 77.6582')
     expect(neutral.frontPaths.at(-1)).toContain('M573.131 2.5')
     expect(neutral.pathTransforms?.front.at(-1)).not.toBe(turned.pathTransforms?.front.at(-1))
@@ -69,6 +76,7 @@ describe('rendered avatar scene', () => {
     const scene = createRenderedScene(neutral)
     paintRenderedScene(scene, turned)
     expect(scene.headsetFrontIndex.current).toBe(turned.frontPaths.length - 1)
+    expect(scene.headsetOcclusion.current).toEqual(neutral.headsetOcclusion)
     expect(scene.frontTransforms[scene.headsetFrontIndex.current!].get()).toBe(
       turned.pathTransforms?.front.at(-1)
     )
@@ -95,6 +103,13 @@ describe('rendered avatar scene', () => {
       artwork: 'frame-172-stroke',
     })
     expect(geometry.headsetFrontIndex).toBe(geometry.frontPaths.length - 1)
+    expect(geometry.headsetOcclusion).toEqual({
+      side: 'left',
+      strokeWidth: 1,
+      width: 1145,
+      height: 1079,
+      splitX: 572.13,
+    })
     expect(geometry.headPath).toContain('M574.918 77.6582')
     expect(geometry.frontPaths.at(-1)).toContain('M572.131 2.5')
   })

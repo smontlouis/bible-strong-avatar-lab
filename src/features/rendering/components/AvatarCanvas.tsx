@@ -22,6 +22,7 @@ import {
 } from '@/features/avatar/avatars'
 import { type BodyNode } from '@/features/avatar/body'
 import { scaleEye, updateEyeDimension } from '@/features/avatar/expressionEditing'
+import type { StudioAvatarGeometry } from '@/features/rendering/avatarAccessories'
 import {
   poseFromExpression,
   renderBodyNodeEditor,
@@ -244,6 +245,139 @@ export function SvgTransformPath({
 
   return <motion.path {...props} ref={ref} />
 }
+
+const headsetOcclusionIds = (id: string) => ({
+  leftClip: `${id}-left-half`,
+  mask: `${id}-mask`,
+  headMask: `${id}-head-mask`,
+})
+
+export function StaticHeadsetOcclusionMask({
+  id,
+  headPath,
+  headsetPath,
+  occlusion,
+}: {
+  id: string
+  headPath: string
+  headsetPath: string
+  occlusion: NonNullable<StudioAvatarGeometry['headsetOcclusion']>
+}) {
+  const ids = headsetOcclusionIds(id)
+  return (
+    <>
+      <clipPath id={ids.leftClip}>
+        <rect x="0" y="0" width={occlusion.splitX} height={occlusion.height} />
+      </clipPath>
+      <mask
+        id={ids.mask}
+        x="0"
+        y="0"
+        width={occlusion.width}
+        height={occlusion.height}
+        maskUnits="userSpaceOnUse"
+        maskContentUnits="userSpaceOnUse"
+        {...({ 'mask-type': 'luminance' } as React.SVGProps<SVGMaskElement>)}
+      >
+        <rect x="0" y="0" width={occlusion.width} height={occlusion.height} fill="white" />
+        <path
+          d={headPath}
+          clipPath={`url(#${ids.leftClip})`}
+          fill="black"
+          stroke="black"
+          strokeWidth={occlusion.strokeWidth}
+          vectorEffect="non-scaling-stroke"
+        />
+      </mask>
+      <mask
+        id={ids.headMask}
+        x="0"
+        y="0"
+        width={occlusion.width}
+        height={occlusion.height}
+        maskUnits="userSpaceOnUse"
+        maskContentUnits="userSpaceOnUse"
+        {...({ 'mask-type': 'luminance' } as React.SVGProps<SVGMaskElement>)}
+      >
+        <rect x="0" y="0" width={occlusion.width} height={occlusion.height} fill="white" />
+        <path
+          d={headsetPath}
+          clipPath={`url(#${ids.leftClip})`}
+          fill="black"
+          stroke="black"
+          strokeWidth={occlusion.strokeWidth}
+          vectorEffect="non-scaling-stroke"
+        />
+      </mask>
+    </>
+  )
+}
+
+export function LiveHeadsetOcclusionMask({
+  id,
+  headPath,
+  headsetPath,
+  occlusion,
+}: {
+  id: string
+  headPath: MotionValue<string>
+  headsetPath: MotionValue<string>
+  occlusion: NonNullable<StudioAvatarGeometry['headsetOcclusion']>
+}) {
+  const ids = headsetOcclusionIds(id)
+  return (
+    <>
+      <clipPath id={ids.leftClip}>
+        <rect x="0" y="0" width={occlusion.splitX} height={occlusion.height} />
+      </clipPath>
+      <mask
+        id={ids.mask}
+        x="0"
+        y="0"
+        width={occlusion.width}
+        height={occlusion.height}
+        maskUnits="userSpaceOnUse"
+        maskContentUnits="userSpaceOnUse"
+        {...({ 'mask-type': 'luminance' } as React.SVGProps<SVGMaskElement>)}
+      >
+        <rect x="0" y="0" width={occlusion.width} height={occlusion.height} fill="white" />
+        <motion.path
+          d={headPath}
+          clipPath={`url(#${ids.leftClip})`}
+          fill="black"
+          stroke="black"
+          strokeWidth={occlusion.strokeWidth}
+          vectorEffect="non-scaling-stroke"
+        />
+      </mask>
+      <mask
+        id={ids.headMask}
+        x="0"
+        y="0"
+        width={occlusion.width}
+        height={occlusion.height}
+        maskUnits="userSpaceOnUse"
+        maskContentUnits="userSpaceOnUse"
+        {...({ 'mask-type': 'luminance' } as React.SVGProps<SVGMaskElement>)}
+      >
+        <rect x="0" y="0" width={occlusion.width} height={occlusion.height} fill="white" />
+        <motion.path
+          d={headsetPath}
+          clipPath={`url(#${ids.leftClip})`}
+          fill="black"
+          stroke="black"
+          strokeWidth={occlusion.strokeWidth}
+          vectorEffect="non-scaling-stroke"
+        />
+      </mask>
+    </>
+  )
+}
+
+export const headsetOcclusionMaskValue = (id: string) => `url(#${headsetOcclusionIds(id).mask})`
+
+export const headsetHeadOcclusionMaskValue = (id: string) =>
+  `url(#${headsetOcclusionIds(id).headMask})`
 
 export function BodyNodeGizmo({
   svgRef,
@@ -579,6 +713,7 @@ export function AvatarCanvas({
     frontTransforms,
     backNodeIds,
     frontNodeIds,
+    headsetOcclusion,
     headPath,
     headTransform,
     leftPath,
@@ -590,6 +725,7 @@ export function AvatarCanvas({
     offsetX,
     offsetY,
   } = scene
+  const headsetOcclusionId = 'avatar-headset-left-occlusion'
   const svgRef = useRef<SVGSVGElement>(null)
   const [activeDragType, setActiveDragType] = useState<
     'arcball' | 'width' | 'height' | 'size' | 'spacing' | 'rotate' | null
@@ -844,6 +980,14 @@ export function AvatarCanvas({
           <clipPath id="avatar-head-clip">
             <SvgTransformPath d={headPath} svgTransform={headTransform} />
           </clipPath>
+          {headsetOcclusion.current && (
+            <LiveHeadsetOcclusionMask
+              id={headsetOcclusionId}
+              headPath={headPath}
+              headsetPath={frontPaths[scene.headsetFrontIndex.current!]}
+              occlusion={headsetOcclusion.current}
+            />
+          )}
         </defs>
         <motion.g style={{ x: offsetX, y: offsetY }}>
           {backPaths.map((pathValue, index) => (
@@ -860,6 +1004,11 @@ export function AvatarCanvas({
             className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
             d={headPath}
             svgTransform={headTransform}
+            mask={
+              headsetOcclusion.current
+                ? headsetHeadOcclusionMaskValue(headsetOcclusionId)
+                : undefined
+            }
             onPointerDown={event => {
               onBodyNodeSelect('primary')
               startDrag(event)
@@ -890,6 +1039,11 @@ export function AvatarCanvas({
               className={`avatar-head${scene.headsetFrontIndex.current === index ? ' avatar-headset' : ''} ${highlight === 'head' ? 'cyan-outline' : ''}`}
               d={pathValue}
               svgTransform={frontTransforms[index]}
+              mask={
+                scene.headsetFrontIndex.current === index && headsetOcclusion.current
+                  ? headsetOcclusionMaskValue(headsetOcclusionId)
+                  : undefined
+              }
               key={index}
               style={nodeColorStyle(frontNodeIds.current[index])}
               onPointerDown={event => selectBodyPath(event, frontNodeIds.current[index])}

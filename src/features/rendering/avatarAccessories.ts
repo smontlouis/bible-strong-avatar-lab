@@ -24,6 +24,13 @@ export type AvatarPathTransforms = {
 export type StudioAvatarGeometry = AvatarGeometry & {
   pathTransforms?: AvatarPathTransforms
   headsetFrontIndex?: number
+  headsetOcclusion?: {
+    side: 'left'
+    strokeWidth: number
+    width: number
+    height: number
+    splitX: number
+  }
 }
 
 const pathValues = [...headsetSvg.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)].map(match => match[1])
@@ -135,6 +142,13 @@ export const renderAvatarByStyle = (
       headPath: colored ? frame172ColoredBodyPath : frame172StrokeBodyPath,
       wirePaths: [],
       headsetFrontIndex: 0,
+      headsetOcclusion: {
+        side: 'left',
+        strokeWidth: colored ? 2.4 : 1,
+        width: 1145,
+        height: colored ? 936 : 1079,
+        splitX: colored ? 573.13 : 572.13,
+      },
       pathTransforms: {
         back: [],
         head: artworkTransform,
