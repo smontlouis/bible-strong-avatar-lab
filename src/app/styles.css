@@ -1224,6 +1224,22 @@ input {
   opacity: 1;
   stroke: none !important;
 }
+.is-stroke-vector .avatar-head,
+.is-stroke-vector .avatar-eye {
+  fill: none;
+  stroke: var(--avatar-body-color, #ff9d45);
+  stroke-width: var(--avatar-outline-width, 12);
+}
+.is-stroke-vector .avatar-headset {
+  fill: none !important;
+  stroke: var(--avatar-body-color, #ff9d45) !important;
+  stroke-width: var(--avatar-outline-width, 12) !important;
+  vector-effect: non-scaling-stroke;
+}
+.is-source-artwork .avatar-head,
+.is-source-artwork .avatar-eye {
+  vector-effect: non-scaling-stroke;
+}
 .avatar-eye,
 .preview-eye {
   fill: var(--avatar-eye-color, #ffffff);

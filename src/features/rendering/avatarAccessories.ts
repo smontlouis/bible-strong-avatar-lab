@@ -1,4 +1,6 @@
 import headsetSvg from '@/assets/headset-filled.svg?raw'
+import frame172ColoredSvg from '@/assets/frame-172-colored.svg?raw'
+import frame172StrokeSvg from '@/assets/frame-172-stroke.svg?raw'
 
 import type { AvatarRenderStyle } from '@/features/avatar/avatars'
 import {
@@ -31,6 +33,19 @@ if (pathValues.length !== 1) {
 }
 
 const [headsetPath] = pathValues
+const svgPathValues = (svg: string) =>
+  [...svg.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)].map(match => match[1])
+const frame172ColoredPathValues = svgPathValues(frame172ColoredSvg)
+const frame172StrokePathValues = svgPathValues(frame172StrokeSvg)
+
+if (frame172ColoredPathValues.length !== 4 || frame172StrokePathValues.length !== 4) {
+  throw new Error(
+    `Expected four paths in each Frame 172 SVG, received ${frame172ColoredPathValues.length} and ${frame172StrokePathValues.length}`
+  )
+}
+
+const [frame172ColoredBodyPath, , , frame172ColoredHeadsetPath] = frame172ColoredPathValues
+const [frame172StrokeBodyPath, , , frame172StrokeHeadsetPath] = frame172StrokePathValues
 export const identityTransform = 'matrix(1 0 0 1 0 0)'
 
 const identity: Matrix = [1, 0, 0, 1, 0, 0]
@@ -80,6 +95,26 @@ const headsetTransform = (pose: AvatarPose, surface: SurfaceConfig) => {
   )
 }
 
+const frame172Transform = (pose: AvatarPose, artwork: 'frame-172-colored' | 'frame-172-stroke') => {
+  const expression = pose.expression
+  const horizontalTurn = clamp(expression.headY / 25, -1, 1)
+  const verticalTurn = clamp(expression.headX / 25, -1, 1)
+  const perspective = clamp(expression.perspective, 0.6, 1.4)
+  const horizontalScale = Math.max(0.38, Math.cos((expression.headY * Math.PI) / 180))
+  const verticalScale = Math.max(0.46, Math.cos((expression.headX * Math.PI) / 180))
+  const normalize =
+    artwork === 'frame-172-colored'
+      ? compose(scale(0.2, 0.2), translate(-573.13, -468))
+      : compose(scale(0.2, 0.2), translate(-572.13, -539.5))
+  const poseTransform = compose(
+    rotate(expression.headZ),
+    skewY(verticalTurn * 3.2),
+    skewX(-horizontalTurn * 4.2),
+    scale(horizontalScale * perspective, verticalScale * perspective)
+  )
+  return matrixValue(compose(poseTransform, normalize))
+}
+
 export const renderAvatarByStyle = (
   pose: AvatarPose,
   surface: SurfaceConfig,
@@ -88,6 +123,27 @@ export const renderAvatarByStyle = (
   options: RenderAvatarOptions = {}
 ): StudioAvatarGeometry => {
   const geometry = renderAvatar(pose, surface, blink, options)
+  if (renderStyle.type === 'vector' && renderStyle.artwork) {
+    const colored = renderStyle.artwork === 'frame-172-colored'
+    const artworkTransform = frame172Transform(pose, renderStyle.artwork)
+    return {
+      ...geometry,
+      backPaths: [],
+      frontPaths: [colored ? frame172ColoredHeadsetPath : frame172StrokeHeadsetPath],
+      backNodeIds: [],
+      frontNodeIds: [null],
+      headPath: colored ? frame172ColoredBodyPath : frame172StrokeBodyPath,
+      wirePaths: [],
+      headsetFrontIndex: 0,
+      pathTransforms: {
+        back: [],
+        head: artworkTransform,
+        left: identityTransform,
+        right: identityTransform,
+        front: [artworkTransform],
+      },
+    }
+  }
   if (renderStyle.type !== 'vector' || renderStyle.accessory !== 'headset') return geometry
 
   return {

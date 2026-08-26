@@ -55,10 +55,15 @@ describe('rendered avatar scene', () => {
     )
 
     expect(avatar.name).toBe('Memento · Headset')
-    expect(avatar.colors).toEqual({ body: '#ff9d45', eyes: '#111316' })
-    expect(avatar.renderStyle).toEqual({ type: 'vector', filled: true, accessory: 'headset' })
+    expect(avatar.colors).toEqual({ body: '#ff9d45', eyes: '#222222' })
+    expect(avatar.renderStyle).toEqual({
+      type: 'vector',
+      filled: true,
+      artwork: 'frame-172-colored',
+    })
     expect(neutral.headsetFrontIndex).toBe(neutral.frontPaths.length - 1)
-    expect(neutral.frontPaths.at(-1)).toContain('M12 1.875C17.7 1.875')
+    expect(neutral.headPath).toContain('M575.918 77.6582')
+    expect(neutral.frontPaths.at(-1)).toContain('M573.131 2.5')
     expect(neutral.pathTransforms?.front.at(-1)).not.toBe(turned.pathTransforms?.front.at(-1))
 
     const scene = createRenderedScene(neutral)
@@ -67,6 +72,31 @@ describe('rendered avatar scene', () => {
     expect(scene.frontTransforms[scene.headsetFrontIndex.current!].get()).toBe(
       turned.pathTransforms?.front.at(-1)
     )
+  })
+
+  it('keeps the stroked Frame 172 skin as a separate animated avatar', () => {
+    const studio = loadStudioDocument({ getItem: () => null })
+    const avatar = studio.library.avatars.find(
+      item => item.id === 'primitive-ghost-headset-stroke'
+    )!
+    const geometry = renderAvatarByStyle(
+      poseFromExpression(defaultExpression),
+      avatar.body.primary as SurfaceConfig,
+      1,
+      avatar.renderStyle,
+      { bodyNodes: avatar.body.nodes as BodyNode[] }
+    )
+
+    expect(avatar.name).toBe('Memento · Stroke')
+    expect(avatar.colors).toEqual({ body: '#ff9d45', eyes: '#ff9d45' })
+    expect(avatar.renderStyle).toEqual({
+      type: 'vector',
+      strokeOnly: true,
+      artwork: 'frame-172-stroke',
+    })
+    expect(geometry.headsetFrontIndex).toBe(geometry.frontPaths.length - 1)
+    expect(geometry.headPath).toContain('M574.918 77.6582')
+    expect(geometry.frontPaths.at(-1)).toContain('M572.131 2.5')
   })
 
   it('keeps layer identity and hit mapping behind the scene seam', () => {

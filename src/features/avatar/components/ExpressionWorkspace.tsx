@@ -22,6 +22,7 @@ import {
   type AvatarColors,
   type AvatarEyeDefaults,
   type AvatarRenderStyle,
+  isStrokeOnlyRenderStyle,
 } from '@/features/avatar/avatars'
 import { type BodyNode } from '@/features/avatar/body'
 import { scaleEye, updateEyeDimension } from '@/features/avatar/expressionEditing'
@@ -30,6 +31,7 @@ import { defaultExpression } from '@/features/avatar/presets'
 import { type SurfaceConfig } from '@/features/avatar/surfaces'
 import {
   avatarBodyOutlineWidth,
+  avatarOutlineWidth,
   resolveAvatarNodeColor,
   useAvatarBodyColorOverride,
   useRenderedSceneNodeOrder,
@@ -84,11 +86,17 @@ export function ExpressionPreview({
   id: string
 }) {
   const geometry = getPreviewGeometry(expression, surface, bodyNodes, avatarEyes, renderStyle)
-  const resolvedColors = resolveColors(expression, colors)
-  const outlineWidth = avatarBodyOutlineWidth()
+  const outlineWidth = avatarOutlineWidth(renderStyle)
   const filled = renderStyle.type === 'vector' && renderStyle.filled === true
-  const bodyFill = filled ? resolvedColors.body : 'var(--avatar-interior-color, #ffffff)'
-  const eyeFill = resolvedColors.eyes
+  const strokeOnly = isStrokeOnlyRenderStyle(renderStyle)
+  const sourceArtwork = renderStyle.type === 'vector' && Boolean(renderStyle.artwork)
+  const resolvedColors = strokeOnly ? colors : resolveColors(expression, colors)
+  const bodyFill = strokeOnly
+    ? 'none'
+    : filled
+      ? resolvedColors.body
+      : 'var(--avatar-interior-color, #ffffff)'
+  const eyeFill = strokeOnly ? 'none' : resolvedColors.eyes
   const nodeColor = (id: string | null | undefined) =>
     resolveAvatarNodeColor({
       nodeColor: bodyNodes.find(node => node.id === id)?.color,
@@ -121,7 +129,7 @@ export function ExpressionPreview({
     <svg className="avatar-preview" viewBox="-150 -150 300 300" aria-hidden="true">
       <defs>
         <clipPath id={clipId}>
-          <path d={geometry.headPath} />
+          <path d={geometry.headPath} transform={geometry.pathTransforms?.head} />
         </clipPath>
       </defs>
       {geometry.backPaths.map((pathValue, index) => {
@@ -144,40 +152,58 @@ export function ExpressionPreview({
       <path
         className="preview-head"
         d={geometry.headPath}
+        transform={geometry.pathTransforms?.head}
         style={{
           fill: bodyFill,
           stroke: resolvedColors.body,
           strokeWidth: outlineWidth,
           strokeLinejoin: 'round',
+          ...(sourceArtwork ? { vectorEffect: 'non-scaling-stroke' } : {}),
         }}
       />
       <g clipPath={`url(#${clipId})`}>
         <path
           className="preview-eye"
           d={geometry.leftPath}
+          transform={geometry.pathTransforms?.left}
           opacity={geometry.leftVisible ? 1 : 0}
-          style={{ fill: eyeFill }}
+          style={{
+            fill: eyeFill,
+            ...(strokeOnly
+              ? { stroke: resolvedColors.eyes, strokeWidth: outlineWidth, strokeLinejoin: 'round' }
+              : {}),
+            ...(sourceArtwork ? { vectorEffect: 'non-scaling-stroke' } : {}),
+          }}
         />
         <path
           className="preview-eye"
           d={geometry.rightPath}
+          transform={geometry.pathTransforms?.right}
           opacity={geometry.rightVisible ? 1 : 0}
-          style={{ fill: eyeFill }}
+          style={{
+            fill: eyeFill,
+            ...(strokeOnly
+              ? { stroke: resolvedColors.eyes, strokeWidth: outlineWidth, strokeLinejoin: 'round' }
+              : {}),
+            ...(sourceArtwork ? { vectorEffect: 'non-scaling-stroke' } : {}),
+          }}
         />
       </g>
       {geometry.frontPaths.map((pathValue, index) => {
         const color = nodeColor(geometry.frontNodeIds[index])
+        const headset = geometry.headsetFrontIndex === index
         return (
           <path
-            className={`preview-head${geometry.headsetFrontIndex === index ? ' avatar-headset' : ''}`}
+            className={`preview-head${headset && !strokeOnly ? ' avatar-headset' : ''}`}
             d={pathValue}
             transform={geometry.pathTransforms?.front[index]}
             key={`front-${index}`}
             style={{
-              fill: filled ? color : bodyFill,
+              fill: headset && strokeOnly ? 'none' : filled ? color : bodyFill,
               stroke: color,
               strokeWidth: outlineWidth,
               strokeLinejoin: 'round',
+              ...(headset && strokeOnly ? { vectorEffect: 'non-scaling-stroke' } : {}),
             }}
           />
         )
@@ -219,18 +245,23 @@ export function LiveExpressionPreview({
 
   const clipId = `live-preview-${id}`
   const filled = renderStyle.filled === true
-  const outlineWidth = avatarBodyOutlineWidth()
+  const strokeOnly = isStrokeOnlyRenderStyle(renderStyle)
+  const outlineWidth = avatarOutlineWidth(renderStyle)
   const inheritBodyColor = Boolean(expressionBodyColor) || bodyColorIsOverridden
+  const strokeColor = strokeOnly ? baseBodyColor : colors.body
+  const sourceArtwork = Boolean(renderStyle.artwork)
   const nodeColor = (nodeId: string | null | undefined) =>
-    inheritBodyColor
-      ? colors.body
-      : (bodyNodes.find(node => node.id === nodeId)?.color ?? colors.body)
+    strokeOnly
+      ? baseBodyColor
+      : inheritBodyColor
+        ? colors.body
+        : (bodyNodes.find(node => node.id === nodeId)?.color ?? colors.body)
 
   return (
     <svg className="avatar-preview" viewBox="-150 -150 300 300" aria-hidden="true">
       <defs>
         <clipPath id={clipId}>
-          <motion.path d={scene.headPath} />
+          <SvgTransformPath d={scene.headPath} svgTransform={scene.headTransform} />
         </clipPath>
       </defs>
       <motion.g style={{ x: scene.offsetX, y: scene.offsetY }}>
@@ -244,7 +275,11 @@ export function LiveExpressionPreview({
               strokeLinecap="round"
               strokeLinejoin="round"
               style={{
-                fill: filled ? color : 'var(--avatar-interior-color, #ffffff)',
+                fill: strokeOnly
+                  ? 'none'
+                  : filled
+                    ? color
+                    : 'var(--avatar-interior-color, #ffffff)',
                 stroke: color,
                 strokeWidth: outlineWidth,
               }}
@@ -252,41 +287,66 @@ export function LiveExpressionPreview({
             />
           )
         })}
-        <motion.path
+        <SvgTransformPath
           d={scene.headPath}
+          svgTransform={scene.headTransform}
           strokeLinecap="round"
           strokeLinejoin="round"
           style={{
-            fill: filled ? colors.body : 'var(--avatar-interior-color, #ffffff)',
-            stroke: colors.body,
+            fill: strokeOnly
+              ? 'none'
+              : filled
+                ? colors.body
+                : 'var(--avatar-interior-color, #ffffff)',
+            stroke: strokeColor,
             strokeWidth: outlineWidth,
+            ...(sourceArtwork ? { vectorEffect: 'non-scaling-stroke' } : {}),
           }}
         />
         <g clipPath={`url(#${clipId})`}>
-          <motion.path
+          <SvgTransformPath
             d={scene.leftPath}
+            svgTransform={scene.leftTransform}
             opacity={scene.leftOpacity}
-            style={{ fill: colors.eyes }}
+            style={{
+              fill: strokeOnly ? 'none' : colors.eyes,
+              ...(strokeOnly ? { stroke: baseBodyColor, strokeWidth: outlineWidth } : {}),
+              ...(sourceArtwork ? { vectorEffect: 'non-scaling-stroke' } : {}),
+            }}
           />
-          <motion.path
+          <SvgTransformPath
             d={scene.rightPath}
+            svgTransform={scene.rightTransform}
             opacity={scene.rightOpacity}
-            style={{ fill: colors.eyes }}
+            style={{
+              fill: strokeOnly ? 'none' : colors.eyes,
+              ...(strokeOnly ? { stroke: baseBodyColor, strokeWidth: outlineWidth } : {}),
+              ...(sourceArtwork ? { vectorEffect: 'non-scaling-stroke' } : {}),
+            }}
           />
         </g>
         {scene.frontPaths.map((pathValue, index) => {
           const color = nodeColor(scene.frontNodeIds.current[index])
+          const headset = scene.headsetFrontIndex.current === index
           return (
             <SvgTransformPath
-              className={`preview-head${scene.headsetFrontIndex.current === index ? ' avatar-headset' : ''}`}
+              className={`preview-head${headset && !strokeOnly ? ' avatar-headset' : ''}`}
               d={pathValue}
               svgTransform={scene.frontTransforms[index]}
               strokeLinecap="round"
               strokeLinejoin="round"
               style={{
-                fill: filled ? color : 'var(--avatar-interior-color, #ffffff)',
+                fill:
+                  headset && strokeOnly
+                    ? 'none'
+                    : strokeOnly
+                      ? 'none'
+                      : filled
+                        ? color
+                        : 'var(--avatar-interior-color, #ffffff)',
                 stroke: color,
                 strokeWidth: outlineWidth,
+                ...(headset && strokeOnly ? { vectorEffect: 'non-scaling-stroke' } : {}),
               }}
               key={`front-${index}`}
             />

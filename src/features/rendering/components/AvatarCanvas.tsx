@@ -18,6 +18,7 @@ import {
   applyAvatarEyeDefaults,
   type AvatarEyeDefaults,
   type AvatarRenderStyle,
+  isStrokeOnlyRenderStyle,
 } from '@/features/avatar/avatars'
 import { type BodyNode } from '@/features/avatar/body'
 import { scaleEye, updateEyeDimension } from '@/features/avatar/expressionEditing'
@@ -579,8 +580,11 @@ export function AvatarCanvas({
     backNodeIds,
     frontNodeIds,
     headPath,
+    headTransform,
     leftPath,
     rightPath,
+    leftTransform,
+    rightTransform,
     leftOpacity,
     rightOpacity,
     offsetX,
@@ -806,7 +810,7 @@ export function AvatarCanvas({
   useEscapeToCancel(cancelDrag)
   return (
     <div
-      className={`avatar-wrap${renderStyle.type === 'pixel' ? ' is-pixel-rendered' : ''}${renderStyle.type === 'vector' && renderStyle.filled ? ' is-filled-vector' : ''}`}
+      className={`avatar-wrap${renderStyle.type === 'pixel' ? ' is-pixel-rendered' : ''}${renderStyle.type === 'vector' && renderStyle.filled ? ' is-filled-vector' : ''}${isStrokeOnlyRenderStyle(renderStyle) ? ' is-stroke-vector' : ''}${renderStyle.type === 'vector' && renderStyle.artwork ? ' is-source-artwork' : ''}`}
     >
       {playback && (
         <motion.div
@@ -838,7 +842,7 @@ export function AvatarCanvas({
       >
         <defs>
           <clipPath id="avatar-head-clip">
-            <motion.path d={headPath} />
+            <SvgTransformPath d={headPath} svgTransform={headTransform} />
           </clipPath>
         </defs>
         <motion.g style={{ x: offsetX, y: offsetY }}>
@@ -852,9 +856,10 @@ export function AvatarCanvas({
               onPointerDown={event => selectBodyPath(event, backNodeIds.current[index])}
             />
           ))}
-          <motion.path
+          <SvgTransformPath
             className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
             d={headPath}
+            svgTransform={headTransform}
             onPointerDown={event => {
               onBodyNodeSelect('primary')
               startDrag(event)
@@ -865,15 +870,17 @@ export function AvatarCanvas({
               wirePaths.map((pathValue, index) => (
                 <motion.path className="wire" d={pathValue} key={index} />
               ))}
-            <motion.path
+            <SvgTransformPath
               className={`avatar-eye ${selectedSide === -1 || highlight === 'left' || highlight === 'both' ? 'cyan-outline' : ''}`}
               d={leftPath}
+              svgTransform={leftTransform}
               opacity={leftOpacity}
               onPointerDown={event => selectEye(-1, event)}
             />
-            <motion.path
+            <SvgTransformPath
               className={`avatar-eye ${selectedSide === 1 || highlight === 'right' || highlight === 'both' ? 'cyan-outline' : ''}`}
               d={rightPath}
+              svgTransform={rightTransform}
               opacity={rightOpacity}
               onPointerDown={event => selectEye(1, event)}
             />

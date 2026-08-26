@@ -9,11 +9,11 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import { defaultAvatarEyes } from '@/features/avatar/avatars'
+import { defaultAvatarEyes, isStrokeOnlyRenderStyle } from '@/features/avatar/avatars'
 import { ExpressionPreview } from '@/features/avatar/components/ExpressionWorkspace'
 import { defaultExpression } from '@/features/avatar/presets'
 import {
-  avatarBodyOutlineWidth,
+  avatarOutlineWidth,
   useRenderedSceneNodeOrder,
 } from '@/features/rendering/avatarAppearance'
 import { LivePixelAvatarCanvas } from '@/features/rendering/components/PixelAvatarCanvas'
@@ -33,16 +33,26 @@ function LiveAvatarPreview({
   expressionBodyColor?: string
 }) {
   useRenderedSceneNodeOrder(scene)
-  const outlineWidth = avatarBodyOutlineWidth()
+  const outlineWidth = avatarOutlineWidth(avatar.renderStyle)
   const filled = avatar.renderStyle.type === 'vector' && avatar.renderStyle.filled === true
-  const bodyColor = expressionBodyColor ? colors.body : avatar.colors.body
-  const eyeColor = expressionBodyColor ? colors.eyes : avatar.colors.eyes
+  const strokeOnly = isStrokeOnlyRenderStyle(avatar.renderStyle)
+  const sourceArtwork = avatar.renderStyle.type === 'vector' && Boolean(avatar.renderStyle.artwork)
+  const bodyColor = strokeOnly
+    ? avatar.colors.body
+    : expressionBodyColor
+      ? colors.body
+      : avatar.colors.body
+  const eyeColor = strokeOnly
+    ? avatar.colors.eyes
+    : expressionBodyColor
+      ? colors.eyes
+      : avatar.colors.eyes
   const inheritBodyColor = Boolean(expressionBodyColor)
   const nodeColor = (id: string | null | undefined) =>
     inheritBodyColor
       ? bodyColor
       : (avatar.body.nodes.find(node => node.id === id)?.color ?? bodyColor)
-  const bodyFill = filled ? bodyColor : '#ffffff'
+  const bodyFill = strokeOnly ? 'none' : filled ? bodyColor : '#ffffff'
   const clipId = `live-avatar-${avatar.id}`
 
   if (avatar.renderStyle.type === 'pixel') {
@@ -64,7 +74,7 @@ function LiveAvatarPreview({
     >
       <defs>
         <clipPath id={clipId}>
-          <motion.path d={scene.headPath} />
+          <SvgTransformPath d={scene.headPath} svgTransform={scene.headTransform} />
         </clipPath>
       </defs>
       <motion.g style={{ x: scene.offsetX, y: scene.offsetY }}>
@@ -80,38 +90,56 @@ function LiveAvatarPreview({
             />
           )
         })}
-        <motion.path
+        <SvgTransformPath
           className="preview-head"
           d={scene.headPath}
+          svgTransform={scene.headTransform}
           style={{
             fill: bodyFill,
             stroke: bodyColor,
             strokeWidth: outlineWidth,
+            ...(sourceArtwork ? { vectorEffect: 'non-scaling-stroke' } : {}),
           }}
         />
         <g clipPath={`url(#${clipId})`}>
-          <motion.path
+          <SvgTransformPath
             className="preview-eye"
             d={scene.leftPath}
+            svgTransform={scene.leftTransform}
             opacity={scene.leftOpacity}
-            style={{ fill: eyeColor }}
+            style={{
+              fill: strokeOnly ? 'none' : eyeColor,
+              ...(strokeOnly ? { stroke: eyeColor, strokeWidth: outlineWidth } : {}),
+              ...(sourceArtwork ? { vectorEffect: 'non-scaling-stroke' } : {}),
+            }}
           />
-          <motion.path
+          <SvgTransformPath
             className="preview-eye"
             d={scene.rightPath}
+            svgTransform={scene.rightTransform}
             opacity={scene.rightOpacity}
-            style={{ fill: eyeColor }}
+            style={{
+              fill: strokeOnly ? 'none' : eyeColor,
+              ...(strokeOnly ? { stroke: eyeColor, strokeWidth: outlineWidth } : {}),
+              ...(sourceArtwork ? { vectorEffect: 'non-scaling-stroke' } : {}),
+            }}
           />
         </g>
         {scene.frontPaths.map((pathValue, index) => {
           const color = nodeColor(scene.frontNodeIds.current[index])
+          const headset = scene.headsetFrontIndex.current === index
           return (
             <SvgTransformPath
-              className={`preview-head${scene.headsetFrontIndex.current === index ? ' avatar-headset' : ''}`}
+              className={`preview-head${headset && !strokeOnly ? ' avatar-headset' : ''}`}
               d={pathValue}
               svgTransform={scene.frontTransforms[index]}
               key={`front-${index}`}
-              style={{ fill: filled ? color : bodyFill, stroke: color, strokeWidth: outlineWidth }}
+              style={{
+                fill: strokeOnly ? 'none' : filled ? color : bodyFill,
+                stroke: color,
+                strokeWidth: outlineWidth,
+                ...(headset && strokeOnly ? { vectorEffect: 'non-scaling-stroke' } : {}),
+              }}
             />
           )
         })}

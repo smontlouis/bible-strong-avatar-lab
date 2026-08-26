@@ -1,9 +1,16 @@
 import { useMotionValueEvent, type MotionValue } from 'motion/react'
 import { useEffect, useState } from 'react'
 
+import type { AvatarRenderStyle } from '@/features/avatar/avatars'
 import type { RenderedScene } from './renderedScene'
 
 export const avatarBodyOutlineWidth = () => 12
+export const avatarOutlineWidth = (renderStyle: AvatarRenderStyle) =>
+  renderStyle.type === 'vector' && renderStyle.artwork === 'frame-172-stroke'
+    ? 1
+    : renderStyle.type === 'vector' && Boolean(renderStyle.artwork)
+      ? 2.4
+      : avatarBodyOutlineWidth()
 
 const colorsMatch = (left: string, right: string) =>
   left.trim().toLowerCase() === right.trim().toLowerCase()

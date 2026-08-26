@@ -35,7 +35,9 @@ export type VectorAccessory = 'headset'
 export type VectorRenderStyle = {
   type: 'vector'
   filled?: boolean
+  strokeOnly?: boolean
   accessory?: VectorAccessory
+  artwork?: 'frame-172-colored' | 'frame-172-stroke'
 }
 export type AvatarRenderStyle = VectorRenderStyle | PixelRenderStyle
 export type AvatarEyeDefaults = Pick<
@@ -78,6 +80,18 @@ export const headsetAvatarRenderStyle: VectorRenderStyle = {
   filled: true,
   accessory: 'headset',
 }
+export const frame172ColoredAvatarRenderStyle: VectorRenderStyle = {
+  type: 'vector',
+  filled: true,
+  artwork: 'frame-172-colored',
+}
+export const frame172StrokeAvatarRenderStyle: VectorRenderStyle = {
+  type: 'vector',
+  strokeOnly: true,
+  artwork: 'frame-172-stroke',
+}
+export const isStrokeOnlyRenderStyle = (style: AvatarRenderStyle) =>
+  style.type === 'vector' && style.strokeOnly === true
 const filledAvatarEyeColor = '#111316'
 export const defaultPixelRenderStyle: PixelRenderStyle = {
   type: 'pixel',
@@ -165,6 +179,7 @@ const bundledAvatarColorMigrations: Record<string, { from: AvatarColors; to: Ava
 export const simpleBundledAvatarIds = [
   'primitive-ghost',
   'primitive-ghost-headset',
+  'primitive-ghost-headset-stroke',
   'primitive-apple-bite',
   'primitive-lock',
   'oneworks-cat',
@@ -220,6 +235,7 @@ const retiredBundledAvatarIds = new Set([
 ])
 
 const legacyBundledAvatarNames: Record<string, string> = {
+  'primitive-ghost-headset-stroke': 'Memento · Colored',
   'oneworks-cat': 'OneWorks Cat',
   'oneworks-dog': 'OneWorks Dog',
   'oneworks-bear': 'OneWorks Bear',
@@ -237,6 +253,7 @@ const primitiveBundledAvatarSpecs = [
   ['primitive-apple-bite', 'Apple Bite', 'apple-bite', deslopAccentColors.red, 0.9],
   ['primitive-ghost', 'Memento', 'ghost', deslopAccentColors.orange, 0.9],
   ['primitive-ghost-headset', 'Memento · Headset', 'ghost', deslopAccentColors.orange, 0.9],
+  ['primitive-ghost-headset-stroke', 'Memento · Stroke', 'ghost', deslopAccentColors.orange, 0.9],
   ['primitive-lock', 'Lock', 'lock', deslopAccentColors.blue, 0.9],
 ] as const
 
@@ -830,9 +847,13 @@ const primitiveBundledAvatars: StudioAvatar[] = [
     colors: {
       body: color,
       eyes:
-        surface === 'ghost' || surface === 'apple-bite' || surface === 'lock'
-          ? filledAvatarEyeColor
-          : color,
+        id === 'primitive-ghost-headset'
+          ? '#222222'
+          : id === 'primitive-ghost-headset-stroke'
+            ? deslopAccentColors.orange
+            : surface === 'ghost' || surface === 'apple-bite' || surface === 'lock'
+              ? filledAvatarEyeColor
+              : color,
     },
     eyes:
       surface === 'ghost'
@@ -856,10 +877,12 @@ const primitiveBundledAvatars: StudioAvatar[] = [
             : { ...defaultAvatarEyes },
     renderStyle:
       id === 'primitive-ghost-headset'
-        ? { ...headsetAvatarRenderStyle }
-        : surface === 'ghost' || surface === 'apple-bite' || surface === 'lock'
-          ? { ...filledAvatarRenderStyle }
-          : { ...defaultAvatarRenderStyle },
+        ? { ...frame172ColoredAvatarRenderStyle }
+        : id === 'primitive-ghost-headset-stroke'
+          ? { ...frame172StrokeAvatarRenderStyle }
+          : surface === 'ghost' || surface === 'apple-bite' || surface === 'lock'
+            ? { ...filledAvatarRenderStyle }
+            : { ...defaultAvatarRenderStyle },
     ...(surface === 'ghost'
       ? { behavior: mementoBehavior() }
       : surface === 'apple-bite'
@@ -952,7 +975,11 @@ const filledBundledAvatarIds = new Set([
 const oneWorksOriginalAnimalIds = new Set(Object.keys(oneWorksBundledAnimalColors))
 const filledPrimitiveAvatarColors: Record<string, AvatarColors> = {
   'primitive-ghost': { body: deslopAccentColors.orange, eyes: filledAvatarEyeColor },
-  'primitive-ghost-headset': { body: deslopAccentColors.orange, eyes: filledAvatarEyeColor },
+  'primitive-ghost-headset': { body: deslopAccentColors.orange, eyes: '#222222' },
+  'primitive-ghost-headset-stroke': {
+    body: deslopAccentColors.orange,
+    eyes: deslopAccentColors.orange,
+  },
   'primitive-apple-bite': { body: deslopAccentColors.red, eyes: filledAvatarEyeColor },
   'primitive-lock': { body: deslopAccentColors.blue, eyes: filledAvatarEyeColor },
 }
@@ -991,7 +1018,11 @@ export const ensurePrimitiveBundledAvatars = (library: AvatarLibrary): AvatarLib
   )
   if (!visibleLibraryAvatars.some(avatar => originalSimpleBundledAvatarIds.has(avatar.id))) {
     const avatarsWithCurrentColorBehavior = visibleLibraryAvatars.map(avatar => {
-      if (['primitive-ghost', 'primitive-ghost-headset'].includes(avatar.id)) {
+      if (
+        ['primitive-ghost', 'primitive-ghost-headset', 'primitive-ghost-headset-stroke'].includes(
+          avatar.id
+        )
+      ) {
         return { ...avatar, behavior: mementoBehavior(avatar.behavior) }
       }
       if (filledBundledAvatarIds.has(avatar.id)) {
@@ -1122,7 +1153,9 @@ export const ensurePrimitiveBundledAvatars = (library: AvatarLibrary): AvatarLib
         ? { ...avatarWithCurrentNodes, name: bundled.name }
         : avatarWithCurrentNodes
     const avatarWithCurrentEyes =
-      ['primitive-ghost', 'primitive-ghost-headset'].includes(avatarWithCurrentName.id) &&
+      ['primitive-ghost', 'primitive-ghost-headset', 'primitive-ghost-headset-stroke'].includes(
+        avatarWithCurrentName.id
+      ) &&
       [defaultAvatarEyes.positionYLeft, defaultAvatarEyes.positionYLeft - 12].includes(
         avatarWithCurrentName.eyes.positionYLeft
       ) &&
@@ -1137,9 +1170,11 @@ export const ensurePrimitiveBundledAvatars = (library: AvatarLibrary): AvatarLib
       avatarWithCurrentEyes.eyes.positionXRight === defaultAvatarEyes.positionXRight
         ? { ...avatarWithCurrentEyes, eyes: { ...bundled.eyes } }
         : avatarWithCurrentEyes
-    const avatarWithFixedColorBehavior = ['primitive-ghost', 'primitive-ghost-headset'].includes(
-      avatarWithAppleBiteEyes.id
-    )
+    const avatarWithFixedColorBehavior = [
+      'primitive-ghost',
+      'primitive-ghost-headset',
+      'primitive-ghost-headset-stroke',
+    ].includes(avatarWithAppleBiteEyes.id)
       ? {
           ...avatarWithAppleBiteEyes,
           behavior: mementoBehavior(avatarWithAppleBiteEyes.behavior),
@@ -1152,10 +1187,12 @@ export const ensurePrimitiveBundledAvatars = (library: AvatarLibrary): AvatarLib
         : avatarWithAppleBiteEyes
     const avatarWithCurrentRenderStyle =
       avatarWithFixedColorBehavior.id === 'primitive-ghost-headset'
-        ? { ...avatarWithFixedColorBehavior, renderStyle: { ...headsetAvatarRenderStyle } }
-        : filledBundledAvatarIds.has(avatarWithFixedColorBehavior.id)
-          ? { ...avatarWithFixedColorBehavior, renderStyle: { ...filledAvatarRenderStyle } }
-          : avatarWithFixedColorBehavior
+        ? { ...avatarWithFixedColorBehavior, renderStyle: { ...frame172ColoredAvatarRenderStyle } }
+        : avatarWithFixedColorBehavior.id === 'primitive-ghost-headset-stroke'
+          ? { ...avatarWithFixedColorBehavior, renderStyle: { ...frame172StrokeAvatarRenderStyle } }
+          : filledBundledAvatarIds.has(avatarWithFixedColorBehavior.id)
+            ? { ...avatarWithFixedColorBehavior, renderStyle: { ...filledAvatarRenderStyle } }
+            : avatarWithFixedColorBehavior
     const bundledFilledColors =
       mementoAnimalColors[avatarWithCurrentRenderStyle.id] ??
       oneWorksBundledAnimalColors[avatarWithCurrentRenderStyle.id] ??
@@ -1238,14 +1275,22 @@ export const parseAvatarRenderStyle = (value: unknown): AvatarRenderStyle => {
   const candidate = value as {
     type?: unknown
     filled?: unknown
+    strokeOnly?: unknown
     accessory?: unknown
+    artwork?: unknown
     resolution?: unknown
   } | null
   if (candidate?.type === 'vector') {
     return {
       type: 'vector',
       ...(candidate.filled === true ? { filled: true } : {}),
+      ...(candidate.strokeOnly === true ? { strokeOnly: true } : {}),
       ...(candidate.accessory === 'headset' ? { accessory: 'headset' as const } : {}),
+      ...(candidate.artwork === 'frame-172-colored'
+        ? { artwork: 'frame-172-colored' as const }
+        : candidate.artwork === 'frame-172-stroke'
+          ? { artwork: 'frame-172-stroke' as const }
+          : {}),
     }
   }
   if (!PIXEL_RENDERING_ENABLED || candidate?.type !== 'pixel') {

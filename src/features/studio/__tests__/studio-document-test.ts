@@ -31,6 +31,7 @@ describe('Studio document', () => {
   const bundledAvatarNames = [
     'Memento',
     'Memento · Headset',
+    'Memento · Stroke',
     'Apple Bite',
     'Lock',
     'Siamese',
@@ -80,7 +81,8 @@ describe('Studio document', () => {
         .filter(avatar => avatar.renderStyle.type !== 'vector' || !avatar.renderStyle.filled)
         .every(avatar => avatar.colors.body === avatar.colors.eyes)
     ).toBe(true)
-    expect(document.library.avatars.slice(0, 14).map(avatar => avatar.body.primary.type)).toEqual([
+    expect(document.library.avatars.slice(0, 15).map(avatar => avatar.body.primary.type)).toEqual([
+      'ghost',
       'ghost',
       'ghost',
       'apple-bite',
@@ -121,6 +123,13 @@ describe('Studio document', () => {
       type: 'vector',
       filled: true,
     })
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-ghost-headset')?.renderStyle
+    ).toEqual({ type: 'vector', filled: true, artwork: 'frame-172-colored' })
+    expect(
+      document.library.avatars.find(avatar => avatar.id === 'primitive-ghost-headset-stroke')
+        ?.renderStyle
+    ).toEqual({ type: 'vector', strokeOnly: true, artwork: 'frame-172-stroke' })
     expect(
       document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.renderStyle
     ).toEqual({ type: 'vector', filled: true })
@@ -203,7 +212,18 @@ describe('Studio document', () => {
         ?.body.nodes.map(node => node.color)
     ).toEqual(['#a95f47', '#a95f47'])
     const memento = document.library.avatars.find(avatar => avatar.id === 'primitive-ghost')
+    const headsetMemento = document.library.avatars.find(
+      avatar => avatar.id === 'primitive-ghost-headset'
+    )
+    const strokeMemento = document.library.avatars.find(
+      avatar => avatar.id === 'primitive-ghost-headset-stroke'
+    )
     expect(memento?.colors).toEqual({ body: '#ff9d45', eyes: '#111316' })
+    expect(headsetMemento?.colors).toEqual({ body: '#ff9d45', eyes: '#222222' })
+    expect(strokeMemento?.colors).toEqual({ body: '#ff9d45', eyes: '#ff9d45' })
+    expect(
+      strokeMemento?.behavior?.sequences.some(sequence => sequence.semanticKey === 'onboarding')
+    ).toBe(true)
     expect(
       document.library.avatars.find(avatar => avatar.id === 'primitive-apple-bite')?.colors
     ).toEqual({ body: '#ff5558', eyes: '#111316' })
@@ -226,7 +246,14 @@ describe('Studio document', () => {
     ])
     expect(
       document.library.avatars
-        .filter(avatar => !['primitive-ghost', 'primitive-ghost-headset'].includes(avatar.id))
+        .filter(
+          avatar =>
+            ![
+              'primitive-ghost',
+              'primitive-ghost-headset',
+              'primitive-ghost-headset-stroke',
+            ].includes(avatar.id)
+        )
         .every(avatar => avatar.colors.body !== '#ff9d45')
     ).toBe(true)
     expect(memento?.eyes.positionYLeft).toBe(defaultAvatarEyes.positionYLeft - 20)

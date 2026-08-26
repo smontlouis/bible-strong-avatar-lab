@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { defaultExpression } from '@/features/avatar/presets'
-import { avatarBodyOutlineWidth } from '@/features/rendering/avatarAppearance'
+import { isStrokeOnlyRenderStyle } from '@/features/avatar/avatars'
+import { avatarOutlineWidth } from '@/features/rendering/avatarAppearance'
 import { AvatarCanvas } from '@/features/rendering/components/AvatarCanvas'
 import { PhotoStageFrame } from '@/features/studio/components/PhotoStageFrame'
 import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
@@ -61,6 +62,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     updateImmediate,
   } = controller
   const photoMode = mode === 'photo'
+  const fixedStrokeColor = isStrokeOnlyRenderStyle(activeAvatar.renderStyle)
   const activatePhotoTool = (tool: typeof photoTool) => {
     setPhotoTool(tool)
     setPhotoPanelSections(current => (current.includes(tool) ? current : [...current, tool]))
@@ -116,9 +118,9 @@ export function StudioStage({ controller }: { controller: StudioController }) {
       className={`stage-column${photoMode ? ' photo-mode-active' : ''}`}
       style={
         {
-          '--avatar-body-color': renderedColors.body,
-          '--avatar-eye-color': renderedColors.eyes,
-          '--avatar-outline-width': avatarBodyOutlineWidth(),
+          '--avatar-body-color': fixedStrokeColor ? activeAvatar.colors.body : renderedColors.body,
+          '--avatar-eye-color': fixedStrokeColor ? activeAvatar.colors.eyes : renderedColors.eyes,
+          '--avatar-outline-width': avatarOutlineWidth(activeAvatar.renderStyle),
         } as CSSProperties
       }
     >
