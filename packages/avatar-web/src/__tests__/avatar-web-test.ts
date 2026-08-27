@@ -46,4 +46,19 @@ describe('@bible-strong/avatar-web', () => {
       error: expect.objectContaining({ code: 'unknown_expression', key: 'missing' }),
     })
   })
+
+  it('keeps a frame loop running for an expression with automatic blinking', () => {
+    const request = vi.fn(() => 1)
+    vi.stubGlobal('requestAnimationFrame', request)
+    const blinkingDefinition = structuredClone(definitionJson)
+    Object.assign(blinkingDefinition.expressions.neutral, { blinking: true })
+
+    const avatar = createAvatar('#avatar', {
+      definition: blinkingDefinition,
+      defaultExpression: 'neutral',
+    })
+
+    expect(request).toHaveBeenCalledOnce()
+    avatar.destroy()
+  })
 })

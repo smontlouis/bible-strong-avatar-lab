@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/context-menu'
 import { defaultAvatarEyes } from '@/features/avatar/avatars'
 import { ExpressionPreview } from '@/features/avatar/components/ExpressionWorkspace'
-import { defaultExpression } from '@/features/avatar/presets'
+import { avatarIdentityExpression } from '@/features/avatar/presets'
 import type { StudioController } from '@/features/studio/useStudioController'
 
 export function AvatarPage({ controller }: { controller: StudioController }) {
@@ -30,11 +30,9 @@ export function AvatarPage({ controller }: { controller: StudioController }) {
     draggedAvatarId,
     draggingAvatarId,
     duplicateAvatar,
-    expressions,
     prepareStudioProjectImport,
     previewAvatarMove,
     projectImportError,
-    reduceMotion,
     setDeleteAvatarOpen,
     setDraggingAvatarId,
     setFocusAvatarName,
@@ -59,11 +57,7 @@ export function AvatarPage({ controller }: { controller: StudioController }) {
                 opacity: draggingAvatarId === avatar.id ? 0.28 : 1,
                 scale: draggingAvatarId === avatar.id ? 0.96 : 1,
               }}
-              transition={
-                reduceMotion
-                  ? { duration: 0 }
-                  : { type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }
-              }
+              transition={{ type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }}
             >
               <ContextMenu>
                 <ContextMenuTrigger
@@ -98,7 +92,7 @@ export function AvatarPage({ controller }: { controller: StudioController }) {
                       }}
                     >
                       <ExpressionPreview
-                        expression={expressions[0] ?? defaultExpression}
+                        expression={avatarIdentityExpression}
                         surface={avatar.body.primary}
                         bodyNodes={avatar.body.nodes}
                         colors={avatar.colors}

@@ -230,6 +230,16 @@
             "z": { "$ref": "#/$defs/boundedNumber" }
           }
         },
+        "position": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "$ref": "#/$defs/boundedNumber" },
+            "y": { "$ref": "#/$defs/boundedNumber" },
+            "z": { "$ref": "#/$defs/boundedNumber" }
+          }
+        },
         "eyes": {
           "type": "object",
           "additionalProperties": false,
@@ -245,6 +255,7 @@
         "nose": { "$ref": "#/$defs/nose" },
         "mouth": { "$ref": "#/$defs/mouth" },
         "perspective": { "type": "number", "minimum": 0.1, "maximum": 10 },
+        "blinking": { "type": "boolean" },
         "motion": {
           "type": "object",
           "additionalProperties": false,

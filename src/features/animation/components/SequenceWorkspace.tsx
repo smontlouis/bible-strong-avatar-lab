@@ -50,7 +50,6 @@ export function SequenceWorkspace({
   renderStyle,
   selectedStepId,
   backButtonRef,
-  reduceMotion,
   onSelectedStepChange,
   onChange,
   onPreviewStep,
@@ -75,7 +74,6 @@ export function SequenceWorkspace({
   renderStyle: AvatarRenderStyle
   selectedStepId: string | null
   backButtonRef: RefObject<HTMLButtonElement | null>
-  reduceMotion: boolean
   onSelectedStepChange: (id: string | null) => void
   onChange: (draft: AvatarSequence) => void
   onPreviewStep: (step: SequenceStep) => void
@@ -311,11 +309,7 @@ export function SequenceWorkspace({
                       data-selected={selectedStep?.id === step.id || undefined}
                       key={step.id}
                       layout="position"
-                      transition={
-                        reduceMotion
-                          ? { duration: 0 }
-                          : { type: 'spring', stiffness: 500, damping: 40 }
-                      }
+                      transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                       draggable
                       onDragStart={() => {
                         draggedStepId.current = step.id

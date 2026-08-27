@@ -83,6 +83,21 @@ const runtimeEnvironment = () => ({
   reduceMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
 })
 
+const shouldRunFrameLoop = (
+  definition: AvatarDefinition,
+  playback: Readonly<CorePlaybackState>
+) => {
+  if (playback.status === 'playing') return true
+  const expression = definition.expressions[playback.activeExpression]
+  return (
+    playback.status === 'stopped' &&
+    !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false) &&
+    (expression?.blinking === true ||
+      expression?.motion.eyes !== 'none' ||
+      expression?.motion.body !== 'none')
+  )
+}
+
 export function createAvatar(
   target: string | HTMLElement,
   {
@@ -234,7 +249,7 @@ export function createAvatar(
       if (completedAnimation !== currentAnimation) onAnimationEnd?.(currentAnimation)
       completedAnimation = currentAnimation
     }
-    if (playback.status === 'playing') frameRequest = requestAnimationFrame(tick)
+    if (shouldRunFrameLoop(definition, playback)) frameRequest = requestAnimationFrame(tick)
   }
   const schedule = () => {
     if (frameRequest === null && !destroyed) frameRequest = requestAnimationFrame(tick)
@@ -284,7 +299,7 @@ export function createAvatar(
             }),
       }
       renderCurrent(performance.now())
-      if (playback.status === 'playing') schedule()
+      if (shouldRunFrameLoop(definition, playback)) schedule()
       return { ok: true }
     },
     pause() {
@@ -299,6 +314,7 @@ export function createAvatar(
       frameRequest = null
       paint(renderAvatarDefinition(definition))
       notifyExpression()
+      if (shouldRunFrameLoop(definition, playback)) schedule()
     },
     getState() {
       return playbackSnapshot(playback)
@@ -321,6 +337,7 @@ export function createAvatar(
         activeExpression: resolved.value.steps[0]?.expression ?? 'neutral',
       }
       renderCurrent(performance.now())
+      if (shouldRunFrameLoop(definition, playback)) schedule()
     }
   } else if (defaultExpression !== undefined) {
     const resolved = resolveExpression(definition, defaultExpression)
@@ -328,11 +345,13 @@ export function createAvatar(
     else {
       playback = { ...createAvatarPlaybackState(), activeExpression: defaultExpression }
       renderCurrent(performance.now())
+      if (shouldRunFrameLoop(definition, playback)) schedule()
     }
   } else {
     paint(initialScene)
     paintedFrame = sampleAvatarFrame(definition, playback, performance.now(), runtimeEnvironment())
     notifyExpression()
+    if (shouldRunFrameLoop(definition, playback)) schedule()
   }
 
   return controller

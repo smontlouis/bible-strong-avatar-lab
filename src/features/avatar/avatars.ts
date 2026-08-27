@@ -70,6 +70,9 @@ export type AvatarEyeDefaults = Required<
     | 'noseX'
     | 'noseY'
     | 'noseAngle'
+    | 'positionX'
+    | 'positionY'
+    | 'positionZ'
   >
 >
 export const defaultAvatarColors: AvatarColors = { body: '#5b7fe5', eyes: '#111316' }
@@ -85,6 +88,9 @@ export const defaultPixelRenderStyle: PixelRenderStyle = {
   resolution: 64,
 }
 export const defaultAvatarEyes: AvatarEyeDefaults = {
+  positionX: defaultExpression.positionX,
+  positionY: defaultExpression.positionY,
+  positionZ: defaultExpression.positionZ,
   widthLeft: defaultExpression.widthLeft,
   widthRight: defaultExpression.widthRight,
   heightLeft: defaultExpression.heightLeft,
@@ -163,6 +169,9 @@ export const parseAvatarRenderStyle = (value: unknown): AvatarRenderStyle => {
 }
 
 const eyeNumericDefaultFields = [
+  'positionX',
+  'positionY',
+  'positionZ',
   'widthLeft',
   'widthRight',
   'heightLeft',
@@ -339,6 +348,7 @@ export const parseExpressions = (value: unknown): Expression[] => {
     parsed.bodyMotion = isBodyMotion(storedBodyMotion)
       ? storedBodyMotion
       : defaultExpression.bodyMotion
+    if (typeof candidate.blinking === 'boolean') parsed.blinking = candidate.blinking
     if (candidate.eyeShape === 'rounded' || candidate.eyeShape === 'ellipse') {
       parsed.eyeShape = candidate.eyeShape
     }

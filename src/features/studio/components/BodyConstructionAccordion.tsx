@@ -69,13 +69,7 @@ function BodyStructureThumbnail({
   )
 }
 
-export function BodyConstructionAccordion({
-  controller,
-  reduceMotion,
-}: {
-  controller: StudioController
-  reduceMotion: boolean
-}) {
+export function BodyConstructionAccordion({ controller }: { controller: StudioController }) {
   const [addOpen, setAddOpen] = useState(false)
   const {
     addBodyNode,
@@ -523,9 +517,9 @@ export function BodyConstructionAccordion({
           {addOpen && (
             <motion.div
               className="body-add-options"
-              initial={reduceMotion ? false : { opacity: 0, y: -6 }}
+              initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -4 }}
+              exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.16, ease: [0.2, 0, 0, 1] }}
             >
               {bodyPrimitiveTypes.map(type => (

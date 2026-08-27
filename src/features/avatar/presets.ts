@@ -78,6 +78,9 @@ export const initialExpressions: Expression[] = calibrated.map(
     headX,
     headY,
     headZ,
+    positionX: 0,
+    positionY: 0,
+    positionZ: 0,
     widthLeft,
     widthRight,
     heightLeft,
@@ -115,6 +118,9 @@ export const defaultExpression: Expression = {
   headX: 0,
   headY: 0,
   headZ: 0,
+  positionX: 0,
+  positionY: 0,
+  positionZ: 0,
   widthLeft: 20,
   widthRight: 20,
   heightLeft: 50,
@@ -144,6 +150,11 @@ export const defaultExpression: Expression = {
   perspective: 1,
   eyeMotion: 'none',
   bodyMotion: 'none',
+}
+
+export const avatarIdentityExpression: Expression = {
+  ...defaultExpression,
+  id: 'avatar-identity-preview',
 }
 
 export const stateGroups = {

@@ -1,6 +1,6 @@
 import { RotateCcw } from 'lucide-react'
-import { motion } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useRef, useState, type Ref } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { useStudioLanguage } from '@/i18n'
@@ -173,7 +173,13 @@ export function RotationGizmo({
   }
   useEscapeToCancel(cancel)
   return (
-    <div className="gizmo-cluster">
+    <motion.div
+      className="gizmo-cluster"
+      initial={{ opacity: 0, scale: 0.88, x: 10, y: -8 }}
+      animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, x: 12, y: -6 }}
+      transition={{ type: 'spring', stiffness: 430, damping: 34, mass: 0.72 }}
+    >
       <svg className="gizmo" viewBox="-43 -43 86 86" aria-label={t('Gizmo de rotation')}>
         <circle
           className="gizmo-orbit gizmo-camera"
@@ -219,7 +225,7 @@ export function RotationGizmo({
       >
         <RotateCcw />
       </Button>
-    </div>
+    </motion.div>
   )
 }
 
@@ -518,6 +524,9 @@ export function AvatarCanvas({
   onEyeChange,
   playback,
   onManipulationStart,
+  controlsVisible = true,
+  rotationInteractionEnabled = controlsVisible,
+  avatarAnchorRef,
 }: {
   expression: Expression
   avatarEyes: AvatarEyeDefaults
@@ -544,6 +553,9 @@ export function AvatarCanvas({
   onEyeChange?: (next: Expression) => void
   playback: { name: string; status: Exclude<PlaybackStatus, 'stopped'> } | null
   onManipulationStart: () => Expression
+  controlsVisible?: boolean
+  rotationInteractionEnabled?: boolean
+  avatarAnchorRef?: Ref<SVGGElement>
 }) {
   const { t } = useStudioLanguage()
   const {
@@ -625,10 +637,13 @@ export function AvatarCanvas({
     return [x / length, y / length]
   }
   const startDrag = (event: React.PointerEvent<SVGElement>) => {
+    if (!rotationInteractionEnabled) return
     const session = beginManipulationFromRenderedValue(onManipulationStart)
     const renderedExpression = session.initial
-    onBodyNodeSelect('primary')
-    onHighlightChange('head')
+    if (controlsVisible) {
+      onBodyNodeSelect('primary')
+      onHighlightChange('head')
+    }
     drag.current = {
       type: 'arcball',
       startPoint: toSvg(event),
@@ -650,6 +665,10 @@ export function AvatarCanvas({
     onBodyNodeSelect(nodeId)
   }
   const selectEye = (side: -1 | 1, event: React.PointerEvent<SVGPathElement>) => {
+    if (!controlsVisible && rotationInteractionEnabled) {
+      startDrag(event)
+      return
+    }
     event.stopPropagation()
     onBodyNodeSelect(null)
     onEyeSelect(side)
@@ -792,16 +811,19 @@ export function AvatarCanvas({
   useEscapeToCancel(cancelDrag)
   return (
     <div className={`avatar-wrap${renderStyle.type === 'pixel' ? ' is-pixel-rendered' : ''}`}>
-      {playback && (
-        <motion.div
-          className="stage-playback-status"
-          initial={{ opacity: 0, scale: 0.96, y: -4 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
-        >
-          <PlaybackIdentity name={playback.name} status={playback.status} />
-        </motion.div>
-      )}
+      <AnimatePresence initial={false}>
+        {playback && (
+          <motion.div
+            className="stage-playback-status"
+            initial={{ opacity: 0, scale: 0.96, x: -10, y: -4 }}
+            animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, x: -12, y: -6 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
+          >
+            <PlaybackIdentity name={playback.name} status={playback.status} />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {renderStyle.type === 'pixel' && (
         <LivePixelAvatarCanvas
           scene={scene}
@@ -816,24 +838,15 @@ export function AvatarCanvas({
         viewBox="-150 -150 300 300"
         role="img"
         aria-label={t('Avatar procédural')}
-        onPointerMove={move}
-        onPointerUp={commitDrag}
-        onPointerCancel={cancelDrag}
+        onPointerMove={rotationInteractionEnabled ? move : undefined}
+        onPointerUp={rotationInteractionEnabled ? commitDrag : undefined}
+        onPointerCancel={rotationInteractionEnabled ? cancelDrag : undefined}
       >
         <defs>
           <clipPath id="avatar-head-clip">
             <motion.path d={headPath} />
           </clipPath>
         </defs>
-        <rect
-          className="avatar-rotation-zone"
-          x="-150"
-          y="-150"
-          width="300"
-          height="300"
-          aria-hidden="true"
-          onPointerDown={startDrag}
-        />
         <motion.g style={{ x: offsetX, y: offsetY }}>
           {outline && (
             <g aria-hidden="true" pointerEvents="none">
@@ -858,28 +871,27 @@ export function AvatarCanvas({
           <motion.path
             className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
             d={headPath}
-            onPointerDown={event => {
-              onBodyNodeSelect('primary')
-              startDrag(event)
-            }}
+            onPointerDown={startDrag}
           />
           <g clipPath="url(#avatar-head-clip)">
             {(showWire || highlight === 'head') &&
               wirePaths.map((pathValue, index) => (
                 <motion.path className="wire" d={pathValue} key={index} />
               ))}
-            <motion.path
-              className={`avatar-eye ${selectedSide === -1 || highlight === 'left' || highlight === 'both' ? 'cyan-outline' : ''}`}
-              d={leftPath}
-              opacity={leftOpacity}
-              onPointerDown={event => selectEye(-1, event)}
-            />
-            <motion.path
-              className={`avatar-eye ${selectedSide === 1 || highlight === 'right' || highlight === 'both' ? 'cyan-outline' : ''}`}
-              d={rightPath}
-              opacity={rightOpacity}
-              onPointerDown={event => selectEye(1, event)}
-            />
+            <g className="avatar-eyes-anchor" ref={avatarAnchorRef}>
+              <motion.path
+                className={`avatar-eye ${selectedSide === -1 || highlight === 'left' || highlight === 'both' ? 'cyan-outline' : ''}`}
+                d={leftPath}
+                opacity={leftOpacity}
+                onPointerDown={event => selectEye(-1, event)}
+              />
+              <motion.path
+                className={`avatar-eye ${selectedSide === 1 || highlight === 'right' || highlight === 'both' ? 'cyan-outline' : ''}`}
+                d={rightPath}
+                opacity={rightOpacity}
+                onPointerDown={event => selectEye(1, event)}
+              />
+            </g>
             <motion.path className="avatar-eye" d={nosePath} pointerEvents="none" />
             <motion.path
               className="avatar-eye"
@@ -948,17 +960,33 @@ export function AvatarCanvas({
           </g>
         )}
       </svg>
-      <RotationGizmo
-        expression={expression}
-        rendered={rotationGizmo}
-        onPreview={next => onPreview(next, 'head')}
-        onChange={onChange}
-        onActiveChange={active => onHighlightChange(active ? 'head' : null)}
-        onReset={() => onReset({ ...expression, headX: 0, headY: 0, headZ: 0 })}
-      />
-      <div className="axis-key">
-        <i className="x" />X <i className="y" />Y <i className="z" />Z
-      </div>
+      <AnimatePresence initial={false}>
+        {controlsVisible && (
+          <RotationGizmo
+            key="rotation-gizmo"
+            expression={expression}
+            rendered={rotationGizmo}
+            onPreview={next => onPreview(next, 'head')}
+            onChange={onChange}
+            onActiveChange={active => onHighlightChange(active ? 'head' : null)}
+            onReset={() => onReset({ ...expression, headX: 0, headY: 0, headZ: 0 })}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {controlsVisible && (
+          <motion.div
+            className="axis-key"
+            key="axis-key"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <i className="x" />X <i className="y" />Y <i className="z" />Z
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -46,12 +46,13 @@ const shouldRunFrameLoop = (
   environment: ReturnType<typeof runtimeEnvironment>
 ) => {
   if (playback.status === 'playing') return true
-  const motion = definition.expressions[playback.activeExpression]?.motion
+  const activeExpression = definition.expressions[playback.activeExpression]
+  const motion = activeExpression?.motion
   return (
     playback.status === 'stopped' &&
     !environment.reduceMotion &&
-    motion !== undefined &&
-    (motion.eyes !== 'none' || motion.body !== 'none')
+    (activeExpression?.blinking === true ||
+      (motion !== undefined && (motion.eyes !== 'none' || motion.body !== 'none')))
   )
 }
 

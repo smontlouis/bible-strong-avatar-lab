@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -425,6 +426,25 @@ export function ExpressionWorkspace({
               )}
             </Card>
             <Card className="dialog-group">
+              <h3>{t('Position dans l’espace')}</h3>
+              <p className="field-help">{t('Déplace la pose sur les axes X, Y et Z.')}</p>
+              {(['positionX', 'positionY', 'positionZ'] as const).map(field => (
+                <NumericField
+                  key={field}
+                  label={`Position ${field.at(-1)?.toUpperCase()}`}
+                  value={resolvedDraft[field]}
+                  min={field === 'positionZ' ? -300 : -200}
+                  max={field === 'positionZ' ? 300 : 200}
+                  unit="u"
+                  onChange={value =>
+                    update({
+                      [field]: value - avatarEyes[field] + defaultAvatarEyes[field],
+                    })
+                  }
+                />
+              ))}
+            </Card>
+            <Card className="dialog-group">
               <h3>{t('Mouvement perpétuel')}</h3>
               <AmbientMotionField
                 label="Corps"
@@ -531,6 +551,18 @@ export function ExpressionWorkspace({
               />
               <p className="field-help">
                 {t('Anime le regard par petites saccades naturelles ou par tremblement.')}
+              </p>
+            </Card>
+            <Card className="dialog-group">
+              <div className="switch">
+                <span>{t('Clignements automatiques')}</span>
+                <Switch
+                  checked={editing.draft.blinking ?? false}
+                  onCheckedChange={blinking => update({ blinking })}
+                />
+              </div>
+              <p className="field-help">
+                {t('Cligne naturellement à des intervalles aléatoires avec cette expression.')}
               </p>
             </Card>
             {(['width', 'height', 'size'] as const).map(dimension => (

@@ -1,4 +1,4 @@
-import { defaultExpression } from '@/features/avatar/presets'
+import { avatarIdentityExpression, defaultExpression } from '@/features/avatar/presets'
 import { createInitialSequences, NEUTRAL_EXPRESSION_ID } from '@/features/animation/sequences'
 import { interpolatePose, poseFromExpression } from '@/features/avatar/geometry'
 import {
@@ -9,6 +9,7 @@ import {
   defaultAvatarEyes,
   parseAvatarEyeDefaults,
   parseAvatarLibrary,
+  parseExpressions,
   parseAvatarRenderStyle,
   overrideExpressionMouthNumeric,
   prepareMouthTransition,
@@ -17,6 +18,22 @@ import {
 import { initialExpressions } from '@/features/avatar/presets'
 
 describe('avatar eye defaults', () => {
+  it('persists automatic blinking and keeps it disabled by default', () => {
+    expect(parseExpressions([{ ...defaultExpression, blinking: true }])[0].blinking).toBe(true)
+    expect(parseExpressions([{ ...defaultExpression, blinking: false }])[0].blinking).toBe(false)
+    expect(parseExpressions([{ ...defaultExpression, blinking: 'invalid' }])[0].blinking).toBe(
+      undefined
+    )
+  })
+
+  it('keeps the avatar identity preview independent from expression 00', () => {
+    const editedFirstExpression = { ...initialExpressions[0], headX: 65, headY: -40, headZ: 20 }
+
+    expect(editedFirstExpression).not.toMatchObject({ headX: 0, headY: 0, headZ: 0 })
+    expect(avatarIdentityExpression).toMatchObject({ headX: 0, headY: 0, headZ: 0 })
+    expect(avatarIdentityExpression.id).not.toBe(editedFirstExpression.id)
+  })
+
   it('clears the public semantic key when creating custom content from a preset', () => {
     const source = { ...defaultExpression, semanticKey: 'attentive-left' }
 
@@ -40,6 +57,22 @@ describe('avatar eye defaults', () => {
     expect(result.widthLeft).toBe(38)
     expect(result.positionYLeft).toBe(0)
     expect(expression.widthLeft).toBe(28)
+  })
+
+  it('composes pose translation around the avatar neutral position', () => {
+    const neutral = { ...defaultAvatarEyes, positionX: 18, positionY: -12, positionZ: 40 }
+    const expression = {
+      ...defaultExpression,
+      positionX: 7,
+      positionY: 2,
+      positionZ: -10,
+    }
+
+    expect(applyAvatarEyeDefaults(expression, neutral)).toMatchObject({
+      positionX: 25,
+      positionY: -10,
+      positionZ: 30,
+    })
   })
 
   it('sanitizes partial persisted values', () => {

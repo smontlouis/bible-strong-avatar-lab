@@ -58,6 +58,7 @@ const behaviorFixture = (): AvatarBehaviorLibrary => {
     eyeColor: '#654321',
     eyeMotion: 'microSaccades' as const,
     bodyMotion: 'slowDrift' as const,
+    blinking: true,
   }
   const sequence = createInitialSequences()[0]
   return {
@@ -574,6 +575,7 @@ describe('Studio to avatar definition conversion', () => {
       eyes: 'microSaccades',
       body: 'slowDrift',
     })
+    expect(result.value.expressions['happy-smile'].blinking).toBe(true)
     expect(result.value.expressionOrder).toEqual(['neutral', 'happy-smile'])
     expect(result.value.animations.happy).toMatchObject({
       playbackMode: 'once',

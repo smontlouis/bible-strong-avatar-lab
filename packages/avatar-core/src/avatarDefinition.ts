@@ -72,6 +72,7 @@ export type AvatarStyleDefinition = {
 
 export type AvatarExpressionDefinition = {
   head: { x: number; y: number; z: number }
+  position?: { x: number; y: number; z: number }
   eyes: {
     left: { width: number; height: number; x: number; y: number; angle: number }
     right: { width: number; height: number; x: number; y: number; angle: number }
@@ -100,6 +101,7 @@ export type AvatarExpressionDefinition = {
     angle: number
   }
   perspective: number
+  blinking?: boolean
   motion: {
     eyes: 'none' | 'microSaccades' | 'shake'
     body: 'none' | 'slowDrift' | 'shake'

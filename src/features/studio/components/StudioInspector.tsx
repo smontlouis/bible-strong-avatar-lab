@@ -21,7 +21,15 @@ import {
   Upload,
 } from 'lucide-react'
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'motion/react'
-import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  type CSSProperties,
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 
 import {
   Accordion,
@@ -73,7 +81,7 @@ import {
   ExpressionPreview,
   ExpressionWorkspace,
 } from '@/features/avatar/components/ExpressionWorkspace'
-import { defaultExpression } from '@/features/avatar/presets'
+import { avatarIdentityExpression, defaultExpression } from '@/features/avatar/presets'
 import { randomSnapshotPalette } from '@/features/export/snapshotPalette'
 import { type SnapshotBackground } from '@/features/export/snapshotExporter'
 import { AvatarPage } from '@/features/studio/components/AvatarDrawer'
@@ -86,6 +94,12 @@ import {
 import { RuntimePreviewDialog } from '@/features/studio/components/RuntimePreviewDialog'
 import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
 import type { StudioController } from '@/features/studio/useStudioController'
+
+const TalkModePanel = lazy(() =>
+  import('@/features/talk/components/TalkModePanel').then(module => ({
+    default: module.TalkModePanel,
+  }))
+)
 
 const reactQuickStartInstall = 'npm install @bible-strong/avatar-react react react-dom'
 const webQuickStartInstall = 'npm install @bible-strong/avatar-web'
@@ -113,6 +127,7 @@ const avatar = createAvatar('#avatar', {
 function PoseControls({ controller }: { controller: StudioController }) {
   const {
     activeAvatar,
+    activeAvatarEyes,
     expression,
     linked,
     setLinked,
@@ -155,6 +170,30 @@ function PoseControls({ controller }: { controller: StudioController }) {
               <RotateCcw />
             </Button>
           )}
+        </InspectorCard>
+        <InspectorCard>
+          <PanelTitle
+            level={3}
+            title="Position dans l’espace"
+            subtitle="Déplace la pose sur les axes X, Y et Z."
+          />
+          {(['positionX', 'positionY', 'positionZ'] as const).map(field => (
+            <NumericField
+              key={field}
+              label={`Position ${field.at(-1)?.toUpperCase()}`}
+              value={expression[field] + activeAvatarEyes[field] - defaultAvatarEyes[field]}
+              min={field === 'positionZ' ? -300 : -200}
+              max={field === 'positionZ' ? 300 : 200}
+              unit="u"
+              onActiveChange={active => updateHighlight(active ? 'head' : null)}
+              onChange={value =>
+                updateImmediate({
+                  ...expression,
+                  [field]: value - activeAvatarEyes[field] + defaultAvatarEyes[field],
+                })
+              }
+            />
+          ))}
         </InspectorCard>
         <InspectorCard>
           <PanelTitle
@@ -648,7 +687,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
   return (
     <Drawer>
       <main
-        className={`inspector ${editing ? 'expression-workspace-active' : sequenceEditing ? 'sequence-workspace-active' : bodyEditing ? 'body-workspace' : 'studio-workspace'}${activeSequence && !editorPageOpen && mode !== 'photo' ? ' state-player-active' : ''}${mode === 'photo' ? ' photo-inspector-active' : ''}`}
+        className={`inspector ${editing ? 'expression-workspace-active' : sequenceEditing ? 'sequence-workspace-active' : bodyEditing ? 'body-workspace' : 'studio-workspace'}${activeSequence && !editorPageOpen && mode !== 'photo' && mode !== 'talk' ? ' state-player-active' : ''}${mode === 'photo' ? ' photo-inspector-active' : ''}`}
       >
         <StudioIdentity
           className="inspector-identity"
@@ -674,7 +713,6 @@ export function StudioInspector({ controller }: { controller: StudioController }
               renderStyle={activeAvatar.renderStyle}
               selectedStepId={selectedSequenceStepId}
               backButtonRef={workspaceBackButtonRef}
-              reduceMotion={Boolean(reduceMotion)}
               onSelectedStepChange={setSelectedSequenceStepId}
               onChange={draft =>
                 setSequenceEditing(current => (current ? { ...current, draft } : current))
@@ -761,9 +799,9 @@ export function StudioInspector({ controller }: { controller: StudioController }
           <motion.div
             className="mode-page-transition"
             key={mode}
-            initial={reduceMotion ? false : { opacity: 0, x: 18 }}
+            initial={{ opacity: 0, x: 18 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={reduceMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: -18 }}
+            exit={{ opacity: 0, x: -18 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
             {!editorPageOpen && (
@@ -782,7 +820,9 @@ export function StudioInspector({ controller }: { controller: StudioController }
                               ? 'Animations'
                               : mode === 'photo'
                                 ? 'Mode photo'
-                                : 'Exporter'
+                                : mode === 'talk'
+                                  ? 'Talk Mode'
+                                  : 'Exporter'
                     )}
                   </h1>
                 </div>
@@ -803,6 +843,12 @@ export function StudioInspector({ controller }: { controller: StudioController }
                     {t('Quitter')}
                   </Button>
                 )}
+                {mode === 'talk' && (
+                  <Button variant="outline" type="button" onClick={() => setMode('avatars')}>
+                    <ArrowLeft />
+                    {t('Quitter')}
+                  </Button>
+                )}
               </header>
             )}
 
@@ -814,10 +860,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                       title="Corps"
                       subtitle="Construction, forme et couleur de la tête de l’avatar."
                     >
-                      <BodyConstructionAccordion
-                        controller={controller}
-                        reduceMotion={Boolean(reduceMotion)}
-                      />
+                      <BodyConstructionAccordion controller={controller} />
                       <InspectorCard className="color-panel">
                         <PanelTitle
                           level={3}
@@ -906,6 +949,30 @@ export function StudioInspector({ controller }: { controller: StudioController }
                               </div>
                             )
                           })()}
+                      </InspectorCard>
+                    </ControlSection>
+                    <ControlSection
+                      title="Position dans l’espace"
+                      subtitle="Position neutre héritée par toutes les poses et expressions."
+                    >
+                      <InspectorCard>
+                        <PanelTitle
+                          level={3}
+                          title="Position de l’avatar"
+                          subtitle="X et Y déplacent l’avatar dans le plan ; Z l’avance ou le recule."
+                        />
+                        {(['positionX', 'positionY', 'positionZ'] as const).map(field => (
+                          <NumericField
+                            key={field}
+                            label={`Position ${field.at(-1)?.toUpperCase()}`}
+                            value={activeAvatarEyes[field]}
+                            min={field === 'positionZ' ? -300 : -200}
+                            max={field === 'positionZ' ? 300 : 200}
+                            unit="u"
+                            onActiveChange={active => updateHighlight(active ? 'head' : null)}
+                            onChange={value => updateAvatarEyes({ [field]: value })}
+                          />
+                        ))}
                       </InspectorCard>
                     </ControlSection>
                     <ControlSection
@@ -1359,11 +1426,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                           opacity: draggingExpressionId === preset.id ? 0.28 : 1,
                           scale: draggingExpressionId === preset.id ? 0.96 : 1,
                         }}
-                        transition={
-                          reduceMotion
-                            ? { duration: 0 }
-                            : { type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }
-                        }
+                        transition={{ type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }}
                       >
                         <ExpressionCard
                           expression={preset}
@@ -1549,11 +1612,12 @@ export function StudioInspector({ controller }: { controller: StudioController }
                                   opacity: draggingStateId === sequence.id ? 0.28 : 1,
                                   scale: draggingStateId === sequence.id ? 0.96 : 1,
                                 }}
-                                transition={
-                                  reduceMotion
-                                    ? { duration: 0 }
-                                    : { type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }
-                                }
+                                transition={{
+                                  type: 'spring',
+                                  stiffness: 520,
+                                  damping: 42,
+                                  mass: 0.7,
+                                }}
                               >
                                 <ContextMenu>
                                   <ContextMenuTrigger render={card} />
@@ -1861,6 +1925,12 @@ export function StudioInspector({ controller }: { controller: StudioController }
               </div>
             )}
 
+            {!sequenceEditing && !editing && !bodyEditing && mode === 'talk' && (
+              <Suspense fallback={<div className="talk-panel-loading">{t('Chargement…')}</div>}>
+                <TalkModePanel key={activeAvatar.id} controller={controller} />
+              </Suspense>
+            )}
+
             {!sequenceEditing && !editing && !bodyEditing && mode === 'export' && (
               <Accordion className="export-panel" defaultValue={['avatar']}>
                 <ExportSection
@@ -1871,7 +1941,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                   <InspectorCard>
                     <div className="export-avatar-summary">
                       <ExpressionPreview
-                        expression={expressions[0] ?? defaultExpression}
+                        expression={avatarIdentityExpression}
                         surface={activeAvatar.body.primary}
                         bodyNodes={activeAvatar.body.nodes}
                         colors={activeAvatar.colors}
@@ -2232,7 +2302,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
             )}
           </motion.div>
         </AnimatePresence>
-        {activeSequence && !editorPageOpen && mode !== 'photo' && (
+        {activeSequence && !editorPageOpen && mode !== 'photo' && mode !== 'talk' && (
           <motion.footer
             className={`state-playback-footer${statePlayerExpanded ? ' is-expanded' : ''}`}
             style={{ y: playbackFooterY }}
@@ -2382,7 +2452,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
             </motion.div>
           </motion.footer>
         )}
-        {!editorPageOpen && mode !== 'photo' && (
+        {!editorPageOpen && mode !== 'photo' && mode !== 'talk' && (
           <nav className="mobile-mode-tabs" aria-label={t('Mode d’édition')}>
             <Button
               className="mobile-mode-tab mobile-avatar-tab"
@@ -2393,7 +2463,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
               onClick={() => setMode('avatars')}
             >
               <ExpressionPreview
-                expression={expressions[0] ?? defaultExpression}
+                expression={avatarIdentityExpression}
                 surface={activeAvatar.body.primary}
                 bodyNodes={activeAvatar.body.nodes}
                 colors={activeAvatar.colors}

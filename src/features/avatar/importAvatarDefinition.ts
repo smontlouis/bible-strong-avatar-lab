@@ -93,6 +93,21 @@ const toExpression = (
     headX: expression.head.x,
     headY: expression.head.y,
     headZ: expression.head.z,
+    positionX: relativeEyeValue(
+      expression.position?.x ?? 0,
+      neutral.position?.x ?? 0,
+      defaultAvatarEyes.positionX
+    ),
+    positionY: relativeEyeValue(
+      expression.position?.y ?? 0,
+      neutral.position?.y ?? 0,
+      defaultAvatarEyes.positionY
+    ),
+    positionZ: relativeEyeValue(
+      expression.position?.z ?? 0,
+      neutral.position?.z ?? 0,
+      defaultAvatarEyes.positionZ
+    ),
     widthLeft: relativeEyeValue(
       expression.eyes.left.width,
       neutral.eyes.left.width,
@@ -173,6 +188,7 @@ const toExpression = (
     noseY: defaultExpression.noseY,
     noseAngle: defaultExpression.noseAngle,
     perspective: expression.perspective,
+    blinking: expression.blinking ?? false,
     eyeMotion: expression.motion.eyes,
     bodyMotion: expression.motion.body,
     ...(expression.colors?.body ? { bodyColor: expression.colors.body } : {}),
@@ -302,6 +318,9 @@ export const studioAvatarFromDefinition = (value: unknown): ImportedAvatarDefini
     },
     colors: definition.colors,
     eyes: {
+      positionX: neutral.position?.x ?? 0,
+      positionY: neutral.position?.y ?? 0,
+      positionZ: neutral.position?.z ?? 0,
       widthLeft: neutral.eyes.left.width,
       widthRight: neutral.eyes.right.width,
       heightLeft: neutral.eyes.left.height,

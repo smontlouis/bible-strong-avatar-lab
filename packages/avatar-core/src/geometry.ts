@@ -21,6 +21,9 @@ export type Expression = {
   headX: number
   headY: number
   headZ: number
+  positionX: number
+  positionY: number
+  positionZ: number
   widthLeft: number
   widthRight: number
   heightLeft: number
@@ -51,6 +54,7 @@ export type Expression = {
   noseY: number
   noseAngle: number
   perspective: number
+  blinking?: boolean
   eyeMotion: EyeMotion
   bodyMotion: BodyMotion
   bodyColor?: string
@@ -70,6 +74,7 @@ export type ExpressionNumericField = Exclude<
   | 'mouthShape'
   | 'noseEnabled'
   | 'noseShape'
+  | 'blinking'
 >
 
 export type AvatarPose = {
@@ -128,6 +133,9 @@ export const expressionFields: ExpressionNumericField[] = [
   'headX',
   'headY',
   'headZ',
+  'positionX',
+  'positionY',
+  'positionZ',
   'widthLeft',
   'widthRight',
   'heightLeft',
@@ -326,6 +334,18 @@ const project = (point: Point3, perspective: number): Point3 => {
   return [point[0] * scale, point[1] * scale, point[2]]
 }
 
+const transformPosePoint = (pose: AvatarPose, point: Point3): Point3 => {
+  const rotated = rotateWithQuaternion(pose.orientation, point)
+  return [
+    rotated[0] + pose.expression.positionX,
+    rotated[1] + pose.expression.positionY,
+    rotated[2] + pose.expression.positionZ,
+  ]
+}
+
+const projectPosePoint = (pose: AvatarPose, point: Point3) =>
+  project(transformPosePoint(pose, point), pose.expression.perspective)
+
 export const axisVector = (axis: 'x' | 'y' | 'z'): Point3 =>
   axis === 'x' ? [1, 0, 0] : axis === 'y' ? [0, 1, 0] : [0, 0, 1]
 
@@ -387,8 +407,7 @@ export const renderBodyNodeEditor = (
   axisLength = 34,
   ringRadius = 26
 ): BodyNodeEditorGeometry => {
-  const projectInHeadSpace = (point: Point3) =>
-    project(rotateWithQuaternion(pose.orientation, point), pose.expression.perspective)
+  const projectInHeadSpace = (point: Point3) => projectPosePoint(pose, point)
   const center = projectInHeadSpace(node.position)
   const localOrientation = quaternionFromEuler(
     radians(node.rotation[0]),
@@ -468,7 +487,8 @@ export const translateBodyNodeInCameraPlane = (
   screenDeltaY: number
 ): BodyNode => {
   const cameraPosition = rotateWithQuaternion(pose.orientation, node.position)
-  const denominator = FOCAL_LENGTH - cameraPosition[2] * pose.expression.perspective
+  const denominator =
+    FOCAL_LENGTH - (cameraPosition[2] + pose.expression.positionZ) * pose.expression.perspective
   const perspectiveScale =
     Math.abs(denominator) < 0.0001 ? FOCAL_LENGTH / 0.0001 : FOCAL_LENGTH / denominator
   const [w, x, y, z] = pose.orientation
@@ -609,7 +629,7 @@ const projectLocalSurfacePoint = (
   pose: AvatarPose,
   sample: LocalSurfacePoint
 ): ProjectedSurfacePoint => ({
-  point: project(rotateWithQuaternion(pose.orientation, sample.point), pose.expression.perspective),
+  point: projectPosePoint(pose, sample.point),
   normal: rotateWithQuaternion(pose.orientation, sample.normal),
 })
 
@@ -1020,8 +1040,7 @@ const smoothOpenPath = (points: Point3[]) => {
     .join('')
 }
 
-const projectLocalPoint = (pose: AvatarPose, point: Point3) =>
-  project(rotateWithQuaternion(pose.orientation, point), pose.expression.perspective)
+const projectLocalPoint = (pose: AvatarPose, point: Point3) => projectPosePoint(pose, point)
 
 const ringPoints = (width: number, depth: number, y: number) =>
   Array.from({ length: PRIMITIVE_RING_SAMPLES + 1 }, (_, index) => {
@@ -1195,7 +1214,7 @@ const projectedEllipsoid = (
     rotateWithQuaternion(pose.orientation, [0, 1, 0]),
     rotateWithQuaternion(pose.orientation, [0, 0, 1]),
   ]
-  const center = rotateWithQuaternion(pose.orientation, localCenter)
+  const center = transformPosePoint(pose, localCenter)
 
   if (Math.abs(pose.expression.perspective) < 0.0001) {
     const covarianceXX = rotatedAxes.reduce(
@@ -1291,8 +1310,8 @@ const projectedEllipsoidPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   if (ellipse && isSphere) {
     const radius = (ellipse.majorRadius + ellipse.minorRadius) / 2
     return ellipsePath({
-      centerX: 0,
-      centerY: 0,
+      centerX: Math.abs(ellipse.centerX) < 0.0001 ? 0 : ellipse.centerX,
+      centerY: Math.abs(ellipse.centerY) < 0.0001 ? 0 : ellipse.centerY,
       majorRadius: radius,
       minorRadius: radius,
       rotation: 0,
@@ -1404,9 +1423,7 @@ const headPath = (pose: AvatarPose, surface: SurfaceConfig) => {
     }).flat()
     cacheSurfaceValue(headSamplesCache, key, localSamples)
   }
-  const projectedSamples = localSamples.map(sample =>
-    project(rotateWithQuaternion(pose.orientation, sample), pose.expression.perspective)
-  )
+  const projectedSamples = localSamples.map(sample => projectPosePoint(pose, sample))
   const hull = convexHull(projectedSamples)
   if (surface.type === 'trapezoid' && surface.roundness <= 0) return path(hull)
   return surface.type === 'trapezoid' ? smoothClosedPath(densifyClosedPoints(hull)) : path(hull)
@@ -1438,7 +1455,7 @@ const accessoryPath = (pose: AvatarPose, node: BodyNode) => {
       locallyRotated[1] + node.position[1],
       locallyRotated[2] + node.position[2],
     ]
-    return project(rotateWithQuaternion(pose.orientation, positioned), pose.expression.perspective)
+    return projectPosePoint(pose, positioned)
   })
   const hull = convexHull(projected)
   if (

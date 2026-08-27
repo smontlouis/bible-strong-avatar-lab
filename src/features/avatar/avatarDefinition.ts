@@ -37,6 +37,15 @@ const mapSurface = <TType extends SurfaceType>(
 
 const mapExpression = (expression: Expression): AvatarExpressionDefinition => ({
   head: { x: expression.headX, y: expression.headY, z: expression.headZ },
+  ...(expression.positionX !== 0 || expression.positionY !== 0 || expression.positionZ !== 0
+    ? {
+        position: {
+          x: expression.positionX,
+          y: expression.positionY,
+          z: expression.positionZ,
+        },
+      }
+    : {}),
   eyes: {
     left: {
       width: expression.widthLeft,
@@ -99,6 +108,7 @@ const mapExpression = (expression: Expression): AvatarExpressionDefinition => ({
       }
     : {}),
   perspective: expression.perspective,
+  ...(expression.blinking ? { blinking: true } : {}),
   motion: { eyes: expression.eyeMotion, body: expression.bodyMotion },
   ...(expression.bodyColor || expression.eyeColor
     ? {

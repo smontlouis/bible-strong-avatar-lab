@@ -49,6 +49,22 @@ describe('avatar studio translations', () => {
     )
   })
 
+  it('keeps every Talk Mode control synchronized in all three languages', () => {
+    expect(translateStudioText('Talk Mode', 'fr')).toBe('Talk Mode')
+    expect(translateStudioText('Ouvrir le Talk Mode', 'en')).toBe('Open Talk Mode')
+    expect(translateStudioText('Talk Mode', 'zh-CN')).toBe('说话模式')
+    expect(translateStudioText('Faire parler', 'en')).toBe('Speak')
+    expect(translateStudioText('Faire parler', 'zh-CN')).toBe('开始说话')
+    expect(translateStudioText('Hauteur de voix', 'en')).toBe('Pitch')
+    expect(translateStudioText('Hauteur de voix', 'zh-CN')).toBe('音高')
+    expect(translateStudioText('Pause de ponctuation', 'en')).toBe('Punctuation delay')
+    expect(translateStudioText('Pause de ponctuation', 'zh-CN')).toBe('标点停顿')
+    expect(translateStudioText('Ajouter une action', 'en')).toBe('Add an action')
+    expect(translateStudioText('Ajouter une action', 'zh-CN')).toBe('添加动作')
+    expect(translateStudioText('Retirer le tag', 'en')).toBe('Remove tag')
+    expect(translateStudioText('Retirer le tag', 'zh-CN')).toBe('移除标签')
+  })
+
   it('keeps runtime-export authoring copy synchronized in all three languages', () => {
     expect(translateStudioText('Clé sémantique', 'fr')).toBe('Clé sémantique')
     expect(translateStudioText('Clé sémantique', 'en')).toBe('Semantic key')

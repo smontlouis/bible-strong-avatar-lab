@@ -29,6 +29,29 @@ describe('facial geometry', () => {
     expect(rounded.leftPath).not.toBe(ellipse.leftPath)
   })
 
+  it('projects pose translation in all three dimensions and interpolates it', () => {
+    const neutral = poseFromExpression({ ...defaultExpression, perspective: 0 })
+    const translated = poseFromExpression({
+      ...defaultExpression,
+      perspective: 0,
+      positionX: 40,
+      positionY: -25,
+      positionZ: 120,
+    })
+    const neutralGeometry = renderAvatar(neutral, surfacePresets.sphere)
+    const translatedGeometry = renderAvatar(translated, surfacePresets.sphere)
+    const midpoint = interpolatePose(neutral, translated, 0.5)
+
+    expect(translatedGeometry.headPath).not.toBe(neutralGeometry.headPath)
+    expect(neutralGeometry.headPath).toContain('M120.00 0.00A')
+    expect(translatedGeometry.headPath).toContain('M160.00 -25.00A')
+    expect(midpoint.expression).toMatchObject({
+      positionX: 20,
+      positionY: -12.5,
+      positionZ: 60,
+    })
+  })
+
   it('continuously rounds the trapezoid surface', () => {
     const angular = { ...surfacePresets.trapezoid, roundness: 0 }
     const rounded = { ...surfacePresets.trapezoid, roundness: 5 }
