@@ -124,7 +124,8 @@
             "properties": {
               "surface": { "$ref": "#/$defs/nodeSurface" },
               "position": { "$ref": "#/$defs/position" },
-              "rotation": { "$ref": "#/$defs/rotation" }
+              "rotation": { "$ref": "#/$defs/rotation" },
+              "color": { "$ref": "#/$defs/hexColor" }
             }
           }
         }

@@ -2902,6 +2902,11 @@ p {
   font-size: 9px;
   line-height: 1.4;
 }
+.body-node-color-panel {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eceef2;
+}
 .body-transform-grid {
   display: grid;
   margin-top: 12px;

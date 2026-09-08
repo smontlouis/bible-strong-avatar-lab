@@ -142,4 +142,31 @@ describe('studioAvatarFromDefinition', () => {
       'JSON input exceeds'
     )
   })
+
+  it('preserves an independent node color through import and re-export', () => {
+    const withColor = structuredClone(strobi) as AvatarDefinition
+    if (withColor.body.nodes.length === 0) {
+      withColor.body.nodes = [
+        {
+          surface: { type: 'sphere', width: 40, height: 40, depth: 40, roundness: 1 },
+          position: [80, -70, -20],
+          rotation: [0, 0, 0],
+          color: '#ff0000',
+        },
+      ]
+    } else {
+      withColor.body.nodes[0].color = '#ff0000'
+    }
+
+    const imported = studioAvatarFromDefinition(withColor)
+    expect(imported.avatar.body.nodes.some(node => node.color === '#ff0000')).toBe(true)
+
+    const result = createAvatarDefinition({
+      avatar: imported.avatar,
+      behavior: { expressions: imported.expressions, sequences: imported.sequences },
+    })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.body.nodes.find(node => node.color === '#ff0000')).toBeDefined()
+  })
 })

@@ -236,6 +236,7 @@ export const studioAvatarFromDefinition = (value: unknown): ImportedAvatarDefini
         surface: node.surface,
         position: node.position,
         rotation: node.rotation,
+        ...(node.color ? { color: node.color } : {}),
       })),
     },
     colors: definition.colors,

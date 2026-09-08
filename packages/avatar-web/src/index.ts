@@ -157,11 +157,19 @@ export function createAvatar(
     rightPath.setAttribute('opacity', scene.geometry.rightVisible ? '1' : '0')
     backPaths.forEach((element, index) => {
       element.setAttribute('d', scene.geometry.backPaths[index] ?? '')
-      element.setAttribute('fill', scene.colors.body)
+      const nodeId = scene.geometry.backNodeIds[index]
+      element.setAttribute(
+        'fill',
+        nodeId ? (scene.nodeColors[nodeId] ?? scene.colors.body) : scene.colors.body
+      )
     })
     frontPaths.forEach((element, index) => {
       element.setAttribute('d', scene.geometry.frontPaths[index] ?? '')
-      element.setAttribute('fill', scene.colors.body)
+      const nodeId = scene.geometry.frontNodeIds[index]
+      element.setAttribute(
+        'fill',
+        nodeId ? (scene.nodeColors[nodeId] ?? scene.colors.body) : scene.colors.body
+      )
     })
   }
 

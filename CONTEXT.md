@@ -54,7 +54,7 @@ manipulation pauses it.
 - Duplicating an Avatar duplicates its Avatar behavior library when one exists.
 - Transferring an Animation must also transfer every Expression it references.
 - The primary body shape carries the facial coordinate system and eyes.
-- Secondary primitives have independent local dimensions, position and rotation.
+- Secondary primitives have independent local dimensions, position, rotation and color.
 - Expressions remain compatible across body surfaces because they operate in the common facial frame.
 - `features/avatar/geometry.ts` and the exported procedural engine stay independent from React.
 - `features/studio/defaultStudioDocument.json` is the current schema baseline; pre-release legacy migrations are not required.

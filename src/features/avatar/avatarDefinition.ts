@@ -180,6 +180,7 @@ export const createAvatarDefinition = ({
         surface: mapSurface(node.surface as SurfaceDefinition<BodyNodeSurfaceType>),
         position: [...node.position],
         rotation: [...node.rotation],
+        ...(node.color ? { color: node.color as HexColor } : {}),
       })),
     },
     colors: {

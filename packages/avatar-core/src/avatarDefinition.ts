@@ -51,6 +51,8 @@ export type AvatarBodyNodeDefinition = {
   surface: BodyNodeSurfaceDefinition
   position: [number, number, number]
   rotation: [number, number, number]
+  /** Optional independent color; when omitted the node inherits the body color. */
+  color?: HexColor
 }
 
 export type AvatarBodyDefinition = {

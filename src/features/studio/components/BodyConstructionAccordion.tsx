@@ -1,4 +1,4 @@
-import { ChevronDown, Plus } from 'lucide-react'
+import { ChevronDown, Plus, RotateCcw } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 
@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 import { InspectorCard, PanelTitle } from '@/app/components/common'
-import { NumericField } from '@/app/components/controls'
+import { ColorField, NumericField } from '@/app/components/controls'
 import { getPreviewGeometry, scaleSurface } from '@/app/studio-utils'
 import { bodyPrimitiveTypes, MAX_BODY_NODES, type BodyNode } from '@/features/avatar/body'
 import { SurfaceThumbnail } from '@/features/avatar/components/ExpressionWorkspace'
@@ -72,6 +72,7 @@ export function BodyConstructionAccordion({
 }) {
   const [addOpen, setAddOpen] = useState(false)
   const {
+    activeAvatar,
     addBodyNode,
     bodyNodes,
     deleteSelectedBodyNode,
@@ -380,6 +381,37 @@ export function BodyConstructionAccordion({
                           }
                         />
                       </>
+                    )}
+                  </div>
+                  <div className="color-panel body-node-color-panel">
+                    <PanelTitle
+                      level={3}
+                      title="Couleur de la forme"
+                      subtitle="Indépendante de la couleur du corps."
+                    />
+                    <ColorField
+                      label="Forme"
+                      value={selectedBodyNode.color ?? activeAvatar.colors.body}
+                      onChange={color =>
+                        updateSelectedBodyNode(currentNode => ({ ...currentNode, color }))
+                      }
+                    />
+                    {selectedBodyNode.color && (
+                      <Button
+                        className="inherit-colors"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={t('Reprendre la couleur du corps')}
+                        onClick={() =>
+                          updateSelectedBodyNode(currentNode => {
+                            const next = { ...currentNode }
+                            delete next.color
+                            return next
+                          })
+                        }
+                      >
+                        <RotateCcw />
+                      </Button>
                     )}
                   </div>
                   <div className="body-transform-grid">

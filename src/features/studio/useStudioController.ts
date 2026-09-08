@@ -119,7 +119,9 @@ import {
 import {
   createRenderedColors,
   createRenderedScene,
+  nodeColorMap,
   paintRenderedColors,
+  paintRenderedNodeColors,
   paintRenderedOffset,
   paintRenderedScene,
 } from '@/features/rendering/renderedScene'
@@ -362,7 +364,9 @@ export function useStudioController() {
   const blinkControls = useRef<ReturnType<typeof animate> | null>(null)
   const blinkAnimating = useRef(false)
   const blinkValue = useMotionValue(1)
-  const [renderedScene] = useState(() => createRenderedScene(initialGeometry))
+  const [renderedScene] = useState(() =>
+    createRenderedScene(initialGeometry, initialDisplayColors.body)
+  )
   const [renderedRotationGizmo] = useState(() => createRenderedRotationGizmo(initialExpression))
   const bodyColorAnimation = useRef<ReturnType<typeof animate> | null>(null)
   const eyeColorAnimation = useRef<ReturnType<typeof animate> | null>(null)
@@ -420,6 +424,11 @@ export function useStudioController() {
       eyeOffset,
     })
     paintRenderedScene(renderedScene, geometry)
+    paintRenderedNodeColors(
+      renderedScene,
+      renderedColors.body.get(),
+      nodeColorMap(bodyNodesRef.current)
+    )
     paintRenderedOffset(
       renderedScene,
       bodyAmbientEnabled
@@ -433,6 +442,23 @@ export function useStudioController() {
   }
 
   useMotionValueEvent(blinkValue, 'change', latest => paintPose(displayedPose.current, latest))
+  useMotionValueEvent(renderedColors.body, 'change', () =>
+    paintRenderedNodeColors(
+      renderedScene,
+      renderedColors.body.get(),
+      nodeColorMap(bodyNodesRef.current)
+    )
+  )
+
+  // Keep the secondary-primitive fills aligned with the initial geometry.
+  useEffect(() => {
+    paintRenderedNodeColors(
+      renderedScene,
+      renderedColors.body.get(),
+      nodeColorMap(bodyNodesRef.current)
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const paintAmbientFrame = useEffectEvent((time: number) => {
     if (transitionFrame.current === null && time - lastAmbientFrame.current >= AMBIENT_FRAME_MS) {
@@ -1326,6 +1352,11 @@ export function useStudioController() {
             bodyNodes: bodyNodesRef.current,
           }
         )
+      )
+      paintRenderedNodeColors(
+        renderedScene,
+        renderedColors.body.get(),
+        nodeColorMap(bodyNodesRef.current)
       )
       return
     }

@@ -3,6 +3,7 @@ import {
   bodyFromDefinition,
   createAvatarPlaybackState,
   expressionFromDefinition,
+  parseAvatarBody,
   parseAvatarDefinition,
   playAvatarAnimation,
   pauseAvatarPlayback,
@@ -385,5 +386,55 @@ describe('@bible-strong/avatar-core', () => {
       activeExpression: 'curious-left',
       status: 'stopped',
     })
+  })
+
+  it('exposes a node color independently from the body color on the scene', () => {
+    const withNode: AvatarDefinition = {
+      ...definition,
+      body: {
+        primary: definition.body.primary,
+        nodes: [
+          {
+            surface: { type: 'sphere', width: 80, height: 80, depth: 80, roundness: 1 },
+            position: [90, -70, -20],
+            rotation: [0, 0, 0],
+            color: '#ff0000',
+          },
+          {
+            surface: { type: 'cube', width: 60, height: 60, depth: 60, roundness: 0 },
+            position: [-90, -70, -20],
+            rotation: [0, 0, 0],
+          },
+        ],
+      },
+    }
+    const parsed = parseAvatarDefinition(JSON.stringify(withNode))
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    const scene = renderAvatarDefinition(parsed.value, 'neutral')
+    expect(scene.colors.body).toBe(definition.colors.body)
+    expect(scene.nodeColors['runtime-node-0']).toBe('#ff0000')
+    // A node without a color stays on the body color.
+    expect(scene.nodeColors['runtime-node-1']).toBeUndefined()
+  })
+
+  it('drops a node color that is not a valid hex color', () => {
+    const body = parseAvatarBody(
+      {
+        primary: definition.body.primary,
+        nodes: [
+          {
+            id: 'shape-1',
+            name: 'Shape',
+            surface: { type: 'sphere', width: 80, height: 80, depth: 80, roundness: 1 },
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            color: 'not-a-color',
+          },
+        ],
+      },
+      definition.body.primary
+    )
+    expect(body.nodes[0].color).toBeUndefined()
   })
 })

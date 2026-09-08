@@ -5,7 +5,9 @@ import {
   createRenderedColors,
   createRenderedScene,
   findBodyNodePath,
+  nodeColorMap,
   paintRenderedColors,
+  paintRenderedNodeColors,
   paintRenderedScene,
 } from '@/features/rendering/renderedScene'
 import { surfacePresets } from '@/features/avatar/surfaces'
@@ -46,6 +48,21 @@ describe('rendered avatar scene', () => {
     expect(colors.eyes).toBe(eyes)
     expect(colors.body.get()).toBe('#c53b47')
     expect(colors.eyes.get()).toBe('#ffffff')
+  })
+
+  it('paints an independent node color into the matching node fill motion value', () => {
+    const node: BodyNode = { ...createBodyNode('sphere', 0), color: '#ff0000' }
+    const geometry = renderAvatar(poseFromExpression(defaultExpression), surfacePresets.sphere, 1, {
+      bodyNodes: [node],
+    })
+    const scene = createRenderedScene(geometry)
+    paintRenderedScene(scene, geometry)
+    paintRenderedNodeColors(scene, '#5b7fe5', nodeColorMap([node]))
+
+    const slot = scene.frontNodeIds.current.includes(node.id)
+      ? scene.frontNodeFills[scene.frontNodeIds.current.indexOf(node.id)]
+      : scene.backNodeFills[scene.backNodeIds.current.indexOf(node.id)]
+    expect(slot.get()).toBe('#ff0000')
   })
 
   it('keeps Cloudee accessories behind the eyes at expression position 05', () => {

@@ -62,21 +62,21 @@ export const serializeAvatarSnapshot = (
     options.composition ?? defaultSnapshotComposition
   )
   const headPath = scene.headPath.get()
-  const backPaths = scene.backPaths.flatMap(item => {
+  const backPaths = scene.backPaths.flatMap((item, index) => {
     const value = item.get()
-    return value ? [value] : []
+    return value ? [path(value, scene.backNodeFills[index].get())] : []
   })
-  const frontPaths = scene.frontPaths.flatMap(item => {
+  const frontPaths = scene.frontPaths.flatMap((item, index) => {
     const value = item.get()
-    return value ? [value] : []
+    return value ? [path(value, scene.frontNodeFills[index].get())] : []
   })
   const offsetX = scene.offsetX.get()
   const offsetY = scene.offsetY.get()
   const body = [
-    ...backPaths.map(value => path(value, colors.body)),
+    ...backPaths,
     path(headPath, colors.body),
     `<g clip-path="url(#snapshot-head-clip)">${path(scene.leftPath.get(), colors.eyes, scene.leftOpacity.get())}${path(scene.rightPath.get(), colors.eyes, scene.rightOpacity.get())}</g>`,
-    ...frontPaths.map(value => path(value, colors.body)),
+    ...frontPaths,
   ].join('')
 
   return `<?xml version="1.0" encoding="UTF-8"?>

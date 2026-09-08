@@ -14,8 +14,10 @@ import type { StudioController } from '@/features/studio/useStudioController'
 export function StudioStage({ controller }: { controller: StudioController }) {
   const [photoHelpOpen, setPhotoHelpOpen] = useState(false)
   const {
+    activateAvatar,
     activeAvatar,
     activeAvatarEyes,
+    activeAvatarId,
     activeSequenceLabel,
     bodyEditing,
     canvasExpression,
@@ -41,6 +43,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     selectedBodyNode,
     selectedBodyNodeId,
     selectedEyeSide,
+    sequenceEditing,
     setEditing,
     setPhotoPanelSections,
     setPhotoTool,
@@ -59,6 +62,11 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     updateImmediate,
   } = controller
   const photoMode = mode === 'photo'
+  const enterBodyEdit = () => {
+    if (bodyEditing || editing !== null || sequenceEditing !== null) return
+    if (mode === 'photo' || mode === 'export') return
+    activateAvatar(activeAvatarId, true)
+  }
   const activatePhotoTool = (tool: typeof photoTool) => {
     setPhotoTool(tool)
     setPhotoPanelSections(current => (current.includes(tool) ? current : [...current, tool]))
@@ -105,6 +113,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
           : null
       }
       onManipulationStart={freezeLivePreviewForManipulation}
+      onEnterBodyEdit={enterBodyEdit}
     />
   )
   return (

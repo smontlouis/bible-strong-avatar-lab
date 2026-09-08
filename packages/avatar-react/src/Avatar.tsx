@@ -221,11 +221,19 @@ export function Avatar({
     rightPathRef.current?.setAttribute('opacity', frameScene.geometry.rightVisible ? '1' : '0')
     backPathRefs.current.forEach((element, index) => {
       element?.setAttribute('d', frameScene.geometry.backPaths[index] ?? '')
-      element?.setAttribute('fill', frameScene.colors.body)
+      const nodeId = frameScene.geometry.backNodeIds[index]
+      element?.setAttribute(
+        'fill',
+        nodeId ? (frameScene.nodeColors[nodeId] ?? frameScene.colors.body) : frameScene.colors.body
+      )
     })
     frontPathRefs.current.forEach((element, index) => {
       element?.setAttribute('d', frameScene.geometry.frontPaths[index] ?? '')
-      element?.setAttribute('fill', frameScene.colors.body)
+      const nodeId = frameScene.geometry.frontNodeIds[index]
+      element?.setAttribute(
+        'fill',
+        nodeId ? (frameScene.nodeColors[nodeId] ?? frameScene.colors.body) : frameScene.colors.body
+      )
     })
   }
 
@@ -493,7 +501,11 @@ export function Avatar({
               backPathRefs.current[index] = element
             }}
             d={scene.geometry.backPaths[index] ?? ''}
-            fill={scene.colors.body}
+            fill={
+              scene.geometry.backNodeIds[index]
+                ? (scene.nodeColors[scene.geometry.backNodeIds[index]!] ?? scene.colors.body)
+                : scene.colors.body
+            }
             key={`back-${index}`}
           />
         ))}
@@ -516,7 +528,11 @@ export function Avatar({
               frontPathRefs.current[index] = element
             }}
             d={scene.geometry.frontPaths[index] ?? ''}
-            fill={scene.colors.body}
+            fill={
+              scene.geometry.frontNodeIds[index]
+                ? (scene.nodeColors[scene.geometry.frontNodeIds[index]!] ?? scene.colors.body)
+                : scene.colors.body
+            }
             key={`front-${index}`}
           />
         ))}

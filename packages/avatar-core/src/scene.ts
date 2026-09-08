@@ -42,12 +42,15 @@ export const bodyFromDefinition = (body: AvatarBodyDefinition): AvatarBody => ({
     surface: { ...node.surface },
     position: [...node.position],
     rotation: [...node.rotation],
+    ...(node.color ? { color: node.color } : {}),
   })),
 })
 
 export type AvatarScene = {
   geometry: AvatarGeometry
   colors: { body: string; eyes: string }
+  /** Custom colors keyed by runtime node id; absent nodes inherit the body color. */
+  nodeColors: Record<string, string>
 }
 
 export const renderAvatarExpression = (
@@ -57,6 +60,10 @@ export const renderAvatarExpression = (
   blink = 1
 ): AvatarScene => {
   const body = bodyFromDefinition(definition.body)
+  const nodeColors: Record<string, string> = {}
+  body.nodes.forEach(node => {
+    if (node.color) nodeColors[node.id] = node.color
+  })
   return {
     geometry: renderAvatar(poseFromExpression(expression), body.primary, blink, {
       bodyNodes: body.nodes,
@@ -65,6 +72,7 @@ export const renderAvatarExpression = (
       body: colors.body ?? expression.bodyColor ?? definition.colors.body,
       eyes: colors.eyes ?? expression.eyeColor ?? definition.colors.eyes,
     },
+    nodeColors,
   }
 }
 

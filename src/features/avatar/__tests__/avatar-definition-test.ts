@@ -37,6 +37,7 @@ const avatarFixture = (): StudioAvatar => ({
         surface: { ...surfacePresets.cylinder, roundness: 0.45, morphRoundness: 0.2 },
         position: [1.25, -2.5, 3.75],
         rotation: [-10, 20, 30],
+        color: '#ff0000',
       },
     ],
   },
@@ -542,6 +543,7 @@ describe('Studio to avatar definition conversion', () => {
         surface: avatar.body.nodes[0].surface,
         position: avatar.body.nodes[0].position,
         rotation: avatar.body.nodes[0].rotation,
+        color: avatar.body.nodes[0].color,
       },
     ])
     expect(result.value.body.nodes[0]).not.toHaveProperty('id')

@@ -8,6 +8,8 @@ export type BodyNode = {
   surface: SurfaceConfig
   position: BodyVector
   rotation: BodyVector
+  /** Optional independent color; when omitted the node inherits the body color. */
+  color?: string
 }
 
 export type AvatarBody = {
@@ -31,6 +33,7 @@ const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 const vector = (value: unknown): value is BodyVector =>
   Array.isArray(value) && value.length === 3 && value.every(finite)
+const hexColor = /^#[0-9a-f]{6}$/i
 
 export const parseSurfaceConfig = (value: unknown, fallback: SurfaceConfig): SurfaceConfig => {
   if (!value || typeof value !== 'object') return { ...fallback }
@@ -78,10 +81,16 @@ export const parseAvatarBody = (value: unknown, fallbackPrimary: SurfaceConfig):
           return valid
         })
         .slice(0, MAX_BODY_NODES)
-        .map(node => ({
-          ...node,
-          surface: parseSurfaceConfig(node.surface, surfacePresets[node.surface.type]),
-        }))
+        .map(node => {
+          const parsed: BodyNode = {
+            ...node,
+            surface: parseSurfaceConfig(node.surface, surfacePresets[node.surface.type]),
+          }
+          const color = (node as BodyNode).color
+          if (typeof color === 'string' && hexColor.test(color)) parsed.color = color
+          else delete parsed.color
+          return parsed
+        })
     : []
   return { primary, nodes }
 }

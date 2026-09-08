@@ -1,6 +1,10 @@
 import { poseFromExpression, renderAvatar } from '@/features/avatar/geometry'
 import { defaultExpression } from '@/features/avatar/presets'
-import { createRenderedScene, paintRenderedOffset } from '@/features/rendering/renderedScene'
+import {
+  createRenderedScene,
+  paintRenderedNodeColors,
+  paintRenderedOffset,
+} from '@/features/rendering/renderedScene'
 import {
   serializeAvatarSnapshot,
   serializePixelSnapshot,
@@ -57,6 +61,30 @@ describe('avatar snapshot export', () => {
     expect(svg).toContain('fill="url(#snapshot-radial)"')
     expect(snapshotFileName('Étoile du soir')).toBe('etoile-du-soir-snapshot.svg')
     expect(snapshotFileName('Étoile du soir', 'png')).toBe('etoile-du-soir-snapshot.png')
+  })
+
+  it('applies an independent node color to the exported shape', () => {
+    const node = {
+      id: 'shape-1',
+      name: 'Shape',
+      surface: { ...surfacePresets.sphere, width: 80, height: 80, depth: 80 },
+      position: [90, -70, 40] as [number, number, number],
+      rotation: [0, 0, 0] as [number, number, number],
+    }
+    const geometry = renderAvatar(poseFromExpression(defaultExpression), surfacePresets.sphere, 1, {
+      bodyNodes: [node],
+    })
+    const scene = createRenderedScene(geometry)
+    paintRenderedNodeColors(scene, colors.body, { 'shape-1': '#ff0000' })
+    const svg = serializeAvatarSnapshot('Strobi', scene, colors, {
+      background: 'transparent',
+      colorFrom: '#ffffff',
+      colorTo: '#000000',
+      size: 512,
+    })
+
+    expect(geometry.frontNodeIds).toContain('shape-1')
+    expect(svg).toContain('fill="#ff0000"')
   })
 
   it('embeds a pixel snapshot as a self-contained raster SVG', () => {

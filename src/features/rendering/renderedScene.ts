@@ -10,6 +10,8 @@ export type RenderedScene = {
   frontPaths: MotionValue<string>[]
   backNodeIds: { current: (string | null)[] }
   frontNodeIds: { current: (string | null)[] }
+  backNodeFills: MotionValue<string>[]
+  frontNodeFills: MotionValue<string>[]
   leftPath: MotionValue<string>
   rightPath: MotionValue<string>
   leftOpacity: MotionValue<number>
@@ -25,8 +27,12 @@ export type RenderedColors = {
 }
 
 const bodyPathSlots = MAX_BODY_NODES + 2
+const DEFAULT_BODY_COLOR = '#5b7fe5'
 
-export const createRenderedScene = (geometry: AvatarGeometry): RenderedScene => ({
+export const createRenderedScene = (
+  geometry: AvatarGeometry,
+  initialBodyColor = DEFAULT_BODY_COLOR
+): RenderedScene => ({
   headPath: motionValue(geometry.headPath),
   backPaths: Array.from({ length: bodyPathSlots }, (_, index) =>
     motionValue(geometry.backPaths[index] ?? '')
@@ -36,6 +42,8 @@ export const createRenderedScene = (geometry: AvatarGeometry): RenderedScene => 
   ),
   backNodeIds: { current: geometry.backNodeIds },
   frontNodeIds: { current: geometry.frontNodeIds },
+  backNodeFills: Array.from({ length: bodyPathSlots }, () => motionValue(initialBodyColor)),
+  frontNodeFills: Array.from({ length: bodyPathSlots }, () => motionValue(initialBodyColor)),
   leftPath: motionValue(geometry.leftPath),
   rightPath: motionValue(geometry.rightPath),
   leftOpacity: motionValue(geometry.leftVisible ? 1 : 0),
@@ -72,6 +80,32 @@ export const paintRenderedScene = (scene: RenderedScene, geometry: AvatarGeometr
   scene.rightOpacity.set(geometry.rightVisible ? 1 : 0)
   scene.wirePaths.forEach((path, index) => path.set(geometry.wirePaths[index] ?? ''))
 }
+
+type NodeColorMap = Record<string, string>
+
+/**
+ * Paints the fill of each secondary primitive slot from its current node id.
+ * Reads `scene.backNodeIds`/`frontNodeIds` (kept in sync by `paintRenderedScene`)
+ * so the fills stay aligned with the geometry even when nodes reorder or move
+ * between the back and front layers while the camera rotates.
+ */
+export const paintRenderedNodeColors = (
+  scene: RenderedScene,
+  bodyColor: string,
+  nodeColors: NodeColorMap = {}
+) => {
+  scene.backNodeFills.forEach((fill, index) => {
+    const nodeId = scene.backNodeIds.current[index]
+    fill.set(nodeId ? (nodeColors[nodeId] ?? bodyColor) : bodyColor)
+  })
+  scene.frontNodeFills.forEach((fill, index) => {
+    const nodeId = scene.frontNodeIds.current[index]
+    fill.set(nodeId ? (nodeColors[nodeId] ?? bodyColor) : bodyColor)
+  })
+}
+
+export const nodeColorMap = (nodes: { id: string; color?: string }[]): NodeColorMap =>
+  Object.fromEntries(nodes.filter(node => node.color).map(node => [node.id, node.color!]))
 
 export const findBodyNodePath = (scene: RenderedScene, selectedBodyNodeId: 'primary' | string) => {
   if (selectedBodyNodeId === 'primary') return scene.headPath

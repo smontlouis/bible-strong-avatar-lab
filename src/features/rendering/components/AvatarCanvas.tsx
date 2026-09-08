@@ -518,6 +518,7 @@ export function AvatarCanvas({
   onEyeChange,
   playback,
   onManipulationStart,
+  onEnterBodyEdit,
 }: {
   expression: Expression
   avatarEyes: AvatarEyeDefaults
@@ -544,6 +545,7 @@ export function AvatarCanvas({
   onEyeChange?: (next: Expression) => void
   playback: { name: string; status: Exclude<PlaybackStatus, 'stopped'> } | null
   onManipulationStart: () => Expression
+  onEnterBodyEdit?: () => void
 }) {
   const { t } = useStudioLanguage()
   const {
@@ -552,6 +554,8 @@ export function AvatarCanvas({
     frontPaths,
     backNodeIds,
     frontNodeIds,
+    backNodeFills,
+    frontNodeFills,
     headPath,
     leftPath,
     rightPath,
@@ -802,6 +806,7 @@ export function AvatarCanvas({
         onPointerMove={move}
         onPointerUp={commitDrag}
         onPointerCancel={cancelDrag}
+        onDoubleClick={onEnterBodyEdit}
       >
         <defs>
           <clipPath id="avatar-head-clip">
@@ -811,8 +816,9 @@ export function AvatarCanvas({
         <motion.g style={{ x: offsetX, y: offsetY }}>
           {backPaths.map((pathValue, index) => (
             <motion.path
-              className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+              className={highlight === 'head' ? 'cyan-outline' : undefined}
               d={pathValue}
+              fill={backNodeFills[index]}
               key={index}
               onPointerDown={event => selectBodyPath(event, backNodeIds.current[index])}
             />
@@ -845,8 +851,9 @@ export function AvatarCanvas({
           </g>
           {frontPaths.map((pathValue, index) => (
             <motion.path
-              className={`avatar-head ${highlight === 'head' ? 'cyan-outline' : ''}`}
+              className={highlight === 'head' ? 'cyan-outline' : undefined}
               d={pathValue}
+              fill={frontNodeFills[index]}
               key={index}
               onPointerDown={event => selectBodyPath(event, frontNodeIds.current[index])}
             />
