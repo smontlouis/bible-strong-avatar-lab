@@ -413,6 +413,12 @@ input {
 .talk-script-prosemirror p {
   margin: 0;
 }
+.talk-script-active-word {
+  border-radius: 3px;
+  background: #dce6ff;
+  box-shadow: 0 0 0 2px #dce6ff;
+  color: #1f49ad;
+}
 .talk-script-prosemirror p.is-editor-empty:first-child::before {
   float: left;
   height: 0;
@@ -519,6 +525,353 @@ input {
   font-size: 8px;
   opacity: 0.7;
   white-space: nowrap;
+}
+.talk-timeline {
+  padding: 5px;
+  border: 1px solid #d6ddea;
+  border-radius: 11px;
+  background: #f4f6fa;
+}
+.talk-timeline-transport {
+  display: grid;
+  grid-template-columns: 26px 1fr auto 26px 26px;
+  align-items: center;
+  gap: 3px;
+}
+.talk-timeline-transport > time {
+  color: #5b6270;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+.talk-timeline-transport [data-slot='button'] {
+  width: 26px;
+  height: 26px;
+}
+.talk-timeline-transport [data-slot='button'] svg {
+  width: 13px;
+  height: 13px;
+}
+.talk-timeline-track-wrap {
+  position: relative;
+  display: flex;
+  height: 26px;
+  width: 100%;
+  align-items: center;
+}
+.talk-timeline-track-wrap [data-slot='slider'] {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  cursor: ew-resize;
+}
+.talk-timeline-markers {
+  position: absolute;
+  z-index: 1;
+  inset: 0 6px;
+  pointer-events: none;
+}
+.talk-timeline-marker {
+  position: absolute;
+  top: 1px;
+  width: 3px;
+  height: 6px;
+  border-radius: 99px;
+  background: #5279e8;
+  transform: translateX(-50%);
+}
+.talk-timeline-marker.is-animation {
+  background: #22a58b;
+}
+.talk-timeline-marker.is-transform {
+  background: #8b65d2;
+}
+.talk-playback-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.talk-playback-actions > button {
+  min-width: 0;
+  padding-inline: 9px;
+  font-size: 10px;
+}
+.talk-jev-action {
+  border-color: #b8c7ef;
+  background: #f3f6ff;
+  color: #3158bd;
+}
+.talk-jev-action:hover {
+  border-color: #7896ec;
+  background: #eaf0ff;
+  color: #24479e;
+}
+.talk-jev-action .is-spinning {
+  animation: talk-jev-spin 850ms linear infinite;
+}
+.talk-jev-error {
+  margin: -5px 2px 0;
+  color: var(--destructive);
+  font-size: 9px;
+  line-height: 1.35;
+}
+.stream-panel-stack {
+  padding-bottom: 28px;
+}
+.stream-console-card,
+.stream-monitor-card {
+  display: grid;
+  gap: 12px;
+}
+.stream-source-input {
+  min-height: 118px;
+  resize: vertical;
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.stream-settings-grid {
+  display: grid;
+  gap: 6px;
+}
+.stream-start-button {
+  width: 100%;
+  background: #102a26;
+  color: #d9fff4;
+}
+.stream-start-button:hover {
+  background: #173a34;
+}
+.stream-status-rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid #d9e2df;
+  border-radius: 11px;
+  background: #f7faf9;
+}
+.stream-status {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  padding: 7px 4px;
+  border-right: 1px solid #e1e8e6;
+  text-align: center;
+}
+.stream-status:last-child {
+  border-right: 0;
+}
+.stream-status > span {
+  color: #153d36;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+.stream-status > small {
+  overflow: hidden;
+  color: #73827e;
+  font-size: 7px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+.stream-receiver {
+  overflow: hidden;
+  border: 1px solid #253b37;
+  border-radius: 13px;
+  background: #0d1715;
+  color: #d9fff4;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%);
+}
+.stream-receiver-header {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  border-bottom: 1px solid #263b37;
+}
+.stream-receiver-header > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.stream-receiver-header svg {
+  width: 13px;
+  height: 13px;
+  color: #55ddb7;
+}
+.stream-receiver-header [data-slot='badge'] {
+  border-color: #34534b;
+  background: transparent;
+  color: #8ca49e;
+  font-size: 7px;
+}
+.stream-receiver.is-live .stream-receiver-header [data-slot='badge'] {
+  border-color: transparent;
+  background: #35bd98;
+  color: #071612;
+}
+.stream-receiver > p {
+  min-height: 72px;
+  max-height: 136px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  color: #c7d8d4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  line-height: 1.6;
+}
+.stream-receiver > p > i {
+  display: inline-block;
+  width: 5px;
+  height: 1.1em;
+  margin-left: 2px;
+  background: #55ddb7;
+  vertical-align: -0.18em;
+  opacity: 0;
+}
+.stream-receiver.is-live > p > i {
+  animation: stream-cursor 800ms steps(1) infinite;
+}
+.stream-beat-list {
+  display: grid;
+  max-height: 340px;
+  gap: 8px;
+  padding: 2px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+.stream-beat-list::-webkit-scrollbar {
+  display: none;
+}
+.stream-beat {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  min-height: 58px;
+  align-items: start;
+  gap: 9px;
+  padding: 9px;
+  border: 1px solid #dce2e7;
+  border-radius: 12px;
+  background: #fafbfc;
+  scroll-margin-block: 10px;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+.stream-beat.is-playing {
+  border-color: #28a985;
+  background: #eafaf5;
+  box-shadow:
+    0 0 0 2px rgb(45 179 143 / 15%),
+    inset 3px 0 0 #25ad88;
+  transform: translateX(2px);
+}
+.stream-beat.is-played {
+  opacity: 0.78;
+}
+.stream-beat-index {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  background: #e9edee;
+  color: #4c5a57;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+.stream-beat.is-playing .stream-beat-index {
+  background: #1f9d7c;
+  color: white;
+}
+.stream-beat-content {
+  min-width: 0;
+}
+.stream-beat p {
+  margin: 0;
+  color: #202624;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.stream-beat-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.stream-beat-tag {
+  display: inline-flex;
+  min-height: 19px;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-size: 7px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+.stream-beat-tag > svg {
+  width: 10px;
+  height: 10px;
+}
+.stream-beat-tag.is-expression {
+  border-color: #b9c9f4;
+  background: #eaf0ff;
+  color: #3158bd;
+}
+.stream-beat-tag.is-movement {
+  border-color: #c9b7ed;
+  background: #f2edff;
+  color: #6c46b5;
+}
+.stream-beat-tag.is-intensity {
+  border-color: #a9ded2;
+  background: #e7f8f3;
+  color: #147b68;
+}
+.stream-beat [data-slot='badge'] {
+  max-width: 74px;
+  min-height: 20px;
+  gap: 3px;
+  overflow: hidden;
+  font-size: 7px;
+  text-overflow: ellipsis;
+}
+.stream-beat [data-slot='badge'] svg {
+  width: 9px;
+  height: 9px;
+}
+.stream-panel-stack .is-spinning {
+  animation: talk-jev-spin 850ms linear infinite;
+}
+@keyframes stream-cursor {
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes talk-jev-spin {
+  to {
+    transform: rotate(1turn);
+  }
 }
 .talk-cue-menu {
   width: min(300px, calc(100vw - 24px));

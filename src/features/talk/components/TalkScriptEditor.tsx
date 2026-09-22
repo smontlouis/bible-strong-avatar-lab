@@ -1,6 +1,7 @@
 import { Extension, Node, mergeAttributes, type Editor } from '@tiptap/core'
 import Placeholder from '@tiptap/extension-placeholder'
 import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import {
   EditorContent,
@@ -23,7 +24,7 @@ import {
   SmilePlus,
   Trash2,
 } from 'lucide-react'
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { Button } from '@/components/ui/button'
@@ -55,6 +56,7 @@ import {
   type TalkTransformAxis,
 } from '@/features/talk/talkScript'
 import { nearestTalkCueDropPosition, talkCueInsertionAfterMove } from '@/features/talk/talkCueDrag'
+import type { TalkTextRange } from '@/features/talk/talkTimeline'
 
 type CueChoice = {
   kind: TalkCueKind
@@ -97,6 +99,117 @@ type AvatarCueOptions = {
 }
 
 const cueDropTargetKey = new PluginKey<number | null>('talkCueDropTarget')
+const playbackRangeKey = new PluginKey<TalkTextRange | null>('talkPlaybackRange')
+const playbackBracketPattern = /\[[^\[\]\n]{1,160}\]/g
+const playbackBlockNodeTypes = new Set([
+  'paragraph',
+  'heading',
+  'blockquote',
+  'codeBlock',
+  'listItem',
+])
+
+type PlaybackTextSegment = {
+  plainFrom: number
+  plainTo: number
+  documentFrom: number
+  documentTo: number
+}
+
+const mapPlaybackTextSegments = (document: ProseMirrorNode) => {
+  const segments: PlaybackTextSegment[] = []
+  let plainOffset = 0
+  let lastCharacter = ''
+  const visit = (node: ProseMirrorNode, position: number, root = false) => {
+    if (node.type.name === 'avatarCue') return
+    if (node.isText) {
+      const source = node.text ?? ''
+      let sourceOffset = 0
+      for (const match of source.matchAll(playbackBracketPattern)) {
+        const matchOffset = match.index ?? 0
+        if (matchOffset > sourceOffset) {
+          const text = source.slice(sourceOffset, matchOffset)
+          segments.push({
+            plainFrom: plainOffset,
+            plainTo: plainOffset + text.length,
+            documentFrom: position + sourceOffset,
+            documentTo: position + matchOffset,
+          })
+          plainOffset += text.length
+          lastCharacter = text.at(-1) ?? lastCharacter
+        }
+        sourceOffset = matchOffset + match[0].length
+      }
+      if (sourceOffset < source.length) {
+        const text = source.slice(sourceOffset)
+        segments.push({
+          plainFrom: plainOffset,
+          plainTo: plainOffset + text.length,
+          documentFrom: position + sourceOffset,
+          documentTo: position + source.length,
+        })
+        plainOffset += text.length
+        lastCharacter = text.at(-1) ?? lastCharacter
+      }
+      return
+    }
+    if (node.type.name === 'hardBreak') {
+      plainOffset += 1
+      lastCharacter = '\n'
+      return
+    }
+    const startOffset = plainOffset
+    node.forEach((child, offset) => visit(child, root ? offset : position + 1 + offset))
+    if (
+      playbackBlockNodeTypes.has(node.type.name) &&
+      plainOffset > startOffset &&
+      lastCharacter !== '\n'
+    ) {
+      plainOffset += 1
+      lastCharacter = '\n'
+    }
+  }
+  visit(document, -1, true)
+  return segments
+}
+
+const createPlaybackRangeExtension = () =>
+  Extension.create({
+    name: 'talkPlaybackRange',
+    addProseMirrorPlugins() {
+      return [
+        new Plugin<TalkTextRange | null>({
+          key: playbackRangeKey,
+          state: {
+            init: () => null,
+            apply: (transaction, current) => {
+              const next = transaction.getMeta(playbackRangeKey) as TalkTextRange | null | undefined
+              return next === undefined ? current : next
+            },
+          },
+          props: {
+            decorations: state => {
+              const range = playbackRangeKey.getState(state)
+              if (!range) return DecorationSet.empty
+              const decorations = mapPlaybackTextSegments(state.doc).flatMap(segment => {
+                const from = Math.max(range.from, segment.plainFrom)
+                const to = Math.min(range.to, segment.plainTo)
+                if (from >= to) return []
+                return [
+                  Decoration.inline(
+                    segment.documentFrom + from - segment.plainFrom,
+                    segment.documentFrom + to - segment.plainFrom,
+                    { class: 'talk-script-active-word' }
+                  ),
+                ]
+              })
+              return DecorationSet.create(state.doc, decorations)
+            },
+          },
+        }),
+      ]
+    },
+  })
 
 const setCueDropTarget = (editor: Editor, position: number | null) => {
   if (cueDropTargetKey.getState(editor.state) === position) return
@@ -1030,6 +1143,7 @@ const CueSuggestionMenu = ({
 const toDocument = (value: TalkScriptNode): TalkScriptDocument => value as TalkScriptDocument
 
 export function TalkScriptEditor({
+  activeTextRange,
   document,
   expressions,
   onChange,
@@ -1038,6 +1152,7 @@ export function TalkScriptEditor({
   sequences,
   t,
 }: {
+  activeTextRange: TalkTextRange | null
   document: TalkScriptDocument
   expressions: Expression[]
   onChange: (document: TalkScriptDocument) => void
@@ -1047,6 +1162,12 @@ export function TalkScriptEditor({
   t: (value: string) => string
 }) {
   const choices: CueChoice[] = [
+    {
+      kind: 'expression' as const,
+      targetId: defaultExpression.id,
+      label: t('Apparence neutre'),
+      preview: defaultExpression,
+    },
     ...expressions.map((expression, index) => ({
       kind: 'expression' as const,
       targetId: expression.id,
@@ -1108,6 +1229,7 @@ export function TalkScriptEditor({
       createAvatarCueExtension(choices, previewContext, t),
       createCueReconciliationExtension(choices),
       createCueDropTargetExtension(),
+      createPlaybackRangeExtension(),
     ],
     content: document,
     onUpdate: ({ editor: currentEditor }) => {
@@ -1188,6 +1310,28 @@ export function TalkScriptEditor({
       },
     },
   })
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    editor.view.dispatch(editor.state.tr.setMeta(playbackRangeKey, activeTextRange))
+  }, [activeTextRange, editor])
+
+  useEffect(() => {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      JSON.stringify(editor.getJSON()) === JSON.stringify(document)
+    )
+      return
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled || editor.isDestroyed) return
+      editor.commands.setContent(document, { emitUpdate: false })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [document, editor])
 
   const insertCue = (choice: CueChoice) => {
     editor?.chain().focus().insertAvatarCue(cueAttributes(choice)).insertContent(' ').run()

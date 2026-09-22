@@ -8,7 +8,7 @@ import {
   type VirtualElement,
   useFloating,
 } from '@floating-ui/react'
-import { ArrowLeft, AudioLines, Camera, Move3D, RotateCcw, Scan } from 'lucide-react'
+import { ArrowLeft, AudioLines, Camera, Move3D, Radio, RotateCcw, Scan } from 'lucide-react'
 import { AnimatePresence, motion, useSpring } from 'motion/react'
 import { type CSSProperties, useEffect, useReducer, useRef, useState } from 'react'
 
@@ -64,6 +64,7 @@ function StageModeControls({
 }) {
   const {
     openPhotoMode,
+    openStreamMode,
     openTalkMode,
     photoTool,
     setMode,
@@ -173,16 +174,28 @@ function StageModeControls({
                 </span>
               </Button>
               {!photoMode && (
-                <Button
-                  className="photo-capture-button talk-mode-button"
-                  variant="secondary"
-                  type="button"
-                  aria-label={t('Ouvrir le Talk Mode')}
-                  onClick={openTalkMode}
-                >
-                  <AudioLines />
-                  <span className="photo-capture-label">{t('Talk Mode')}</span>
-                </Button>
+                <>
+                  <Button
+                    className="photo-capture-button talk-mode-button"
+                    variant="secondary"
+                    type="button"
+                    aria-label={t('Ouvrir le Talk Mode')}
+                    onClick={openTalkMode}
+                  >
+                    <AudioLines />
+                    <span className="photo-capture-label">{t('Talk Mode')}</span>
+                  </Button>
+                  <Button
+                    className="photo-capture-button stream-mode-button"
+                    variant="secondary"
+                    type="button"
+                    aria-label={t('Ouvrir le Stream Mode')}
+                    onClick={openStreamMode}
+                  >
+                    <Radio />
+                    <span className="photo-capture-label">{t('Stream Mode')}</span>
+                  </Button>
+                </>
               )}
             </>
           )}
@@ -291,7 +304,8 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     updateImmediate,
   } = controller
   const photoMode = mode === 'photo'
-  const talkMode = mode === 'talk'
+  const streamMode = mode === 'stream'
+  const talkMode = mode === 'talk' || streamMode
   useEffect(() => {
     if (!talkBubbleFloating || !talkBubbleIsPositioned) {
       talkBubbleHasPosition.current = false
@@ -370,7 +384,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
   )
   return (
     <motion.section
-      className={`stage-column${photoMode ? ' photo-mode-active' : ''}${talkMode ? ' talk-mode-active' : ''}`}
+      className={`stage-column${photoMode ? ' photo-mode-active' : ''}${talkMode ? ' talk-mode-active' : ''}${streamMode ? ' stream-mode-active' : ''}`}
       style={
         {
           '--avatar-body-color': renderedColors.body,

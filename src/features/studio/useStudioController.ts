@@ -612,6 +612,13 @@ export function useStudioController() {
     setMode('talk')
   }
 
+  const openStreamMode = () => {
+    freezeLivePreviewForManipulation()
+    setTalkBubbleText('')
+    setTalkPlaybackStatus('idle')
+    setMode('stream')
+  }
+
   const updateImmediate = (next: Expression, preservePlayback = false) => {
     if (!preservePlayback && statePlaying) pauseState()
     stopTransition(true)
@@ -2197,6 +2204,7 @@ export function useStudioController() {
     openExpressionEditor,
     openPhotoMode,
     openTalkMode,
+    openStreamMode,
     openSequenceEditor,
     pauseState,
     pendingProjectImport,

@@ -101,6 +101,12 @@ const TalkModePanel = lazy(() =>
   }))
 )
 
+const StreamModePanel = lazy(() =>
+  import('@/features/talk/components/StreamModePanel').then(module => ({
+    default: module.StreamModePanel,
+  }))
+)
+
 const reactQuickStartInstall = 'npm install @bible-strong/avatar-react react react-dom'
 const webQuickStartInstall = 'npm install @bible-strong/avatar-web'
 
@@ -822,7 +828,9 @@ export function StudioInspector({ controller }: { controller: StudioController }
                                 ? 'Mode photo'
                                 : mode === 'talk'
                                   ? 'Talk Mode'
-                                  : 'Exporter'
+                                  : mode === 'stream'
+                                    ? 'Stream Mode'
+                                    : 'Exporter'
                     )}
                   </h1>
                 </div>
@@ -843,7 +851,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                     {t('Quitter')}
                   </Button>
                 )}
-                {mode === 'talk' && (
+                {(mode === 'talk' || mode === 'stream') && (
                   <Button variant="outline" type="button" onClick={() => setMode('avatars')}>
                     <ArrowLeft />
                     {t('Quitter')}
@@ -1928,6 +1936,12 @@ export function StudioInspector({ controller }: { controller: StudioController }
             {!sequenceEditing && !editing && !bodyEditing && mode === 'talk' && (
               <Suspense fallback={<div className="talk-panel-loading">{t('Chargement…')}</div>}>
                 <TalkModePanel key={activeAvatar.id} controller={controller} />
+              </Suspense>
+            )}
+
+            {!sequenceEditing && !editing && !bodyEditing && mode === 'stream' && (
+              <Suspense fallback={<div className="talk-panel-loading">{t('Chargement…')}</div>}>
+                <StreamModePanel key={activeAvatar.id} controller={controller} />
               </Suspense>
             )}
 

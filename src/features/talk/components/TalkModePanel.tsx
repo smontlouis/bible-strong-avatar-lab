@@ -1,4 +1,4 @@
-import { AudioLines, RotateCcw, Square } from 'lucide-react'
+import { AudioLines, LoaderCircle, Pause, RotateCcw, Sparkles } from 'lucide-react'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 
 import { ControlSection, InspectorCard, PanelTitle } from '@/app/components/common'
@@ -17,21 +17,44 @@ import { useStudioLanguage } from '@/i18n'
 
 import {
   defaultAnimaleseSettings,
-  speakTalkVoice,
+  playPreparedTalkVoice,
+  prepareTalkVoice,
   type AnimaleseLanguage,
   type AnimaleseSettings,
   type AnimaleseVoiceBank,
 } from '@/features/talk/animalese'
 import { TalkScriptEditor } from '@/features/talk/components/TalkScriptEditor'
+import { TalkTimeline, type TalkTimelineMarker } from '@/features/talk/components/TalkTimeline'
 import type { GameBoyPitchPreset } from '@/features/talk/gameBoySpeech'
 import {
   compileTalkScript,
   loadTalkScriptDocument,
   persistTalkScriptDocument,
   type TalkScriptDocument,
+  type TalkTransform,
   type TimedTalkCue,
 } from '@/features/talk/talkScript'
 import type { StudioController } from '@/features/studio/useStudioController'
+import {
+  clampTalkTime,
+  talkHighlightOffsetAtTime,
+  talkSequenceStepIndexAtTime,
+  talkTextOffsetAtTime,
+  talkTimeAtTextOffset,
+  talkWordRangeAtOffset,
+  type PreparedTalkVoice,
+  type TalkTextRange,
+} from '@/features/talk/talkTimeline'
+import { resolveSequenceExpression } from '@/features/animation/sequences'
+import { defaultExpression } from '@/features/avatar/presets'
+import {
+  createJevDirectedTalkDocument,
+  jevTransformPresets,
+  JEV_NEUTRAL_EXPRESSION_ID,
+  segmentTalkDirectionBeats,
+  type JevDirectionResponse,
+  type JevExpressionOption,
+} from '@/features/talk/jevDirection'
 
 const defaultTalkScript: TalkScriptDocument = {
   type: 'doc',
@@ -74,7 +97,9 @@ export function TalkModePanel({ controller }: { controller: StudioController }) 
   const {
     activeAvatar,
     activeAvatarEyes,
+    activeExpression,
     bodyNodes,
+    canvasExpression,
     clearTalkTransform,
     expressions,
     launchTalkSequence,
@@ -90,9 +115,27 @@ export function TalkModePanel({ controller }: { controller: StudioController }) 
     loadTalkScriptDocument(activeAvatar.id, defaultTalkScript)
   )
   const [settings, setSettings] = useState(defaultAnimaleseSettings)
+  const [timeline, setTimeline] = useState<PreparedTalkVoice | null>(null)
+  const [timelineLoading, setTimelineLoading] = useState(false)
+  const [playheadMs, setPlayheadMs] = useState(0)
+  const [activeTextRange, setActiveTextRange] = useState<TalkTextRange | null>(null)
+  const [scrubSound, setScrubSound] = useState(true)
+  const [jevDirecting, setJevDirecting] = useState(false)
+  const [jevError, setJevError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const preparationAbortRef = useRef<AbortController | null>(null)
+  const scrubPreviewAbortRef = useRef<AbortController | null>(null)
+  const playheadRef = useRef(0)
+  const resumeAfterScrubRef = useRef(false)
+  const lastScrubPreviewAtRef = useRef(0)
+  const baselineExpressionRef = useRef(canvasExpression)
+  const baselineExpressionIndexRef = useRef(activeExpression)
+  const talkExpressionIds = [
+    JEV_NEUTRAL_EXPRESSION_ID,
+    ...expressions.map(expression => expression.id),
+  ]
   const compiledScript = compileTalkScript(script, {
-    expressionIds: expressions.map(expression => expression.id),
+    expressionIds: talkExpressionIds,
     animationIds: sequences.map(sequence => sequence.id),
   })
 
@@ -118,13 +161,62 @@ export function TalkModePanel({ controller }: { controller: StudioController }) 
 
   const cleanupTalkMode = useEffectEvent(() => {
     abortRef.current?.abort()
+    preparationAbortRef.current?.abort()
+    scrubPreviewAbortRef.current?.abort()
     clearTalkTransform()
     setTalkPlaybackStatus('idle')
   })
   useEffect(() => () => cleanupTalkMode(), [])
 
+  useEffect(() => {
+    const text = compiledScript.text
+    stop()
+    preparationAbortRef.current?.abort()
+    scrubPreviewAbortRef.current?.abort()
+    setTimeline(null)
+    setPlayheadMs(0)
+    playheadRef.current = 0
+    setActiveTextRange(null)
+    setTalkBubbleText('')
+    if (!text.trim()) {
+      setTimelineLoading(false)
+      return
+    }
+    const preparationController = new AbortController()
+    preparationAbortRef.current = preparationController
+    setTimelineLoading(true)
+    const timeout = window.setTimeout(() => {
+      void prepareTalkVoice(text, settings, preparationController.signal)
+        .then(prepared => {
+          if (preparationController.signal.aborted) return
+          baselineExpressionRef.current = canvasExpression
+          baselineExpressionIndexRef.current = activeExpression
+          setTimeline(prepared)
+          setActiveTextRange(talkWordRangeAtOffset(text, 0))
+        })
+        .catch(error => {
+          if (error instanceof DOMException && error.name === 'AbortError') return
+          setTalkPlaybackStatus('error')
+        })
+        .finally(() => {
+          if (preparationAbortRef.current === preparationController) {
+            preparationAbortRef.current = null
+            setTimelineLoading(false)
+          }
+        })
+    }, 280)
+    return () => {
+      window.clearTimeout(timeout)
+      preparationController.abort()
+    }
+  }, [compiledScript.text, settings])
+
   const triggerCue = (cue: TimedTalkCue) => {
     if (cue.kind === 'expression') {
+      if (cue.targetId === JEV_NEUTRAL_EXPRESSION_ID) {
+        transitionTalkToExpression(defaultExpression, null, cue.durationMs)
+        return
+      }
       const index = expressions.findIndex(expression => expression.id === cue.targetId)
       if (index >= 0) transitionTalkToExpression(expressions[index], index, cue.durationMs)
       return
@@ -137,20 +229,100 @@ export function TalkModePanel({ controller }: { controller: StudioController }) 
     if (sequence) launchTalkSequence(sequence)
   }
 
-  const speak = async () => {
-    if (!compiledScript.text.trim()) return
+  const cueTime = (cue: TimedTalkCue, prepared = timeline) =>
+    prepared ? talkTimeAtTextOffset(prepared, cue.offset) : 0
+
+  const applyAvatarStateAtTime = (
+    timeMs: number,
+    prepared = timeline,
+    transitionMs = 0,
+    cues = compiledScript.cues
+  ) => {
+    if (!prepared) return
+    let targetExpression = baselineExpressionRef.current
+    let targetExpressionIndex = baselineExpressionIndexRef.current
+    let targetTransform: TalkTransform | null = null
+    for (const cue of cues) {
+      const startsAt = cueTime(cue, prepared)
+      if (startsAt > timeMs) continue
+      if (cue.kind === 'expression') {
+        if (cue.targetId === JEV_NEUTRAL_EXPRESSION_ID) {
+          targetExpression = defaultExpression
+          targetExpressionIndex = null
+          targetTransform = null
+          continue
+        }
+        const index = expressions.findIndex(expression => expression.id === cue.targetId)
+        if (index >= 0) {
+          targetExpression = expressions[index]
+          targetExpressionIndex = index
+          targetTransform = null
+        }
+        continue
+      }
+      if (cue.kind === 'transform') {
+        targetTransform = cue.transform
+        continue
+      }
+      const sequence = sequences.find(item => item.id === cue.targetId)
+      if (!sequence) continue
+      const stepIndex = talkSequenceStepIndexAtTime(sequence, timeMs - startsAt)
+      const step = stepIndex === null ? undefined : sequence.steps[stepIndex]
+      if (!step) continue
+      const resolved = resolveSequenceExpression(expressions, step.expressionId)
+      if (resolved.expression) {
+        targetExpression = resolved.expression
+        targetExpressionIndex = resolved.index
+        targetTransform = null
+      }
+    }
+    clearTalkTransform()
+    transitionTalkToExpression(targetExpression, targetExpressionIndex, transitionMs)
+    if (targetTransform) {
+      transitionTalkTransform(targetTransform, transitionMs)
+    }
+  }
+
+  const reflectTime = (
+    timeMs: number,
+    prepared = timeline,
+    updateAvatar = false,
+    cues = compiledScript.cues
+  ) => {
+    if (!prepared) return
+    const time = clampTalkTime(prepared, timeMs)
+    const textOffset = talkTextOffsetAtTime(prepared, time)
+    const highlightOffset = talkHighlightOffsetAtTime(prepared, time)
+    playheadRef.current = time
+    setPlayheadMs(time)
+    setTalkBubbleText(compiledScript.text.slice(0, textOffset))
+    setActiveTextRange(talkWordRangeAtOffset(compiledScript.text, highlightOffset))
+    if (updateAvatar) applyAvatarStateAtTime(time, prepared, 0, cues)
+  }
+
+  const speak = async (startMs = playheadRef.current, cues = compiledScript.cues) => {
+    if (!timeline || !compiledScript.text.trim()) return
     stop()
     const playbackController = new AbortController()
     abortRef.current = playbackController
-    setTalkBubbleText('')
+    const playbackStart = startMs >= timeline.durationMs ? 0 : startMs
+    reflectTime(playbackStart, timeline, true, cues)
+    let nextCueIndex = cues.findIndex(cue => cueTime(cue, timeline) > playbackStart)
+    if (nextCueIndex < 0) nextCueIndex = cues.length
     setTalkPlaybackStatus('loading')
     try {
-      await speakTalkVoice(compiledScript.text, settings, {
-        cues: compiledScript.cues,
+      await playPreparedTalkVoice(timeline, {
         signal: playbackController.signal,
-        onCue: triggerCue,
+        offsetMs: playbackStart,
+        volume: settings.volume,
         onReady: () => setTalkPlaybackStatus('speaking'),
-        onCharacter: character => setTalkBubbleText(current => current + character),
+        onTime: timeMs => {
+          while (nextCueIndex < cues.length && cueTime(cues[nextCueIndex], timeline) <= timeMs) {
+            triggerCue(cues[nextCueIndex])
+            nextCueIndex += 1
+          }
+          reflectTime(timeMs, timeline)
+        },
       })
       if (!playbackController.signal.aborted) setTalkPlaybackStatus('idle')
     } catch (error) {
@@ -161,7 +333,107 @@ export function TalkModePanel({ controller }: { controller: StudioController }) 
     }
   }
 
+  const directWithJev = async () => {
+    const text = compiledScript.text
+    if (!text.trim() || jevDirecting) return
+    const beats = segmentTalkDirectionBeats(text)
+    const expressionOptions: JevExpressionOption[] = [
+      { id: JEV_NEUTRAL_EXPRESSION_ID, label: 'neutral' },
+      ...expressions.map((expression, index) => ({
+        id: expression.id,
+        label: expression.semanticKey ?? `${t('Expression')} ${String(index).padStart(2, '0')}`,
+      })),
+    ]
+    stop()
+    clearTalkTransform()
+    transitionTalkToExpression(defaultExpression, null, 180)
+    baselineExpressionRef.current = defaultExpression
+    baselineExpressionIndexRef.current = null
+    setJevError(null)
+    setJevDirecting(true)
+    try {
+      const response = await fetch('/api/direct-dialogue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          beats,
+          expressions: expressionOptions,
+          movements: jevTransformPresets.map(({ id, label, description }) => ({
+            id,
+            label,
+            description,
+          })),
+        }),
+      })
+      const payload = (await response.json()) as JevDirectionResponse & { error?: string }
+      if (!response.ok)
+        throw new Error(payload.error ?? t('Jev n’a pas pu mettre en scène ce texte.'))
+      const directedDocument = createJevDirectedTalkDocument(
+        text,
+        beats,
+        payload.decisions,
+        expressionOptions
+      )
+      const directedScript = compileTalkScript(directedDocument, {
+        expressionIds: talkExpressionIds,
+        animationIds: sequences.map(sequence => sequence.id),
+      })
+      updateScript(directedDocument)
+      await speak(0, directedScript.cues)
+    } catch (error) {
+      setJevError(
+        error instanceof Error ? error.message : t('Jev n’a pas pu mettre en scène ce texte.')
+      )
+    } finally {
+      setJevDirecting(false)
+    }
+  }
+
+  const seek = (timeMs: number, previewAudio = true) => {
+    if (!timeline) return
+    reflectTime(timeMs, timeline)
+    applyAvatarStateAtTime(timeMs, timeline, 180)
+    if (!previewAudio || !scrubSound || performance.now() - lastScrubPreviewAtRef.current < 75) {
+      return
+    }
+    lastScrubPreviewAtRef.current = performance.now()
+    scrubPreviewAbortRef.current?.abort()
+    const previewController = new AbortController()
+    scrubPreviewAbortRef.current = previewController
+    void playPreparedTalkVoice(timeline, {
+      signal: previewController.signal,
+      offsetMs: timeMs,
+      previewDurationMs: 90,
+      volume: settings.volume,
+    }).catch(error => {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        setTalkPlaybackStatus('error')
+      }
+    })
+  }
+
+  const beginScrub = () => {
+    resumeAfterScrubRef.current = talkPlaybackStatus === 'speaking'
+    abortRef.current?.abort()
+    abortRef.current = null
+    setTalkPlaybackStatus('idle')
+  }
+
+  const endScrub = (timeMs: number) => {
+    seek(timeMs, false)
+    if (!resumeAfterScrubRef.current) return
+    resumeAfterScrubRef.current = false
+    void speak(timeMs)
+  }
+
   const busy = talkPlaybackStatus === 'loading' || talkPlaybackStatus === 'speaking'
+  const timelineMarkers: TalkTimelineMarker[] = compiledScript.cues.map((cue, index) => ({
+    id: `${cue.kind}-${index}-${cue.offset}`,
+    kind: cue.kind,
+    label: cue.label,
+    timeMs: cueTime(cue),
+  }))
 
   return (
     <div className="panel-stack talk-panel-stack">
@@ -175,6 +447,7 @@ export function TalkModePanel({ controller }: { controller: StudioController }) 
             subtitle={t('Le texte reste local et n’est envoyé à aucun service.')}
           />
           <TalkScriptEditor
+            activeTextRange={activeTextRange}
             document={script}
             expressions={expressions}
             previewContext={{
@@ -189,15 +462,45 @@ export function TalkModePanel({ controller }: { controller: StudioController }) 
             t={t}
             onChange={updateScript}
           />
-          <Button
-            className="talk-primary-action"
-            type="button"
-            disabled={!compiledScript.text.trim()}
-            onClick={() => (busy ? stop() : void speak())}
-          >
-            {busy ? <Square /> : <AudioLines />}
-            {t(busy ? 'Arrêter la voix' : 'Faire parler')}
-          </Button>
+          <TalkTimeline
+            currentMs={playheadMs}
+            durationMs={timeline?.durationMs ?? 0}
+            loading={timelineLoading}
+            markers={timelineMarkers}
+            playing={talkPlaybackStatus === 'speaking'}
+            scrubSound={scrubSound}
+            t={t}
+            onPlayPause={() => (busy ? stop() : void speak())}
+            onReset={() => seek(0, false)}
+            onScrubEnd={endScrub}
+            onScrubStart={beginScrub}
+            onSeek={seek}
+            onToggleScrubSound={() => setScrubSound(current => !current)}
+          />
+          <div className="talk-playback-actions">
+            <Button
+              className="talk-primary-action"
+              type="button"
+              disabled={!compiledScript.text.trim() || timelineLoading || !timeline || jevDirecting}
+              onClick={() => (busy ? stop() : void speak())}
+            >
+              {busy ? <Pause /> : <AudioLines />}
+              {t(busy ? 'Mettre le dialogue en pause' : 'Faire parler')}
+            </Button>
+            <Button
+              className="talk-jev-action"
+              type="button"
+              variant="outline"
+              disabled={
+                !compiledScript.text.trim() || jevDirecting || busy || timelineLoading || !timeline
+              }
+              onClick={() => void directWithJev()}
+            >
+              {jevDirecting ? <LoaderCircle className="is-spinning" /> : <Sparkles />}
+              {t(jevDirecting ? 'Jev choisit les expressions…' : 'Laisser Jev mettre en scène')}
+            </Button>
+          </div>
+          {jevError ? <p className="talk-jev-error">{jevError}</p> : null}
         </InspectorCard>
       </ControlSection>
 

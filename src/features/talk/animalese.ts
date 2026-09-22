@@ -8,7 +8,12 @@ import {
 } from 'animalese-tts'
 
 import { nextTalkCueIndex, type TimedTalkCue } from '@/features/talk/talkScript'
-import { speakGameBoySpeech, type GameBoyPitchPreset } from '@/features/talk/gameBoySpeech'
+import {
+  buildGameBoySpeechTimeline,
+  speakGameBoySpeech,
+  type GameBoyPitchPreset,
+} from '@/features/talk/gameBoySpeech'
+import type { PreparedTalkVoice, TalkVoiceSegment } from '@/features/talk/talkTimeline'
 
 export type AnimaleseLanguage = 'fr' | 'en' | 'ja'
 export type AnimaleseVoiceBank = 'animalese' | 'rpg' | 'game-boy'
@@ -77,6 +82,274 @@ const createAnalyzer = (language: AnimaleseLanguage): TextAnalyzer => {
   if (language === 'fr') return new FrenchAnalyzer()
   if (language === 'ja') return new JapaneseAnalyzer()
   return new EnglishAnalyzer()
+}
+
+const talkSampleRate = 44_100
+
+const concatenateSamples = (buffers: Float32Array[]) => {
+  const result = new Float32Array(buffers.reduce((total, buffer) => total + buffer.length, 0))
+  let offset = 0
+  buffers.forEach(buffer => {
+    result.set(buffer, offset)
+    offset += buffer.length
+  })
+  return result
+}
+
+const segmentsFromSources = (
+  sources: Array<{ source: string; sampleCount: number }>,
+  sampleRate: number
+) => {
+  let textOffset = 0
+  let sampleOffset = 0
+  return sources.map(({ source, sampleCount }): TalkVoiceSegment => {
+    const startOffset = textOffset
+    const startMs = (sampleOffset / sampleRate) * 1000
+    textOffset += source.length
+    sampleOffset += sampleCount
+    return {
+      source,
+      startOffset,
+      endOffset: textOffset,
+      startMs,
+      durationMs: (sampleCount / sampleRate) * 1000,
+    }
+  })
+}
+
+const prepareAnimaleseVoice = async (
+  text: string,
+  settings: AnimaleseSettings,
+  signal: AbortSignal
+): Promise<PreparedTalkVoice> => {
+  const assets = getAnimaleseVoiceAssets(settings.language)
+  const response = await fetch(assets.mapUrl, { signal })
+  if (!response.ok) throw new Error(`Unable to load Animalese sprite map (${response.status}).`)
+  const spriteMap = await response.json()
+  const sampler = new WebSampler(assets.audioUrl, spriteMap, {
+    maxRetries: settings.maxRetries,
+    minSilenceDurationMs: 50,
+  })
+  const engine = new AnimaleseEngine({
+    analyzer: createAnalyzer(settings.language),
+    sampler,
+    effect: new PitchManager({
+      pitch: settings.pitch,
+      speed: settings.speed,
+      randomness: settings.randomness,
+      melodyRate: settings.melodyRate,
+      melodyAmplitude: settings.melodyAmplitude,
+    }),
+    spaceDelay: settings.spaceDelay,
+    punctuationDelay: settings.punctuationDelay,
+    punctuations: [...settings.punctuations],
+  })
+  const speaker = engine.synthesize(text)
+  await engine.load()
+  if (signal.aborted) throw abortError()
+
+  const buffers: Float32Array[] = []
+  const sources: Array<{ source: string; sampleCount: number }> = []
+  for await (const output of speaker.speak()) {
+    if (signal.aborted) throw abortError()
+    const buffer = new Float32Array(output.buffer as Float32Array)
+    buffers.push(buffer)
+    sources.push({ source: output.char, sampleCount: buffer.length })
+  }
+  const sampleRate = sampler.sampleRate ?? talkSampleRate
+  const samples = concatenateSamples(buffers)
+  return {
+    samples,
+    sampleRate,
+    gainScale: 1,
+    durationMs: (samples.length / sampleRate) * 1000,
+    segments: segmentsFromSources(sources, sampleRate),
+  }
+}
+
+const renderRpgSegment = (frequency: number, duration: number, audible: boolean) => {
+  const sampleCount = Math.max(1, Math.round(duration * talkSampleRate))
+  const samples = new Float32Array(sampleCount)
+  if (!audible) return samples
+  const attackSamples = Math.max(1, Math.round(0.003 * talkSampleRate))
+  const filterAlpha = 1 - Math.exp((-2 * Math.PI * 1_800) / talkSampleRate)
+  let filtered = 0
+  for (let index = 0; index < sampleCount; index += 1) {
+    const phase = (index * frequency) / talkSampleRate
+    const square = phase % 1 < 0.5 ? 1 : -1
+    filtered += filterAlpha * (square - filtered)
+    const attack = Math.min(1, index / attackSamples)
+    const release = Math.max(0, 1 - index / sampleCount)
+    samples[index] = filtered * attack * release
+  }
+  return samples
+}
+
+export const prepareRpgTalkVoice = (
+  text: string,
+  settings: AnimaleseSettings
+): PreparedTalkVoice => {
+  const buffers: Float32Array[] = []
+  const sources: Array<{ source: string; sampleCount: number }> = []
+  let audibleCharacterIndex = 0
+  for (const character of text) {
+    const whitespace = /\s/u.test(character)
+    const punctuation = settings.punctuations.includes(character)
+    const duration = whitespace
+      ? settings.spaceDelay
+      : punctuation
+        ? settings.punctuationDelay
+        : getRpgBlipDuration(settings.speed)
+    const samples = renderRpgSegment(
+      getRpgBlipFrequency(character, audibleCharacterIndex, settings),
+      duration,
+      !whitespace && !punctuation
+    )
+    if (!whitespace && !punctuation) audibleCharacterIndex += 1
+    buffers.push(samples)
+    sources.push({ source: character, sampleCount: samples.length })
+  }
+  const samples = concatenateSamples(buffers)
+  return {
+    samples,
+    sampleRate: talkSampleRate,
+    gainScale: 0.36,
+    durationMs: (samples.length / talkSampleRate) * 1000,
+    segments: segmentsFromSources(sources, talkSampleRate),
+  }
+}
+
+const prepareGameBoyTalkVoice = (text: string, settings: AnimaleseSettings): PreparedTalkVoice => {
+  const timeline = buildGameBoySpeechTimeline(text, {
+    pitchPreset: settings.gameBoyPitch,
+    speed: settings.speed,
+  })
+  const sampleCount = Math.max(1, Math.ceil((timeline.frames.length / 60) * talkSampleRate))
+  const samples = new Float32Array(sampleCount)
+  let phase = 0
+  for (let index = 0; index < sampleCount; index += 1) {
+    const frame =
+      timeline.frames[
+        Math.min(timeline.frames.length - 1, Math.floor((index * 60) / talkSampleRate))
+      ]
+    if (!frame?.audible || frame.frequency === null) continue
+    phase = (phase + frame.frequency / talkSampleRate) % 1
+    samples[index] = phase < 0.25 ? 0.75 : -0.25
+  }
+  let textOffset = 0
+  const segments = timeline.segments.map((segment, index): TalkVoiceSegment => {
+    const startFrame = timeline.segmentStartFrames[index]
+    const endFrame = timeline.segmentStartFrames[index + 1] ?? timeline.frames.length
+    const startOffset = textOffset
+    textOffset += segment.source.length
+    return {
+      source: segment.source,
+      startOffset,
+      endOffset: textOffset,
+      startMs: (startFrame / 60) * 1000,
+      durationMs: ((endFrame - startFrame) / 60) * 1000,
+    }
+  })
+  return {
+    samples,
+    sampleRate: talkSampleRate,
+    gainScale: 0.18,
+    durationMs: (samples.length / talkSampleRate) * 1000,
+    segments,
+  }
+}
+
+export const prepareTalkVoice = (
+  text: string,
+  settings: AnimaleseSettings,
+  signal: AbortSignal
+) => {
+  if (signal.aborted) return Promise.reject(abortError())
+  if (settings.voiceBank === 'rpg') return Promise.resolve(prepareRpgTalkVoice(text, settings))
+  if (settings.voiceBank === 'game-boy') {
+    return Promise.resolve(prepareGameBoyTalkVoice(text, settings))
+  }
+  return prepareAnimaleseVoice(text, settings, signal)
+}
+
+export const playPreparedTalkVoice = async (
+  timeline: PreparedTalkVoice,
+  {
+    signal,
+    offsetMs = 0,
+    previewDurationMs,
+    volume,
+    onReady,
+    onTime,
+  }: {
+    signal: AbortSignal
+    offsetMs?: number
+    previewDurationMs?: number
+    volume: number
+    onReady?: () => void
+    onTime?: (timeMs: number) => void
+  }
+) => {
+  if (signal.aborted) throw abortError()
+  const context = new AudioContext()
+  let frame = 0
+  try {
+    await context.resume()
+    const offset = Math.min(Math.max(offsetMs, 0), timeline.durationMs)
+    if (offset >= timeline.durationMs || timeline.samples.length === 0) {
+      onReady?.()
+      onTime?.(timeline.durationMs)
+      return
+    }
+    const audioBuffer = context.createBuffer(1, timeline.samples.length, timeline.sampleRate)
+    audioBuffer.copyToChannel(new Float32Array(timeline.samples), 0)
+    const source = context.createBufferSource()
+    const gain = context.createGain()
+    source.buffer = audioBuffer
+    gain.gain.value = volume * timeline.gainScale
+    source.connect(gain)
+    gain.connect(context.destination)
+    const startedAt = context.currentTime
+    const previewEnd = Math.min(
+      timeline.durationMs,
+      previewDurationMs === undefined ? timeline.durationMs : offset + previewDurationMs
+    )
+    const stop = () => {
+      source.onended = null
+      try {
+        source.stop()
+      } catch {
+        // The source can finish between the abort event and the stop call.
+      }
+    }
+    signal.addEventListener('abort', stop, { once: true })
+    const tick = () => {
+      const time = Math.min(previewEnd, offset + (context.currentTime - startedAt) * 1000)
+      onTime?.(time)
+      if (time < previewEnd && !signal.aborted) frame = requestAnimationFrame(tick)
+    }
+    const completed = new Promise<void>((resolve, reject) => {
+      const abort = () => reject(abortError())
+      signal.addEventListener('abort', abort, { once: true })
+      source.onended = () => {
+        signal.removeEventListener('abort', abort)
+        resolve()
+      }
+    })
+    source.start(0, offset / 1000)
+    if (previewEnd < timeline.durationMs) {
+      source.stop(startedAt + (previewEnd - offset) / 1000)
+    }
+    onReady?.()
+    onTime?.(offset)
+    frame = requestAnimationFrame(tick)
+    await completed
+    onTime?.(previewEnd)
+    signal.removeEventListener('abort', stop)
+  } finally {
+    cancelAnimationFrame(frame)
+    await context.close().catch(() => undefined)
+  }
 }
 
 const abortError = () => new DOMException('Talk playback stopped.', 'AbortError')
