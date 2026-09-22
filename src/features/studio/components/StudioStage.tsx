@@ -8,7 +8,16 @@ import {
   type VirtualElement,
   useFloating,
 } from '@floating-ui/react'
-import { ArrowLeft, AudioLines, Camera, Move3D, Radio, RotateCcw, Scan } from 'lucide-react'
+import {
+  ArrowLeft,
+  AudioLines,
+  Camera,
+  Move3D,
+  Radio,
+  RotateCcw,
+  Scan,
+  ScanFace,
+} from 'lucide-react'
 import { AnimatePresence, motion, useSpring } from 'motion/react'
 import { type CSSProperties, useEffect, useReducer, useRef, useState } from 'react'
 
@@ -57,10 +66,12 @@ function StageModeControls({
   controller,
   photoMode,
   talkMode,
+  onOpenStand,
 }: {
   controller: StudioController
   photoMode: boolean
   talkMode: boolean
+  onOpenStand: () => void
 }) {
   const {
     openPhotoMode,
@@ -176,6 +187,16 @@ function StageModeControls({
               {!photoMode && (
                 <>
                   <Button
+                    className="photo-capture-button stand-mode-button"
+                    aria-label={t('Mode stand')}
+                    variant="secondary"
+                    type="button"
+                    onClick={onOpenStand}
+                  >
+                    <ScanFace />
+                    <span className="photo-capture-label">{t('Mode stand')}</span>
+                  </Button>
+                  <Button
                     className="photo-capture-button talk-mode-button"
                     variant="secondary"
                     type="button"
@@ -205,7 +226,13 @@ function StageModeControls({
   )
 }
 
-export function StudioStage({ controller }: { controller: StudioController }) {
+export function StudioStage({
+  controller,
+  onOpenStand,
+}: {
+  controller: StudioController
+  onOpenStand: () => void
+}) {
   const talkBubbleTextRef = useRef<HTMLParagraphElement>(null)
   const [talkBubbleFloating, setTalkBubbleFloating] = useState<HTMLDivElement | null>(null)
   const [talkBubbleReference, setTalkBubbleReference] = useReducer(
@@ -493,7 +520,12 @@ export function StudioStage({ controller }: { controller: StudioController }) {
           transition={{ duration: 0.38, times: [0, 0.16, 1], ease: 'easeOut' }}
         />
       )}
-      <StageModeControls controller={controller} photoMode={photoMode} talkMode={talkMode} />
+      <StageModeControls
+        controller={controller}
+        photoMode={photoMode}
+        talkMode={talkMode}
+        onOpenStand={onOpenStand}
+      />
       <p className="stage-credit">
         Made with ❤️ by{' '}
         <a href="https://x.com/_smontlouis" target="_blank" rel="noreferrer">

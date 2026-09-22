@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { StudioDialogs } from '@/features/studio/components/StudioDialogs'
@@ -7,8 +7,14 @@ import { StudioStage } from '@/features/studio/components/StudioStage'
 import type { StudioController } from '@/features/studio/useStudioController'
 
 const STACKED_LAYOUT_QUERY = '(max-width: 980px)'
+const StandMode = lazy(() => import('@/features/stand/StandMode'))
 
 export function StudioView(controller: StudioController) {
+  const [standOpen, setStandOpen] = useState(false)
+  const openStand = () => {
+    if (controller.playbackStatus === 'playing') controller.pauseState()
+    setStandOpen(true)
+  }
   const [stackedLayout, setStackedLayout] = useState(
     () => window.matchMedia(STACKED_LAYOUT_QUERY).matches
   )
@@ -22,7 +28,15 @@ export function StudioView(controller: StudioController) {
 
   return (
     <div className="studio-root" lang={controller.language}>
-      {stackedLayout ? (
+      {standOpen ? (
+        <Suspense fallback={<p role="status">{controller.t('Préparation…')}</p>}>
+          <StandMode
+            avatar={controller.activeAvatar}
+            reducedMotion={Boolean(controller.reduceMotion)}
+            onExit={() => setStandOpen(false)}
+          />
+        </Suspense>
+      ) : stackedLayout ? (
         <ResizablePanelGroup
           className="studio studio-mobile-resizable"
           orientation="vertical"
@@ -34,7 +48,7 @@ export function StudioView(controller: StudioController) {
             defaultSize="42%"
             minSize={180}
           >
-            <StudioStage controller={controller} />
+            <StudioStage controller={controller} onOpenStand={openStand} />
           </ResizablePanel>
           <ResizableHandle
             className="studio-resize-handle"
@@ -47,11 +61,11 @@ export function StudioView(controller: StudioController) {
         </ResizablePanelGroup>
       ) : (
         <div className="studio">
-          <StudioStage controller={controller} />
+          <StudioStage controller={controller} onOpenStand={openStand} />
           <StudioInspector controller={controller} />
         </div>
       )}
-      <StudioDialogs controller={controller} />
+      {!standOpen && <StudioDialogs controller={controller} />}
     </div>
   )
 }

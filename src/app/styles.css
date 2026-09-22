@@ -293,6 +293,14 @@ input {
 .photo-capture-bar:has(.talk-mode-button) .photo-capture-button {
   min-width: 156px;
 }
+.photo-capture-bar:has(.stand-mode-button) {
+  max-width: calc(100% - 32px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.photo-capture-bar:has(.stand-mode-button) .photo-capture-button {
+  min-width: 120px;
+}
 .stage-credit {
   position: absolute;
   z-index: 8;

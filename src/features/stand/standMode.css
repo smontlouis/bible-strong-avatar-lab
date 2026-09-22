@@ -1,0 +1,664 @@
+.stand-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: auto;
+  background: #10151f;
+  color: #f2f4f8;
+  outline: none;
+}
+.stand-scene {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  height: 100dvh;
+}
+.stand-avatar {
+  width: min(94vw, 94dvh);
+  height: min(94vw, 94dvh);
+  overflow: visible;
+}
+.stand-configuring .stand-scene {
+  margin-right: 410px;
+}
+.stand-configuring .stand-avatar {
+  width: min(60vw, 85dvh);
+  height: min(60vw, 85dvh);
+}
+.stand-toolbar {
+  position: absolute;
+  z-index: 2;
+  top: 22px;
+  left: 22px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 180ms;
+}
+.stand-toolbar:hover,
+.stand-toolbar:focus-within,
+.stand-configuring .stand-toolbar {
+  opacity: 1;
+}
+.stand-mode:not(.stand-configuring) .stand-toolbar {
+  opacity: 0.18;
+}
+.stand-mode:not(.stand-configuring) .stand-toolbar:hover,
+.stand-mode:not(.stand-configuring) .stand-toolbar:focus-within {
+  opacity: 1;
+}
+.stand-panel {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 370px;
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  padding: 26px;
+  border: 1px solid #ffffff1c;
+  border-radius: 24px;
+  background: #f5f3ed;
+  color: #242b35;
+  box-shadow: 0 24px 80px #0003;
+}
+.stand-panel[hidden] {
+  display: none;
+}
+.stand-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.stand-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #616c79;
+}
+.stand-panel h1 {
+  font-size: 32px;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+  margin: 10px 0 6px;
+}
+.stand-intro {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+.stand-description {
+  color: #64707e;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.stand-camera-preview {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: #1d2633;
+  border-radius: 14px;
+  overflow: hidden;
+  margin: 20px 0;
+}
+.stand-camera-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.stand-camera-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 30px;
+  text-align: center;
+  color: #a7b4c5;
+  font-size: 12px;
+}
+.stand-camera-placeholder svg {
+  width: 26px;
+  height: 26px;
+}
+.stand-live-badge {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: #10151fcc;
+  color: #d7e9c4;
+  font-size: 11px;
+}
+.stand-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+  font-size: 12px;
+}
+.stand-proximity > span {
+  font-size: 12px;
+}
+.stand-proximity > div:last-child {
+  display: flex;
+  justify-content: space-between;
+  color: #64707e;
+  font-size: 10px;
+}
+.stand-start {
+  width: 100%;
+  margin-top: 22px;
+  min-height: 40px;
+}
+.stand-privacy {
+  display: flex;
+  gap: 8px;
+  color: #64707e;
+  font-size: 10px;
+  line-height: 1.6;
+  margin-top: 16px;
+}
+.stand-privacy svg {
+  flex-shrink: 0;
+  width: 14px;
+  margin-top: 2px;
+}
+.stand-exit-hint {
+  color: #64707e;
+  font-size: 10px;
+  text-align: center;
+  margin-top: 12px;
+}
+.stand-error,
+.stand-note {
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 12px;
+}
+.stand-error {
+  color: #aa3831;
+}
+@media (max-width: 760px) {
+  .stand-configuring .stand-scene {
+    margin-right: 0;
+    height: 38dvh;
+    min-height: 0;
+  }
+  .stand-configuring .stand-avatar {
+    width: 38dvh;
+    height: 38dvh;
+  }
+  .stand-panel {
+    position: relative;
+    top: auto;
+    right: auto;
+    transform: none;
+    width: min(370px, calc(100% - 32px));
+    max-height: none;
+    margin: 0 auto 20px;
+  }
+  .stand-toolbar {
+    top: 12px;
+    left: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stand-toolbar {
+    transition: none;
+  }
+}
+
+/* Operator console: camera first, measurements alongside, character still visible. */
+.stand-panel {
+  width: min(980px, calc(100vw - 64px));
+  padding: 28px 32px;
+  border-radius: 20px;
+}
+.stand-configuring .stand-scene {
+  margin-right: min(1020px, 69vw);
+}
+.stand-configuring .stand-avatar {
+  width: min(30vw, 70dvh);
+  height: min(30vw, 70dvh);
+}
+.stand-panel .stand-description {
+  max-width: 620px;
+  margin-bottom: 22px;
+}
+.stand-diagnostics {
+  border-top: 1px solid #d9ddd7;
+  padding-top: 18px;
+}
+.stand-diagnostics-heading {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.stand-diagnostics h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.stand-status-dot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #657169;
+  font-size: 11px;
+}
+.stand-status-dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #939b9a;
+}
+.stand-status-dot[data-live='true']::before {
+  background: #417838;
+}
+.stand-diagnostics-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(230px, 1fr);
+  gap: 24px;
+}
+.stand-camera-column {
+  min-width: 0;
+}
+.stand-camera-column .stand-camera-preview {
+  margin: 0;
+  background: #080c12;
+}
+.stand-camera-preview video {
+  object-fit: contain;
+}
+.stand-camera-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.stand-overlay-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+  font-size: 12px;
+}
+.stand-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  font-size: 10px;
+}
+.stand-legend span:nth-child(1) {
+  color: #426626;
+}
+.stand-legend span:nth-child(2) {
+  color: #226983;
+}
+.stand-legend span:nth-child(3) {
+  color: #916125;
+}
+.stand-camera-device {
+  color: #707b81;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  margin-top: 9px;
+}
+.stand-distance {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #d9ddd7;
+}
+.stand-distance > span {
+  font-size: 11px;
+  color: #63706d;
+}
+.stand-distance strong {
+  display: block;
+  font-size: 44px;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+.stand-distance small {
+  font-size: 20px;
+  font-weight: 400;
+}
+.stand-distance p {
+  color: #687774;
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 5px 0 0;
+}
+.stand-metrics {
+  margin: 10px 0 0;
+  font-size: 11px;
+}
+.stand-metrics > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #dfe3dc;
+}
+.stand-metrics dt {
+  color: #596866;
+}
+.stand-metrics dd {
+  margin: 0;
+  text-align: right;
+  font-family: ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.stand-detection-details {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 24px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #d9ddd7;
+}
+.stand-detection-details h3 {
+  font-size: 12px;
+  font-weight: 650;
+  margin: 0 0 7px;
+}
+.stand-detection-details p {
+  font-size: 10px;
+  line-height: 1.6;
+  color: #687774;
+  margin: 6px 0 10px;
+}
+.stand-signal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 20px;
+}
+.stand-signal {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 10px;
+}
+.stand-signal span {
+  grid-column: 1 / -1;
+}
+.stand-signal meter {
+  width: 100%;
+  height: 8px;
+  accent-color: #497347;
+}
+.stand-signal output {
+  font-family: ui-monospace, monospace;
+  min-width: 34px;
+  text-align: right;
+}
+.stand-hand {
+  display: grid;
+  gap: 3px;
+  font-size: 11px;
+  margin: 10px 0;
+}
+.stand-hand > span,
+.stand-hand small {
+  color: #687774;
+  font-size: 10px;
+}
+.stand-settings-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 28px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #d9ddd7;
+  align-items: start;
+}
+.stand-settings-controls .stand-setting-row {
+  margin: 0;
+}
+.stand-calibration {
+  grid-column: 2;
+  grid-row: 1 / 3;
+}
+.stand-panel .stand-start {
+  width: auto;
+  min-width: 230px;
+}
+.stand-panel .stand-privacy {
+  max-width: 650px;
+}
+.stand-panel .stand-exit-hint {
+  text-align: left;
+}
+@media (max-width: 1250px) and (min-width: 761px) {
+  .stand-panel {
+    width: calc(100vw - 300px);
+    right: 20px;
+    padding: 24px;
+  }
+  .stand-configuring .stand-scene {
+    margin-right: calc(100vw - 280px);
+  }
+  .stand-configuring .stand-avatar {
+    width: 260px;
+    height: 260px;
+  }
+  .stand-diagnostics-layout,
+  .stand-detection-details {
+    grid-template-columns: 1fr;
+  }
+  .stand-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+  }
+}
+@media (max-width: 760px) {
+  .stand-configuring .stand-scene {
+    margin-right: 0;
+  }
+  .stand-configuring .stand-avatar {
+    width: 34dvh;
+    height: 34dvh;
+  }
+  .stand-panel {
+    width: calc(100% - 24px);
+    padding: 22px 18px;
+  }
+  .stand-diagnostics-layout,
+  .stand-detection-details,
+  .stand-settings-controls {
+    grid-template-columns: 1fr;
+  }
+  .stand-calibration {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .stand-diagnostics-heading {
+    align-items: flex-start;
+  }
+  .stand-panel .stand-start {
+    width: 100%;
+  }
+}
+.stand-panel {
+  top: 20px;
+  bottom: 20px;
+  transform: none;
+}
+@media (max-width: 760px) {
+  .stand-panel {
+    top: auto;
+    bottom: auto;
+  }
+}
+
+/* A quiet stage with a large, readable invitation for people standing 1–2 m away. */
+.stand-presenting .stand-scene {
+  height: 77dvh;
+  min-height: 0;
+}
+.stand-presenting .stand-avatar {
+  width: min(92vw, 88dvh);
+  height: min(92vw, 88dvh);
+}
+.stand-invitation {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: max(4dvh, 20px);
+  text-align: center;
+  color: #f5f3ed;
+  pointer-events: none;
+}
+.stand-invitation-name {
+  margin-bottom: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #b9f87a;
+}
+.stand-invitation-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  animation: stand-invitation-arrive 450ms ease-out both;
+}
+.stand-invitation-title {
+  margin: 0;
+  font-size: clamp(28px, 3.5vw, 60px);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.stand-invitation-hint {
+  margin: 12px 0 0;
+  color: #aebac9;
+  font-size: clamp(16px, 1.6vw, 26px);
+  line-height: 1.4;
+  text-wrap: balance;
+}
+.stand-invitation-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: clamp(54px, 5vw, 84px);
+  aspect-ratio: 1;
+  border: 1px solid #b9f87a40;
+  border-radius: 24px;
+  color: #b9f87a;
+  transform: rotate(-7deg);
+}
+.stand-invitation-icon svg {
+  width: 52%;
+  height: 52%;
+  stroke-width: 1.7;
+}
+.stand-invitation[data-reply='true'] .stand-invitation-icon {
+  background: #b9f87a;
+  color: #182619;
+  transform: rotate(7deg);
+}
+.stand-encounter-diagnostics {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 14px 22px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  background: #e8ede1;
+  border-radius: 12px;
+}
+.stand-encounter-diagnostics > div {
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  font-size: 12px;
+}
+.stand-encounter-diagnostics span {
+  color: #596866;
+  font-size: 10px;
+}
+.stand-encounter-diagnostics > div:last-child {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.stand-encounter-diagnostics progress {
+  accent-color: #497347;
+  height: 6px;
+  flex: 1;
+  min-width: 40px;
+}
+@keyframes stand-invitation-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 760px) {
+  .stand-presenting .stand-scene {
+    height: 68dvh;
+  }
+  .stand-invitation {
+    left: 18px;
+    right: 18px;
+    bottom: 6dvh;
+  }
+  .stand-invitation-message {
+    gap: 14px;
+  }
+  .stand-invitation-icon {
+    width: 44px;
+    border-radius: 14px;
+  }
+  .stand-encounter-diagnostics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .stand-encounter-diagnostics > div:first-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-height: 520px) and (min-width: 761px) {
+  .stand-invitation-name {
+    display: none;
+  }
+  .stand-invitation-title {
+    font-size: 28px;
+  }
+  .stand-invitation-hint {
+    font-size: 16px;
+    margin-top: 6px;
+  }
+  .stand-invitation-icon {
+    width: 44px;
+    border-radius: 14px;
+  }
+}
+.stand-mode[data-reduced-motion='true'] .stand-invitation-message {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stand-invitation-message {
+    animation: none;
+  }
+}

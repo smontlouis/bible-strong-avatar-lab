@@ -41,6 +41,7 @@
     "@bible-strong/avatar-core": "workspace:*",
     "@bible-strong/avatar-react": "workspace:*",
     "@floating-ui/react": "^0.27.20",
+    "@mediapipe/tasks-vision": "1.0.1",
     "@tiptap/core": "^3.30.5",
     "@tiptap/extension-placeholder": "^3.30.5",
     "@tiptap/pm": "^3.30.5",
