@@ -10,10 +10,23 @@ const STACKED_LAYOUT_QUERY = '(max-width: 980px)'
 const StandMode = lazy(() => import('@/features/stand/StandMode'))
 
 export function StudioView(controller: StudioController) {
-  const [standOpen, setStandOpen] = useState(false)
+  const [standOpen, setStandOpen] = useState(() => /^\/stand\/?$/.test(window.location.pathname))
+  const navigateStand = (open: boolean) => {
+    window.history.pushState(
+      null,
+      '',
+      `${open ? '/stand' : '/'}${window.location.search}${window.location.hash}`
+    )
+    setStandOpen(open)
+  }
+  useEffect(() => {
+    const changed = () => setStandOpen(/^\/stand\/?$/.test(window.location.pathname))
+    window.addEventListener('popstate', changed)
+    return () => window.removeEventListener('popstate', changed)
+  }, [])
   const openStand = () => {
     if (controller.playbackStatus === 'playing') controller.pauseState()
-    setStandOpen(true)
+    navigateStand(true)
   }
   const [stackedLayout, setStackedLayout] = useState(
     () => window.matchMedia(STACKED_LAYOUT_QUERY).matches
@@ -33,7 +46,7 @@ export function StudioView(controller: StudioController) {
           <StandMode
             avatar={controller.activeAvatar}
             reducedMotion={Boolean(controller.reduceMotion)}
-            onExit={() => setStandOpen(false)}
+            onExit={() => navigateStand(false)}
           />
         </Suspense>
       ) : stackedLayout ? (

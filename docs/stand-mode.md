@@ -108,3 +108,66 @@ association, distance response, finite rendering inputs, cooldowns,
 mirroring and camera cleanup. Browser validation with a simulated camera covers actual
 model loading, fullscreen and exit. Recognition accuracy still needs a real-camera check
 under the stand's lighting, framing and visitor distances.
+
+## Hand exploration and petting
+
+With **Show resources and the virtual hand** enabled (the default), six illustrated cards
+surround the avatar: lexicon, dictionaries and comparisons on the left; cross references,
+topics and commentaries on the right. Each opens a large, scrollable discovery reader.
+These are editorial introductions adapted from Bible Strong World's six discovery journeys,
+not live queries against the resource libraries. Illustrations are copied from
+`bible-strong-app/apps/world/public/assets/discovery` to `public/stand/resources`. The
+French and English examples have been adapted for this screen, with Simplified Chinese
+copy added to the existing translation dictionaries. All reader text and images are local.
+
+- Raise an open or relaxed hand for 300 ms to acquire the virtual hand. A comfort-sized mapping is
+  fixed relative to the visitor at acquisition; head movements do not move the pointer.
+  The pointer has 1.4× gain on both axes, requiring 28.6% less physical travel while
+  preserving the resting hand position.
+- Close the fist over a card or navigation control to
+  activate it. The fist is confirmed for 120 ms across more than one observation.
+  The highlighted control shows the target. Hovering alone never activates it.
+  A new fist click requires reopening the hand first.
+  Context changes have a short guard interval, and a held fist cannot click again in
+  the newly opened reader.
+- Close the fist inside the text, then move vertically to drag the content. Opening
+  the hand, losing tracking, or closing the reader stops dragging. Each grip keeps its
+  original action: a click cannot become a drag, and dragging over a button cannot
+  click it. Full-width up/down bars sit above and below the scrollable text; both support
+  fist clicks, mouse, touch and keyboard. Hovering alone never activates a control.
+- With an open hand, stroke the upper part of the avatar's head. Gentle movement for
+  at least 320 ms triggers relaxed eyes, a small lean and hearts by the hand. A stationary
+  palm, a fist, a fast sweep, or a resource control does not count as a caress. The hit
+  region is an ellipse fitted to the rendered primary head bounds, excluding its lower
+  part; it approximates unusual custom body shapes.
+- The hand stays associated with the attended visitor using proximity and continuity.
+  It does not switch hands immediately and actions stop on missing/stale hand observations.
+  Spatial association can still be ambiguous when people overlap; this is not identity
+  recognition or a body-pose tracker.
+- New visitor ownership closes an open resource. After eight seconds without a visitor,
+  the stand returns to the six cards. Putting the arm down alone leaves the reader open.
+- Settings disable gesture actions but keep showing hand tracking status. Reading,
+  selecting and petting suspend competing encounter responses; idle hand movement can
+  still produce a wave. Camera inference is unchanged and cursor animation uses Motion
+  values independently from React state.
+
+Additional on-site checks: reach all six cards at 1 m and 2 m without leaning; hold on a
+card and close the fist; close and reopen; drag up/down and release; lower the arm to read; introduce a
+second person; stroke, pause and quickly sweep across the head; open settings while a
+hand is present. Validate with the actual display, framing and lighting. The automated
+suite covers hand acquisition/ownership, fist-only activation, stale frames, scrolling and pet strokes;
+browser QA uses synthetic observations and does not establish recognition accuracy.
+
+### Diagnostic pendant l’expérience
+
+Ajouter `?debug` à l’URL pour afficher la caméra et les repères en bas à droite du stand, avec l’état de la main virtuelle. L’aperçu utilise le flux déjà ouvert et ne capture pas une seconde caméra. Il disparaît quand les réglages sont ouverts. Une main détectée sans geste reconnu peut désormais acquérir le curseur ; le survol seul ne valide rien ; le poing reste soumis à sa reconnaissance et les caresses nécessitent une paume ouverte.
+
+### Accès direct et préférences
+
+`/stand` ouvre le stand avec l’avatar actif enregistré dans le studio. `/stand?debug` ajoute l’aperçu de diagnostic. Le bouton du studio met l’URL à jour ; Quitter revient à `/`, et les boutons précédent/suivant du navigateur suivent le mode affiché. Le démarrage de la caméra et du plein écran reste déclenché par le bouton de démarrage.
+
+Les préférences sont enregistrées sous `avatar-stand-settings` dans le local storage : caméra, miroir, distance d’accueil, invitations, ressources/main virtuelle et repères de diagnostic. Les données invalides utilisent les valeurs par défaut. Le calibrage du regard reste propre à chaque session et doit être refait si nécessaire. Une caméra enregistrée mais débranchée peut être remplacée dans les réglages.
+
+Fermer le poing sur Strobi permet de le saisir et de le faire pivoter avec le même calcul de rotation arcball que dans l’Avatar Lab. La prise reste active hors de sa silhouette tant que la main est suivie et fermée. Ouvrir la main, perdre le suivi ou ouvrir les réglages relâche la rotation ; Strobi reprend progressivement son comportement. Les boutons restent prioritaires lorsqu’ils recouvrent l’avatar.
+
+Le visage sert à attribuer une main au visiteur lors de l’acquisition. Ensuite, la continuité de la main (côté et proximité entre images) maintient le contrôle même sans visage visible, notamment lorsqu’elle le masque. Une perte réelle de la main suspend immédiatement les actions ; après une perte prolongée, une nouvelle acquisition requiert le visage. Le retour du même visage à proximité de la position initiale conserve la prise, même si son identifiant temporaire a expiré.

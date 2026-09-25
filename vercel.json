@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/stand/:path*", "destination": "/index.html" }]
+}

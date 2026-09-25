@@ -2,17 +2,23 @@ import { ArrowLeft, Camera, Maximize, Settings2, ShieldCheck, X } from 'lucide-r
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { StandCameraSelect } from './StandCameraSelect'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import type { StudioAvatar } from '@/features/avatar/avatars'
 import { useStudioLanguage } from '@/i18n'
 import { StandAvatar } from './StandAvatar'
 import { StandInvitation } from './StandInvitation'
+import { StandHands, type HandStatus } from './StandHands'
+import { StandResources } from './StandResources'
+import { standResources, type StandResourceId } from './resourceCatalog'
 import type { StandCue } from './standEncounter'
 import { startStandCamera, type CameraStatus } from './standCamera'
 import { StandDiagnostics } from './StandDiagnostics'
 import { createStandDirector, type StandMood, type StandObservation } from './standDirector'
+import { readStandSettings, saveStandSettings, type StandSettings } from './standSettings'
 import './standMode.css'
+import './standResources.css'
 
 const moodLabels: Record<StandMood, string> = {
   idle: 'Dans sa bulle',
@@ -41,15 +47,25 @@ export default function StandMode({
   const root = useRef<HTMLElement>(null)
   const panel = useRef<HTMLElement>(null)
   const video = useRef<HTMLVideoElement>(null)
+  const debugVideo = useRef<HTMLVideoElement>(null)
+  const debug = new URLSearchParams(window.location.search).has('debug')
   const observation = useRef<StandObservation | null>(null)
   const settingsButton = useRef<HTMLButtonElement>(null)
   const [director, setDirector] = useState(createStandDirector)
+  const [settings, setSettings] = useState(readStandSettings)
+  const { cameraId, mirror, proximity, invitations, resources, landmarks } = settings
+  const updateSetting = <K extends keyof StandSettings>(key: K, value: StandSettings[K]) => {
+    setSettings(current => ({ ...current, [key]: value }))
+  }
+  useEffect(() => {
+    saveStandSettings(settings)
+  }, [settings])
+  const keepSettingsOpen = useRef(false)
   const [attempt, setAttempt] = useState(0)
   const [status, setStatus] = useState<CameraStatus | 'idle'>('idle')
   const [panelOpen, setPanelOpen] = useState(true)
-  const [mirror, setMirror] = useState(true)
-  const [proximity, setProximity] = useState(2.2)
-  const [invitations, setInvitations] = useState(true)
+  const [activeResource, setActiveResource] = useState<StandResourceId | null>(null)
+  const [hand, setHand] = useState<HandStatus>({ mode: 'hidden', hover: null })
   const [presentation, setPresentation] = useState<{ mood: StandMood; cue: StandCue }>({
     mood: 'idle',
     cue: 'idle',
@@ -60,6 +76,7 @@ export default function StandMode({
   const running = status === 'running'
   const error = status !== 'idle' ? errors[status] : undefined
   const showPanel = panelOpen || !running
+  const exploring = resources && running && !showPanel
 
   useEffect(() => {
     if (showPanel && panel.current) panel.current.scrollTop = 0
@@ -100,12 +117,13 @@ export default function StandMode({
       next => {
         setStatus(next)
         if (next === 'running') {
-          setPanelOpen(false)
-          root.current?.focus()
+          setPanelOpen(keepSettingsOpen.current)
+          if (!keepSettingsOpen.current) root.current?.focus()
         }
-      }
+      },
+      cameraId
     )
-  }, [attempt, director])
+  }, [attempt, director, cameraId])
 
   const fullscreen = () => {
     setFullscreenUnavailable(false)
@@ -116,6 +134,8 @@ export default function StandMode({
     void document.documentElement.requestFullscreen().catch(() => setFullscreenUnavailable(true))
   }
   const start = () => {
+    keepSettingsOpen.current = false
+    setActiveResource(null)
     setCalibrationResult(null)
     setStatus('loading')
     setDirector(createStandDirector())
@@ -125,10 +145,20 @@ export default function StandMode({
   const togglePanel = () => {
     setPanelOpen(current => !current)
   }
+  const handAction = (action: string) => {
+    if (action === 'close' || action === 'reset') setActiveResource(null)
+    else if (action === 'up' || action === 'down') {
+      const scroller = root.current?.querySelector<HTMLElement>('[data-stand-scroll]')
+      if (scroller) scroller.scrollTop += scroller.clientHeight * 0.7 * (action === 'up' ? -1 : 1)
+    } else {
+      const resource = standResources.find(resource => `open:${resource.id}` === action)
+      if (resource) setActiveResource(resource.id)
+    }
+  }
 
   return (
     <main
-      className={`stand-mode${showPanel ? ' stand-configuring' : running && invitations ? ' stand-presenting' : ''}`}
+      className={`stand-mode${showPanel ? ' stand-configuring' : exploring ? ` stand-exploring${activeResource ? ' stand-reading' : ''}` : running && invitations ? ' stand-presenting' : ''}`}
       data-reduced-motion={reducedMotion}
       ref={root}
       tabIndex={-1}
@@ -142,8 +172,47 @@ export default function StandMode({
           onPresentation={setPresentation}
         />
       </div>
-      {running && invitations && !showPanel && (
+      {running && invitations && !showPanel && !exploring && (
         <StandInvitation cue={presentation.cue} name={avatar.name} />
+      )}
+      {exploring && (
+        <>
+          <StandResources
+            active={activeResource}
+            onOpen={setActiveResource}
+            onClose={() => setActiveResource(null)}
+            hand={hand}
+            root={root}
+            cue={presentation.cue}
+          />
+        </>
+      )}
+      {running && resources && (
+        <StandHands
+          root={root}
+          observation={observation}
+          director={director}
+          mirror={mirror}
+          reader={activeResource}
+          enabled={exploring}
+          onAction={handAction}
+          onStatus={setHand}
+        />
+      )}
+      {debug && running && !showPanel && (
+        <StandDiagnostics
+          compact
+          sourceVideo={video}
+          video={debugVideo}
+          observation={observation}
+          director={director}
+          visible
+          mirror={mirror}
+          status={status}
+          mood={moodLabels[presentation.mood]}
+          cue={presentation.cue}
+          handMode={hand.mode}
+        />
       )}
       <div className="stand-toolbar">
         <Button variant="secondary" onClick={onExit} aria-label={t('Retour au studio')}>
@@ -195,24 +264,62 @@ export default function StandMode({
             )}
           </p>
         )}
+        <StandCameraSelect
+          value={cameraId}
+          status={status}
+          onChange={id => {
+            if (id === cameraId) return
+            keepSettingsOpen.current = true
+            setPanelOpen(true)
+            setActiveResource(null)
+            setCalibrationResult(null)
+            setDirector(createStandDirector())
+            if (attempt) setStatus('loading')
+            updateSetting('cameraId', id)
+          }}
+        />
         <StandDiagnostics
           video={video}
           observation={observation}
           director={director}
+          overlay={landmarks}
+          onOverlayChange={value => updateSetting('landmarks', value)}
           visible={showPanel}
           mirror={mirror}
           status={status}
           mood={moodLabels[presentation.mood]}
           cue={presentation.cue}
+          handMode={hand.mode}
         />
         <div className="stand-settings-controls">
           <div className="stand-setting-row">
+            <label htmlFor="stand-resources">
+              {t('Afficher les ressources et la main virtuelle')}
+            </label>
+            <Switch
+              id="stand-resources"
+              checked={resources}
+              onCheckedChange={value => {
+                updateSetting('resources', value)
+                if (!value) setActiveResource(null)
+              }}
+            />
+          </div>
+          <div className="stand-setting-row">
             <label htmlFor="stand-mirror">{t('Inverser le suivi horizontal')}</label>
-            <Switch id="stand-mirror" checked={mirror} onCheckedChange={setMirror} />
+            <Switch
+              id="stand-mirror"
+              checked={mirror}
+              onCheckedChange={value => updateSetting('mirror', value)}
+            />
           </div>
           <div className="stand-setting-row">
             <label htmlFor="stand-invitations">{t('Afficher les invitations à jouer')}</label>
-            <Switch id="stand-invitations" checked={invitations} onCheckedChange={setInvitations} />
+            <Switch
+              id="stand-invitations"
+              checked={invitations}
+              onCheckedChange={value => updateSetting('invitations', value)}
+            />
           </div>
           {running && (
             <div className="stand-calibration">
@@ -250,7 +357,9 @@ export default function StandMode({
               max={3}
               step={0.1}
               value={proximity}
-              onValueChange={value => setProximity(Array.isArray(value) ? value[0] : value)}
+              onValueChange={value =>
+                updateSetting('proximity', Array.isArray(value) ? value[0] : value)
+              }
             />
             <div>
               <span>{t('Plus près')}</span>

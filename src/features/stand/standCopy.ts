@@ -1,6 +1,7 @@
 import type { StandCue } from './standEncounter'
 
 export const invitationCopy: Record<StandCue, [string, string]> = {
+  petted: ['Mmm… encore un peu.', 'Je crois que je t’aime bien.'],
   idle: ['Psst… par ici.', 'Approche. Je crois qu’on ne se connaît pas.'],
   notice: ['C’est moi que tu regardes ?', '… je te regarde aussi.'],
   closer: ['Viens un peu plus près.', 'Je suis curieux. Enfin… un peu.'],

@@ -7,7 +7,8 @@ export type CameraStatus = 'loading' | 'running' | 'denied' | 'unavailable' | 'f
 export function startStandCamera(
   video: HTMLVideoElement,
   observe: (observation: StandObservation) => void,
-  status: (status: CameraStatus) => void
+  status: (status: CameraStatus) => void,
+  deviceId?: string
 ) {
   let disposed = false
   let stream: MediaStream | null = null
@@ -77,7 +78,11 @@ export function startStandCamera(
     }
     try {
       const acquired = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 720 } },
+        video: {
+          ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' }),
+          width: { ideal: 960 },
+          height: { ideal: 720 },
+        },
         audio: false,
       })
       if (disposed) {

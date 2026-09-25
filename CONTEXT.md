@@ -76,3 +76,8 @@ The complete Studio document is persisted in browser local storage. JSON project
 portable backup mechanism. There is no remote backend in this repository.
 
 Accepted architecture decisions live under `docs/adr/`.
+
+Stand preferences are persisted separately under `avatar-stand-settings` (camera device ID,
+mirroring, welcome distance, invitations, resources, diagnostic landmarks). They are not part of
+Studio JSON exports. `/stand` opens the stand with the persisted active Studio avatar; camera
+startup still requires the start button. Gaze calibration is session-local.

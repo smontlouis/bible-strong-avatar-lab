@@ -69,6 +69,32 @@ describe('stand camera lifetime', () => {
     expect(status.mock.calls).toEqual([['loading']])
   })
 
+  it('releases the previous camera before requesting the selected device', async () => {
+    const stop = startStandCamera(video, vi.fn(), vi.fn())
+    await flush()
+    stop()
+    const stopNext = startStandCamera(video, vi.fn(), vi.fn(), 'usb-camera')
+    await flush()
+    expect(stopTrack.mock.invocationCallOrder[0]).toBeLessThan(
+      getUserMedia.mock.invocationCallOrder[1]
+    )
+    expect(getUserMedia).toHaveBeenLastCalledWith({
+      video: { deviceId: { exact: 'usb-camera' }, width: { ideal: 960 }, height: { ideal: 720 } },
+      audio: false,
+    })
+    stopNext()
+  })
+
+  it('reports a disconnected selection instead of silently opening another camera', async () => {
+    getUserMedia.mockRejectedValue(new DOMException('Missing device', 'OverconstrainedError'))
+    const status = vi.fn()
+    startStandCamera(video, vi.fn(), status, 'missing-camera')
+    await flush()
+    expect(status).toHaveBeenLastCalledWith('unavailable')
+    expect(getUserMedia).toHaveBeenCalledOnce()
+    expect(worker.postMessage).not.toHaveBeenCalled()
+  })
+
   it('terminates inference and closes the camera on exit', async () => {
     const stop = startStandCamera(video, vi.fn(), vi.fn())
     await flush()

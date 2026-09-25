@@ -2,7 +2,12 @@ import { motion, useMotionValue } from 'motion/react'
 import { useEffect, useEffectEvent, useId, useState } from 'react'
 
 import type { StudioAvatar } from '@/features/avatar/avatars'
-import { poseFromExpression, renderAvatar, type Expression } from '@/features/avatar/geometry'
+import {
+  poseFromExpression,
+  rotateExpressionWithArcball,
+  renderAvatar,
+  type Expression,
+} from '@/features/avatar/geometry'
 import { defaultExpression } from '@/features/avatar/presets'
 import { createRenderedScene, paintRenderedScene } from '@/features/rendering/renderedScene'
 import type { createStandDirector, StandMood, StandSettings } from './standDirector'
@@ -40,6 +45,7 @@ export function StandAvatar({
     let frame = 0
     let previousAt = 0
     let current: Expression = { ...defaultExpression, ...avatar.eyes }
+    let drag: { at: number; initial: Expression } | null = null
     let previousMood: StandMood | undefined
     let previousCue: StandCue | undefined
     const neutral = { ...current }
@@ -49,6 +55,17 @@ export function StandAvatar({
       const dt = Math.min(100, at - previousAt)
       previousAt = at
       const next = director.sample(at, neutral, readSettings())
+      const rotation = director.handRotation()
+      if (rotation) {
+        if (drag?.at !== rotation.at) drag = { at: rotation.at, initial: { ...current } }
+        const rotated = rotateExpressionWithArcball(drag.initial, rotation.start, rotation.point)
+        next.expression = {
+          ...next.expression,
+          headX: rotated.headX,
+          headY: rotated.headY,
+          headZ: rotated.headZ,
+        }
+      } else drag = null
       const amount = 1 - Math.exp(-dt / 160)
       current = Object.fromEntries(
         Object.entries(next.expression).map(([key, value]) => {
@@ -110,7 +127,7 @@ export function StandAvatar({
         {scene.backPaths.map((path, index) => (
           <motion.path d={path} fill={scene.backColors[index]} key={index} />
         ))}
-        <motion.path d={scene.headPath} fill={avatar.colors.body} />
+        <motion.path d={scene.headPath} fill={avatar.colors.body} data-stand-pet-target />
         <g clipPath={`url(#${clipId})`} fill={avatar.colors.eyes}>
           <motion.path d={scene.leftPath} opacity={scene.leftOpacity} />
           <motion.path d={scene.rightPath} opacity={scene.rightOpacity} />

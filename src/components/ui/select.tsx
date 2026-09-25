@@ -30,10 +30,19 @@ function SelectValue(props: SelectPrimitive.Value.Props) {
   return <SelectPrimitive.Value data-slot="select-value" {...props} />
 }
 
-function SelectContent({ className, children, ...props }: SelectPrimitive.Popup.Props) {
+function SelectContent({
+  className,
+  children,
+  positionerClassName,
+  ...props
+}: SelectPrimitive.Popup.Props & { positionerClassName?: string }) {
   return (
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Positioner className="z-50" sideOffset={4} alignItemWithTrigger={false}>
+      <SelectPrimitive.Positioner
+        className={cn('z-50', positionerClassName)}
+        sideOffset={4}
+        alignItemWithTrigger={false}
+      >
         <SelectPrimitive.Popup
           data-slot="select-content"
           className={cn(

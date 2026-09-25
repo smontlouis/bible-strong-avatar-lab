@@ -12,6 +12,7 @@ import type {
 import type { CameraStatus } from './standCamera'
 import type { StandCue } from './standEncounter'
 import { invitationCopy } from './standCopy'
+import type { HandMode } from './standHandNavigation'
 
 type Props = {
   video: RefObject<HTMLVideoElement | null>
@@ -22,6 +23,11 @@ type Props = {
   status: CameraStatus | 'idle'
   mood: string
   cue: StandCue
+  overlay?: boolean
+  onOverlayChange?: (value: boolean) => void
+  compact?: boolean
+  sourceVideo?: RefObject<HTMLVideoElement | null>
+  handMode: HandMode
 }
 const signals = [
   ['eyeBlinkLeft', 'Œil gauche fermé'],
@@ -46,7 +52,7 @@ export function StandDiagnostics(props: Props) {
   const { t } = useStudioLanguage()
   const { video, mirror, visible, status, mood } = props
   const canvas = useRef<HTMLCanvasElement>(null)
-  const [overlay, setOverlay] = useState(true)
+  const overlay = props.overlay ?? true
   const [snapshot, setSnapshot] = useState<{
     observation: StandObservation | null
     attention: ReturnType<ReturnType<typeof createStandDirector>['inspect']>
@@ -65,6 +71,13 @@ export function StandDiagnostics(props: Props) {
     const tick = (at: number) => {
       frame = requestAnimationFrame(tick)
       const current = read()
+      if (current.sourceVideo && current.video.current) {
+        const stream = current.sourceVideo.current?.srcObject ?? null
+        if (current.video.current.srcObject !== stream) {
+          current.video.current.srcObject = stream
+          if (stream) void current.video.current.play().catch(() => {})
+        }
+      }
       const observation = freshObservation(
         current.observation.current,
         at,
@@ -181,7 +194,10 @@ export function StandDiagnostics(props: Props) {
   const number = (value: number | null | undefined, digits = 1) =>
     value == null ? '—' : value.toFixed(digits)
   return (
-    <section className="stand-diagnostics" aria-label={t('Diagnostic caméra')}>
+    <section
+      className={`stand-diagnostics${props.compact ? ' stand-debug-preview' : ''}`}
+      aria-label={t('Diagnostic caméra')}
+    >
       <div className="stand-diagnostics-heading">
         <h2>{t('Ce que voit la caméra')}</h2>
         <span className="stand-status-dot" data-live={Boolean(data)}>
@@ -202,6 +218,22 @@ export function StandDiagnostics(props: Props) {
         <div>
           <span>{t('Inclinaison du visage')}</span>
           <strong>{number(target ? attention?.signals?.tilt : null)}°</strong>
+        </div>
+        <div>
+          <span>{t('Main virtuelle')}</span>
+          <strong>
+            {t(
+              {
+                hidden: 'Main non suivie',
+                moving: 'Main en déplacement',
+                closed: 'Poing fermé',
+                selecting: 'Sélection en cours',
+                grabbing: 'Défilement à la main',
+                rotating: 'Rotation de l’avatar',
+                petting: 'Caresse détectée',
+              }[props.handMode]
+            )}
+          </strong>
         </div>
         <div>
           <span>{t('Geste en cours de validation')}</span>
@@ -238,8 +270,14 @@ export function StandDiagnostics(props: Props) {
             {status === 'running' && <span className="stand-live-badge">{t(mood)}</span>}
           </div>
           <div className="stand-overlay-options">
-            <label htmlFor="stand-landmarks">{t('Afficher les repères')}</label>
-            <Switch id="stand-landmarks" checked={overlay} onCheckedChange={setOverlay} />
+            <label htmlFor={props.compact ? 'stand-debug-landmarks' : 'stand-landmarks'}>
+              {t('Afficher les repères')}
+            </label>
+            <Switch
+              id={props.compact ? 'stand-debug-landmarks' : 'stand-landmarks'}
+              checked={overlay}
+              onCheckedChange={props.onOverlayChange}
+            />
           </div>
           <div className="stand-legend">
             <span>{t('Vert : visiteur suivi')}</span>

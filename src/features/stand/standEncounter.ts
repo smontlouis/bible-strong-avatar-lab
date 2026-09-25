@@ -3,6 +3,7 @@ import type { ObservedHand, Visitor } from './standDirector'
 
 export type StandAction = 'wave' | 'smile' | 'thumbs-up' | 'tilt'
 export type StandCue =
+  | 'petted'
   | 'idle'
   | 'notice'
   | 'closer'

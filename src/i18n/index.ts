@@ -26,6 +26,25 @@ const readStoredStudioLanguage = (): StudioLanguage => {
 }
 
 const english: Record<string, string> = {
+  Caméra: 'Camera',
+  'Caméra par défaut': 'Default camera',
+  'Caméra déconnectée': 'Disconnected camera',
+  'Après autorisation, choisissez la caméra à utiliser. Le suivi redémarre automatiquement.':
+    'After granting permission, choose the camera to use. Tracking restarts automatically.',
+  'Rotation de l’avatar': 'Rotate the avatar',
+  'Comment jouer': 'How to play',
+  Explorer: 'Explore',
+  'Vise une carte, puis ferme le poing.': 'Point at a card, then close your fist.',
+  'Me faire tourner': 'Spin me around',
+  'Ferme le poing sur moi, puis déplace la main.': 'Close your fist over me, then move your hand.',
+  'Me caresser': 'Pet me',
+  'Passe doucement ta main ouverte sur ma tête.': 'Gently move your open hand over my head.',
+  'À toi de me faire tourner !': 'Give me a spin!',
+  'Déplace ton poing. Ouvre la main pour me relâcher.':
+    'Move your fist. Open your hand to release me.',
+  'Vise ici et ferme le poing pour revenir.': 'Point here and close your fist to go back.',
+  'Poing fermé dans le texte : déplace la main pour défiler. Sur une flèche : ferme le poing pour cliquer.':
+    'Over the text: hold a fist and move to scroll. Over an arrow: close your fist to click.',
   Aucun: 'None',
   'Diagnostic caméra': 'Camera diagnostics',
   'Ce que voit la caméra': 'What the camera sees',
@@ -119,6 +138,110 @@ const english: Record<string, string> = {
   'Interactions découvertes': 'Interactions discovered',
   'Inclinaison du visage': 'Face tilt',
   'Geste en cours de validation': 'Recognizing the gesture',
+  'Lexique hébreu / grec': 'Hebrew / Greek lexicon',
+  'Derrière un mot, un monde.': 'Behind a word, a world.',
+  'Un mot qui prend vie': 'A word comes alive',
+  'Le mot hébreu hevel évoque un souffle, une vapeur. Dans l’Ecclésiaste, il est aussi traduit par « vanité ». Un mot original peut ouvrir une nouvelle piste de lecture.':
+    'The Hebrew word hevel evokes a breath or vapour. In Ecclesiastes, it is also translated as “vanity”. An original word can open a new path into the text.',
+  'Ecclésiaste 1.2 · H1892': 'Ecclesiastes 1:2 · H1892',
+  'הֶבֶל · hevel': 'הֶבֶל · hevel',
+  'Souffle, vapeur, vanité : ces nuances évoquent ce qui est passager. Le contexte du passage aide à comprendre le sens du mot.':
+    'Breath, vapour, vanity: these shades of meaning evoke what is fleeting. The passage’s context helps us understand the word.',
+  'Retrouve le fil du mot': 'Follow the word',
+  'Dans Bible Strong, sélectionne un mot lié à un numéro Strong. Explore sa définition et les autres passages où il apparaît, puis reviens lire le texte dans son contexte.':
+    'In Bible Strong, select a word linked to a Strong number. Explore its definition and other passages where it appears, then return to read the text in context.',
+  'Dictionnaires bibliques': 'Bible dictionaries',
+  'Un mot, toute une époque.': 'One word, a whole world.',
+  'Qui étaient les publicains ?': 'Who were the publicans?',
+  'Zachée est présenté comme un chef des publicains. Ce sont des collecteurs d’impôts ou de taxes : connaître leur métier aide à entrer dans le récit.':
+    'Zacchaeus is introduced as a chief publican. Publicans collected taxes or duties: knowing their work helps us enter the story.',
+  'Luc 19.2 · D’après Easton, « Publican »': 'Luke 19:2 · Based on Easton, “Publican”',
+  'Le contexte change le regard': 'Context changes our perspective',
+  'Leur lien avec le pouvoir et les abus de perception les rendaient impopulaires. L’accueil de Zachée par Jésus prend alors un relief particulier : la foule lui reproche de loger chez un pécheur.':
+    'Their ties to the authorities and abuses in tax collection made them unpopular. Jesus welcoming Zacchaeus takes on new meaning: the crowd objects to his staying with a sinner.',
+  'Luc 19.7': 'Luke 19:7',
+  'Personnes, lieux, coutumes': 'People, places, customs',
+  'Les dictionnaires de Bible Strong donnent des repères pour comprendre le monde de la Bible. Pars d’un nom ou d’une coutume, puis relis le passage avec ce nouvel éclairage.':
+    'Bible Strong’s dictionaries provide background to the world of the Bible. Start with a name or custom, then reread the passage with that new insight.',
+  'Comparaisons de traductions': 'Compare translations',
+  'Un passage, plusieurs éclairages.': 'One passage, different perspectives.',
+  'Un autre choix de mots': 'Another choice of words',
+  'Dans Jean 1.5, Segond emploie « reçue » et Darby « comprise ». Comparer les formulations attire notre attention sur une question que nous n’aurions peut-être pas posée.':
+    'In John 1:5, the KJV uses “comprehended” and the ASV “apprehended”. Comparing the wording can draw our attention to a question we might not otherwise have asked.',
+  'Jean 1.5 · Segond 1910 / Darby 1890': 'John 1:5 · KJV / ASV',
+  'Observe, puis relis': 'Notice, then reread',
+  'Quels mots se ressemblent ? Lesquels diffèrent ? Une différence ouvre une piste ; elle ne remplace pas la lecture du chapitre et de son contexte.':
+    'Which words are alike? Which differ? A difference opens a path; it does not replace reading the chapter in its context.',
+  'Rapproche tes versions': 'Bring your versions together',
+  'Sélectionne un ou plusieurs versets dans Bible Strong, puis ajoute les traductions que tu souhaites comparer. Prends le temps de lire leurs formulations côte à côte.':
+    'Select one or more verses in Bible Strong, then add the translations you want to compare. Take time to read their wording side by side.',
+  'Références croisées': 'Cross references',
+  'Un verset, mille connexions.': 'One verse, a thousand connections.',
+  'Suis l’image du berger': 'Follow the image of the shepherd',
+  'Le Psaume 23 présente Dieu comme un berger. Cette image résonne avec d’autres passages : une lecture peut devenir le début d’un parcours.':
+    'Psalm 23 presents God as a shepherd. This image echoes in other passages: one reading can become the start of a journey.',
+  'Psaume 23.1': 'Psalm 23:1',
+  'Deux pistes à explorer': 'Two paths to explore',
+  'Dans Jean 10.11, Jésus se présente comme le bon berger qui donne sa vie pour ses brebis. Ésaïe 40.11 évoque le berger qui rassemble les agneaux et les porte avec soin.':
+    'In John 10:11, Jesus calls himself the good shepherd who gives his life for the sheep. Isaiah 40:11 evokes a shepherd gathering lambs and carrying them with care.',
+  'Jean 10.11 · Ésaïe 40.11': 'John 10:11 · Isaiah 40:11',
+  'Laisse la Bible éclairer la Bible': 'Let the Bible illuminate the Bible',
+  'Ouvre les références liées à un verset dans Bible Strong. Lis chaque passage dans son contexte et observe ce que les rapprochements éclairent.':
+    'Open a verse’s related references in Bible Strong. Read each passage in context and notice what the connections illuminate.',
+  'Thèmes bibliques': 'Bible topics',
+  'Une question. Des pistes à explorer.': 'One question. New paths to explore.',
+  'Et si on explorait la paix ?': 'What if we explored peace?',
+  'Les thèmes Nave rassemblent des références autour d’un sujet. Ils permettent de partir d’une question et de parcourir plusieurs livres de la Bible.':
+    'Nave’s topics gather references around a subject. They let you start with a question and explore several books of the Bible.',
+  'Une paix donnée, une paix qui garde': 'Peace as a gift, peace that keeps',
+  'Jean 14.27 parle de la paix que Jésus donne. Philippiens 4.7 évoque la paix de Dieu qui garde les cœurs et les pensées. Deux passages, deux éclairages sur un même sujet.':
+    'John 14:27 speaks of the peace Jesus gives. Philippians 4:7 describes God’s peace keeping hearts and minds. Two passages, two perspectives on one subject.',
+  'Jean 14.27 · Philippiens 4.7': 'John 14:27 · Philippians 4:7',
+  'La foi, la prière, le pardon…': 'Faith, prayer, forgiveness…',
+  'Choisis un sujet qui te touche dans Bible Strong. Explore ses références, ouvre les passages et prends aussi le temps de lire les versets qui les entourent.':
+    'Choose a subject that matters to you in Bible Strong. Explore its references, open the passages and take time to read the surrounding verses too.',
+  'Commentaires bibliques': 'Bible commentaries',
+  'Un passage. Un nouvel éclairage.': 'One passage. A fresh insight.',
+  'Un regard accompagne ta lecture': 'Another perspective on your reading',
+  'Un commentaire aide à observer un passage, à en comprendre les images et à poursuivre sa réflexion. Il accompagne la Bible et invite à revenir au texte.':
+    'A commentary helps us observe a passage, understand its images and reflect further. It accompanies the Bible and invites us back to the text.',
+  'Le berger et la confiance': 'The shepherd and trust',
+  'Dans son commentaire du Psaume 23, Matthew Henry rapproche l’image du berger du soin attentif de Dieu. Cette lecture invite à réfléchir à la confiance.':
+    'In his commentary on Psalm 23, Matthew Henry connects the shepherd’s image with God’s attentive care. This reading invites reflection on trust.',
+  'Psaume 23 · Synthèse d’après Matthew Henry': 'Psalm 23 · Summary based on Matthew Henry',
+  'Une question à garder': 'A question to take with you',
+  'Que m’évoque l’image du berger ? Comment le reste du psaume la développe-t-il ? Dans Bible Strong, explore plusieurs commentaires et poursuis ta lecture avec ces questions.':
+    'What does the shepherd’s image bring to mind? How does the rest of the psalm develop it? In Bible Strong, explore different commentaries and keep reading with these questions.',
+  'Mmm… encore un peu.': 'Mmm… a little more.',
+  'Je crois que je t’aime bien.': 'I think I like you.',
+  'Explore avec ta main': 'Explore with your hand',
+  'Lève une main ouverte. Tu peux aussi caresser ma tête.':
+    'Raise an open hand. You can stroke my head, too.',
+  'Cette main, c’est toi.': 'That hand is you.',
+  'Garde la main sur une carte pour l’ouvrir.': 'Hold your hand over a card to open it.',
+  'Sur un bouton, ferme le poing pour cliquer.': 'Over a button, close your fist to click.',
+  'Rouvre la main pour continuer.': 'Open your hand again to continue.',
+  'Ferme le poing pour sélectionner.': 'Close your fist to select.',
+  'Tu peux relâcher le bras pour lire.': 'You can lower your arm while you read.',
+  'Ferme le poing et déplace la main pour faire défiler.':
+    'Close your fist and move your hand to scroll.',
+  'Ouvre la main pour arrêter le défilement.': 'Open your hand to stop scrolling.',
+  'Retour à Strobi': 'Back to Strobi',
+  'Les six ressources': 'The six resources',
+  'Découverte guidée': 'Guided discovery',
+  'Défiler vers le haut': 'Scroll up',
+  'Défiler vers le bas': 'Scroll down',
+  'À découvrir dans Bible Strong': 'Discover in Bible Strong',
+  'Ces exemples donnent un aperçu des ressources. L’équipe du stand peut te montrer la suite dans l’application.':
+    'These examples introduce the resources. The stand team can show you more in the app.',
+  'Afficher les ressources et la main virtuelle': 'Show resources and the virtual hand',
+  'Main virtuelle': 'Virtual hand',
+  'Main non suivie': 'Hand not tracked',
+  'Main en déplacement': 'Hand moving',
+  'Sélection en cours': 'Selecting',
+  'Défilement à la main': 'Hand scrolling',
+  'Caresse détectée': 'Stroke detected',
+  'Ouvre la main pour choisir une carte.': 'Open your hand to choose a card.',
   'Mode stand': 'Stand mode',
   'Réglages du stand': 'Stand settings',
   'Dans sa bulle': 'In its own little world',

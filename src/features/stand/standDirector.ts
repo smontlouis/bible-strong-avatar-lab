@@ -1,3 +1,4 @@
+import type { HandRotation } from './standHandNavigation'
 import { clamp, type Expression } from '@/features/avatar/geometry'
 import { createStandEncounter, visitorSignals } from './standEncounter'
 import {
@@ -96,6 +97,12 @@ export function createStandDirector() {
   let metAt = 0
   let lastObservation = -Infinity
   let gazeCalibration: GazeCalibration | undefined
+  let visitorId = 0
+  let rotation: HandRotation | null = null
+  let handAt = -Infinity
+  let navigating = false
+  let touch = { strength: 0, x: 0, y: 0 }
+  let petFriend = false
   const wave = createWaveDetector()
   const encounter = createStandEncounter()
 
@@ -111,11 +118,24 @@ export function createStandDirector() {
   }
 
   return {
+    setHandRotation(value: HandRotation | null) {
+      rotation = value
+    },
+    handRotation() {
+      return rotation
+    },
+    setHandInteraction(at: number, active: boolean, pet = { strength: 0, x: 0, y: 0 }) {
+      handAt = at
+      navigating = active
+      touch = pet
+      if (pet.strength > 0) petFriend = true
+    },
     inspect(at: number, mirror: boolean) {
       const age = at - seenAt
       const visitor = target && age < 1400 ? target : null
       return {
         target: visitor,
+        visitorId,
         visible: visitor !== null && age < 350,
         gaze: visitor ? solveStandGaze(visitor, mirror, gazeCalibration) : null,
         calibrated: gazeCalibration !== undefined,
@@ -153,6 +173,9 @@ export function createStandDirector() {
         if (next) {
           metAt = at
           encounter.reset(at)
+          visitorId++
+          petFriend = false
+          touch = { strength: 0, x: 0, y: 0 }
         }
       }
       if (!next) {
@@ -162,6 +185,10 @@ export function createStandDirector() {
       target = next
       seenAt = at
       const visitor = next
+      if (navigating && at - handAt < 350) {
+        wave.reset()
+        return
+      }
       // A wave is raised beside the face; a thumbs-up can be at chest height.
       // Both must be closer to this visitor than to another visible face.
       const nearbyHands = hands
@@ -192,8 +219,11 @@ export function createStandDirector() {
     sample(at: number, base: Expression, settings: StandSettings) {
       const present = target !== null && at - seenAt < 1400
       const interaction = encounterAt(at, settings.proximity)
-      const { friendly } = interaction
-      const greeting = interaction.reaction === 'wave' && interaction.reactionElapsed < 1900
+      const friendly = interaction.friendly || (present && petFriend)
+      const navigation = navigating && at - handAt < 350
+      const pet = present && at - handAt < 350 ? touch.strength : 0
+      const greeting =
+        !navigation && interaction.reaction === 'wave' && interaction.reactionElapsed < 1900
       const mood: StandMood = !present
         ? 'idle'
         : greeting
@@ -223,10 +253,13 @@ export function createStandDirector() {
       const hello = greeting ? Math.sin((greetingTime / 1900) * Math.PI) : 0
       const playfulTime = (at - metAt) % 8500
       const play =
-        mood === 'playful' && playfulTime < 1500 ? Math.sin((playfulTime / 1500) * Math.PI) : 0
-      const reply = interaction.reaction
-        ? Math.sin((interaction.reactionElapsed / 2200) * Math.PI)
-        : 0
+        !navigation && mood === 'playful' && playfulTime < 1500
+          ? Math.sin((playfulTime / 1500) * Math.PI)
+          : 0
+      const reply =
+        !navigation && interaction.reaction
+          ? Math.sin((interaction.reactionElapsed / 2200) * Math.PI)
+          : 0
       const signals =
         present && at - seenAt < 350 ? visitorSignals(target!) : { smile: 0, jaw: 0, tilt: 0 }
       const smileReply = interaction.reaction === 'smile' ? reply : 0
@@ -234,10 +267,11 @@ export function createStandDirector() {
       const arrival = present && at - metAt < 750 ? Math.sin(((at - metAt) / 750) * Math.PI) : 0
       const invitePhase = (at - metAt) % 9000
       const invite =
-        interaction.cue === 'wave' && invitePhase < 1200
+        !navigation && interaction.cue === 'wave' && invitePhase < 1200
           ? Math.sin((invitePhase / 1200) * Math.PI)
           : 0
-      const demonstrateTilt = interaction.cue === 'tilt' ? Math.sin(at / 1400) * 10 : 0
+      const demonstrateTilt =
+        !navigation && interaction.cue === 'tilt' ? Math.sin(at / 1400) * 10 : 0
       const mimicTilt = friendly ? signals.tilt * (settings.mirror ? -0.5 : 0.5) : 0
       const bounce =
         hello * Math.abs(Math.sin(greetingTime / 130)) +
@@ -248,11 +282,11 @@ export function createStandDirector() {
       const idlePhase = at % 21000
       const sleepy =
         !present && idlePhase > 14000 ? Math.sin(((idlePhase - 14000) / 7000) * Math.PI) : 0
-      const happyEyes = Math.max(smileReply * 0.7, friendly ? signals.smile * 0.4 : 0)
+      const happyEyes = Math.max(smileReply * 0.7, friendly ? signals.smile * 0.4 : 0, pet * 0.85)
       const wink = approval > 0.7 ? 0.85 : 0
       const expression: Expression = {
         ...base,
-        headX: base.headX + gaze.headX,
+        headX: base.headX + gaze.headX - pet * 4,
         headY: base.headY + gaze.headY,
         headZ:
           base.headZ +
@@ -261,7 +295,8 @@ export function createStandDirector() {
             play * 8 +
             invite * -8 +
             demonstrateTilt +
-            mimicTilt) *
+            mimicTilt +
+            pet * touch.x * 10) *
             energy,
         positionXLeft: base.positionXLeft + gaze.eyeX,
         positionXRight: base.positionXRight + gaze.eyeX,
@@ -291,10 +326,15 @@ export function createStandDirector() {
       }
       return {
         mood,
-        cue: interaction.cue,
+        cue:
+          pet > 0
+            ? ('petted' as const)
+            : petFriend && !interaction.friendly && present
+              ? ('free-play' as const)
+              : interaction.cue,
         expression,
         blink,
-        x: 0,
+        x: pet * touch.x * 6 * energy,
         y:
           (Math.sin(at / 1200) * 2 + Math.sin(at / 3100) - bounce * 13 - arrival * 7 + sleepy * 8) *
           energy,

@@ -662,3 +662,58 @@
     animation: none;
   }
 }
+
+.stand-camera-select {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.stand-debug-preview {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 10;
+  width: min(320px, 38vw);
+  padding: 10px;
+  border: 1px solid #64748b;
+  border-radius: 14px;
+  background: #101620;
+  color: #f3f4f6;
+  pointer-events: none;
+}
+.stand-debug-preview .stand-diagnostics-heading,
+.stand-debug-preview .stand-overlay-options,
+.stand-debug-preview .stand-legend,
+.stand-debug-preview .stand-measurements,
+.stand-debug-preview .stand-detection-details,
+.stand-debug-preview .stand-encounter-diagnostics > div:not(:nth-child(4)) {
+  display: none;
+}
+.stand-debug-preview .stand-diagnostics-layout {
+  display: block;
+}
+.stand-debug-preview .stand-encounter-diagnostics {
+  display: block;
+  margin: 0 0 6px;
+}
+.stand-debug-preview .stand-encounter-diagnostics > div {
+  background: transparent;
+  padding: 0;
+}
+.stand-debug-preview .stand-camera-device {
+  margin: 6px 0 0;
+  color: #cbd5e1;
+  font-size: 11px;
+}
+.stand-debug-preview .stand-camera-preview {
+  min-height: 0;
+  aspect-ratio: 4 / 3;
+}
+.stand-debug-preview .stand-encounter-diagnostics {
+  background: transparent;
+  padding: 0;
+}
+.stand-debug-preview .stand-encounter-diagnostics span {
+  color: #cbd5e1;
+}
