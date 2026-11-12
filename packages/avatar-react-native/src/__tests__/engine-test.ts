@@ -2,7 +2,6 @@ import { validateAvatarDefinition, type AvatarDefinition } from '@bible-strong/a
 
 import {
   applyAvatarCommand,
-  avatarNeedsFrames,
   createAvatarEngine,
   greyOf,
   stepAvatarEngine,
@@ -158,6 +157,8 @@ describe('avatar engine on the UI thread', () => {
     const started = run(createAvatarEngine('neutral'), { type: 'play', animation: 'greet' }, 0)
     expect(step(started, 50, 400).engine.idle).toBe(false)
     expect(step(started, 300, 400).engine.idle).toBe(false)
+    // The pose is held until 1100 ms, yet a frame is planned for the moment to settle.
+    expect(step(started, 300, 400).engine.nextFrameAt).toBe(400)
     const settled = step(started, 500, 400)
     expect(settled.engine.playback.phase).toBe('hold')
     expect(settled.engine.idle).toBe(true)
@@ -168,12 +169,30 @@ describe('avatar engine on the UI thread', () => {
     expect(step(woken, 620).engine.idle).toBe(false)
   })
 
-  it('needs no frame for a still expression, nor for any when motion is reduced', () => {
-    const still = createAvatarEngine('neutral').playback
-    const restless = createAvatarEngine('restless').playback
-    expect(avatarNeedsFrames(definition, still, false)).toBe(false)
-    expect(avatarNeedsFrames(definition, restless, false)).toBe(true)
-    expect(avatarNeedsFrames(definition, restless, true)).toBe(false)
+  it('waits for the end of a held pose instead of sampling it again', () => {
+    const started = run(createAvatarEngine('neutral'), { type: 'play', animation: 'greet' }, 0)
+    expect(step(started, 50).engine.nextFrameAt).toBe(50)
+    const held = step(started, 150)
+    expect(held.engine.playback.phase).toBe('hold')
+    expect(held.engine.nextFrameAt).toBe(1_100)
+    expect(held.engine.idle).toBe(false)
+    // A command draws at once, whatever was planned.
+    expect(run(held.engine, { type: 'wake' }, 200).nextFrameAt).toBe(0)
+  })
+
+  it('goes idle on a still expression, and on any when motion is reduced', () => {
+    const still = step(createAvatarEngine('neutral'), 100)
+    expect(still.engine.idle).toBe(true)
+    const restless = createAvatarEngine('restless')
+    expect(step(restless, 100).engine.idle).toBe(false)
+    const reduced = stepAvatarEngine(
+      definition,
+      restless,
+      100,
+      { random: () => 0.5, reduceMotion: true },
+      0
+    )
+    expect(reduced.engine.idle).toBe(true)
   })
 
   it('greys a hex colour at the same lightness and leaves any other colour alone', () => {

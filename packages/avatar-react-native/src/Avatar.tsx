@@ -192,9 +192,13 @@ const initialExpressionOf = ({
 
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 
+// An avatar is rarely on its way to grey: the colour itself is the common case.
 const tint = (color: string, muted: SharedValue<number>) => {
   'worklet'
-  return interpolateColor(muted.get(), [0, 1], [color, greyOf(color)])
+  const progress = muted.get()
+  if (progress <= 0) return color
+  const grey = greyOf(color)
+  return progress >= 1 ? grey : interpolateColor(progress, [0, 1], [color, grey])
 }
 
 type Painted = { frame: SharedValue<PaintedFrame>; muted: SharedValue<number> }
@@ -490,7 +494,11 @@ function AvatarInstance(props: AvatarProps): ReactElement {
         current = applyAvatarCommand(definition, current, command, now, environment)
       }
       commands.set([])
-    } else if (current.idle || now - current.renderedAt < frameMs - 1) {
+    } else if (
+      current.idle ||
+      now < current.nextFrameAt ||
+      now - current.renderedAt < frameMs - 1
+    ) {
       return
     }
     const step = stepAvatarEngine(definition, current, now, environment, settleAfterMs)
@@ -571,6 +579,10 @@ function AvatarInstance(props: AvatarProps): ReactElement {
     },
   }))
 
+  // A face part no expression enables has no element at all.
+  const expressions = Object.values(definition.expressions)
+  const hasNose = expressions.some(item => item.nose?.enabled === true)
+  const hasMouth = expressions.some(item => item.mouth?.enabled === true)
   // A body node is drawn behind or in front of the head depending on the pose.
   const layers = Array.from({ length: definition.body.nodes.length + 2 }, (_, index) => index)
   const outline = definition.style?.outline?.enabled ? definition.style.outline : undefined
@@ -617,9 +629,9 @@ function AvatarInstance(props: AvatarProps): ReactElement {
         <G clipPath={`url(#${clipId})`}>
           <EyePath frame={frame} muted={mutedProgress} side="left" />
           <EyePath frame={frame} muted={mutedProgress} side="right" />
-          <NosePath frame={frame} muted={mutedProgress} />
-          <FilledMouthPath frame={frame} muted={mutedProgress} />
-          <StrokedMouthPath frame={frame} muted={mutedProgress} />
+          {hasNose && <NosePath frame={frame} muted={mutedProgress} />}
+          {hasMouth && <FilledMouthPath frame={frame} muted={mutedProgress} />}
+          {hasMouth && <StrokedMouthPath frame={frame} muted={mutedProgress} />}
         </G>
         {layers.map(index => (
           <BodyPath

@@ -94,6 +94,14 @@ Without a bundler, load the ESM build through an import map or a CDN and fetch t
 | `Invalid avatar definition`                           | The JSON does not match the schema. | Export it again from Avatar Lab. |
 | `Choose either defaultAnimation or defaultExpression` | Two initial targets were given.     | Keep one.                        |
 
+## Behavior to know
+
+- The frame loop stops by itself on an expression with no blink and no ambient motion, and on a
+  paused avatar.
+- A pose held between two blinks is drawn once: nothing is computed until the next blink or step.
+- An avatar scrolled out of view keeps its timeline and its callbacks, but is not drawn.
+- With `prefers-reduced-motion: reduce`, transitions and ambient motion jump to their target.
+
 ## Check your integration
 
 1. The avatar appears in the target and blinks.

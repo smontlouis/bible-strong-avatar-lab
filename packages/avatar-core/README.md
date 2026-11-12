@@ -111,24 +111,52 @@ function tick(now: number) {
 requestAnimationFrame(tick)
 ```
 
-| Function                                                          | Use                                                            |
-| ----------------------------------------------------------------- | -------------------------------------------------------------- |
-| `createAvatarPlaybackState()`                                     | A stopped state on `neutral`.                                  |
-| `playAvatarAnimation(definition, key, now, from?)`                | A state playing `key`. `from` is the frame to transition from. |
-| `advanceAvatarPlayback(definition, state, now, env)`              | The state at `now`. Call it once per frame.                    |
-| `pauseAvatarPlayback(state, now)`                                 | Freezes the exact position.                                    |
-| `resumeAvatarPlayback(state, now)`                                | Resumes where it paused.                                       |
-| `sampleAvatarFrame(definition, state, now, env)`                  | The interpolated expression, colours and blink of a frame.     |
-| `renderAvatarFrame(definition, state, now, env)`                  | The scene of a frame, ambient motion included.                 |
-| `renderAvatarDefinition(definition, expressionKey?)`              | The static scene of one expression. Throws on an unknown key.  |
-| `renderAvatarExpression(definition, expression, colors?, blink?)` | The scene of an expression you sampled yourself.               |
-| `resolveAnimation`, `resolveExpression`                           | Look a key up, with a typed error.                             |
+| Function                                                          | Use                                                               |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `createAvatarPlaybackState()`                                     | A stopped state on `neutral`.                                     |
+| `playAvatarAnimation(definition, key, now, from?)`                | A state playing `key`. `from` is the frame to transition from.    |
+| `advanceAvatarPlayback(definition, state, now, env)`              | The state at `now`. Call it once per frame.                       |
+| `pauseAvatarPlayback(state, now)`                                 | Freezes the exact position.                                       |
+| `resumeAvatarPlayback(state, now)`                                | Resumes where it paused.                                          |
+| `sampleAvatarFrame(definition, state, now, env)`                  | The interpolated expression, colours and blink of a frame.        |
+| `renderAvatarFrame(definition, state, now, env)`                  | The scene of a frame, ambient motion included.                    |
+| `renderAvatarSample(definition, sample, env)`                     | The scene of a frame you already sampled, without sampling twice. |
+| `nextAvatarFrameAt(definition, state, now, env)`                  | When the picture can next change. See « Skip identical frames ».  |
+| `renderAvatarDefinition(definition, expressionKey?)`              | The static scene of one expression. Throws on an unknown key.     |
+| `renderAvatarExpression(definition, expression, colors?, blink?)` | The scene of an expression you sampled yourself.                  |
+| `resolveAnimation`, `resolveExpression`                           | Look a key up, with a typed error.                                |
 
 Functions that take a key return `{ ok: true, value }` or `{ ok: false, error }`, where
 `error.code` is `unknown_animation` or `unknown_expression`.
 
 With `reduceMotion: true`, transitions and ambient motion jump to their target; blinks declared by
 an animation stay.
+
+### Skip identical frames
+
+A pose held between two blinks is the same picture frame after frame, and computing the geometry
+is nearly all the cost of a frame. After drawing the frame at `now`, ask when the picture can next
+change and do nothing until then:
+
+```ts
+let nextFrameAt = 0
+
+function tick(now: number) {
+  if (now >= nextFrameAt) {
+    state = advanceAvatarPlayback(definition, state, now, environment)
+    draw(renderAvatarFrame(definition, state, now, environment))
+    nextFrameAt = nextAvatarFrameAt(definition, state, now, environment)
+  }
+  requestAnimationFrame(tick)
+}
+```
+
+`nextAvatarFrameAt` returns `now` while the picture is changing (a transition, a blink, ambient
+motion), the time of the next blink or step during a held pose, and `Infinity` when nothing will
+change until a new command. Pass it the state that `advanceAvatarPlayback` just returned for the
+same `now`, and reset `nextFrameAt` to 0 whenever you replace the state. The picture shown is
+exactly the one of a loop that draws every frame; on an avatar whose expressions have no ambient
+motion, about four frames in five are skipped. The three renderers do this.
 
 ## The scene
 

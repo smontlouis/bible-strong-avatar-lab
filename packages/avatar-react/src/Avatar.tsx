@@ -1,11 +1,11 @@
 import {
   advanceAvatarPlayback,
   createAvatarPlaybackState,
-  MAX_BODY_NODES,
+  nextAvatarFrameAt,
   playAvatarAnimation,
   pauseAvatarPlayback,
   renderAvatarDefinition,
-  renderAvatarFrame,
+  renderAvatarSample,
   resolveAnimation,
   resolveExpression,
   resumeAvatarPlayback,
@@ -33,12 +33,18 @@ import './styles.css'
 
 const validatedDefinitions = new WeakSet<object>()
 const controlledExpressionTransitionMs = 420
-const bodyPathSlots = MAX_BODY_NODES + 2
 
-const runtimeEnvironment = () => ({
-  random: Math.random,
-  reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-})
+// One media query for every avatar of the page, read each frame rather than created each frame.
+let reducedMotion: { source: typeof window.matchMedia; query: MediaQueryList } | undefined
+const runtimeEnvironment = () => {
+  if (reducedMotion?.source !== window.matchMedia) {
+    reducedMotion = {
+      source: window.matchMedia,
+      query: window.matchMedia('(prefers-reduced-motion: reduce)'),
+    }
+  }
+  return { random: Math.random, reduceMotion: reducedMotion.query.matches }
+}
 
 const shouldRunFrameLoop = (
   definition: AvatarDefinition,
@@ -195,6 +201,10 @@ export function Avatar({
   assertValidDefinition(definition)
 
   const clipId = `${useId().replaceAll(':', '')}-head`
+  // A body node is drawn behind or in front of the head depending on the pose.
+  const bodyPathSlots = definition.body.nodes.length + 2
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const visibleRef = useRef(true)
   const clipPathRef = useRef<SVGPathElement>(null)
   const headPathRef = useRef<SVGPathElement>(null)
   const leftPathRef = useRef<SVGPathElement>(null)
@@ -215,7 +225,7 @@ export function Avatar({
     createInitialPlayback(definition, animation, expression, defaultAnimation, defaultExpression)
   )
 
-  const paintScene = (frameScene: ReturnType<typeof renderAvatarFrame>) => {
+  const paintScene = (frameScene: ReturnType<typeof renderAvatarSample>) => {
     headPathRef.current?.setAttribute('d', frameScene.geometry.headPath)
     clipPathRef.current?.setAttribute('d', frameScene.geometry.headPath)
     headPathRef.current?.setAttribute('fill', frameScene.colors.body)
@@ -259,8 +269,9 @@ export function Avatar({
     now: number,
     environment: ReturnType<typeof runtimeEnvironment>
   ) => {
-    paintedFrameRef.current = sampleAvatarFrame(definition, current, now, environment)
-    return renderAvatarFrame(definition, current, now, environment)
+    const frame = sampleAvatarFrame(definition, current, now, environment)
+    paintedFrameRef.current = frame
+    return renderAvatarSample(definition, frame, environment)
   }
 
   useLayoutEffect(() => {
@@ -273,6 +284,20 @@ export function Avatar({
   useEffect(() => {
     playbackRef.current = playback
   }, [playback])
+
+  // An avatar scrolled out of view keeps its timeline but is not drawn.
+  useEffect(() => {
+    const element = wrapperRef.current
+    if (!element || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(entries => {
+      visibleRef.current = entries[entries.length - 1]?.isIntersecting ?? true
+    })
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+      visibleRef.current = true
+    }
+  }, [])
 
   useEffect(() => {
     if (previousDefinitionRef.current === definition) return
@@ -373,9 +398,18 @@ export function Avatar({
   useEffect(() => {
     if (!shouldRunFrameLoop(definition, playback, runtimeEnvironment())) return
     let frame = 0
+    // The state last handled, until when its picture stays the same, and whether it was drawn.
+    let handled: CorePlaybackState | null = null
+    let nextFrameAt = 0
+    let drawn = true
     const tick = (now: number) => {
       const current = playbackRef.current
       if (!current) return
+      const visible = visibleRef.current
+      if (current === handled && now < nextFrameAt && (drawn || !visible)) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
       const environment = runtimeEnvironment()
       const next = advanceAvatarPlayback(definition, current, now, environment)
       playbackRef.current = next
@@ -389,8 +423,12 @@ export function Avatar({
         completedAnimation.current = current.activeAnimation
         onAnimationEnd?.(current.activeAnimation)
       }
-      const frameScene = renderPlaybackFrame(next, now, environment)
-      paintScene(frameScene)
+      if (visible) paintScene(renderPlaybackFrame(next, now, environment))
+      // A target set while out of view starts from a fresh sample, not from an old picture.
+      else paintedFrameRef.current = null
+      handled = next
+      drawn = visible
+      nextFrameAt = nextAvatarFrameAt(definition, next, now, environment)
       if (shouldRunFrameLoop(definition, next, environment)) {
         frame = requestAnimationFrame(tick)
       }
@@ -507,6 +545,7 @@ export function Avatar({
     : {}
   return (
     <div
+      ref={wrapperRef}
       className={['bs-avatar', className ?? ''].filter(Boolean).join(' ')}
       style={{
         ...style,

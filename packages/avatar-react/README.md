@@ -143,6 +143,8 @@ const avatar = useRef<AvatarController>(null)
 
 - The frame loop stops by itself on an expression with no blink and no ambient motion, and on a
   paused avatar.
+- A pose held between two blinks is drawn once: nothing is computed until the next blink or step.
+- An avatar scrolled out of view keeps its timeline and its callbacks, but is not drawn.
 - With `prefers-reduced-motion: reduce`, transitions and ambient motion jump to their target.
 - The avatar does not receive pointer events. Wrap it in a `button` to make it one.
 - In a React Native app, do not render this package on iOS or Android: use

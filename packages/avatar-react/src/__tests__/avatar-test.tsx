@@ -105,7 +105,26 @@ describe('@bible-strong/avatar-react', () => {
     const view = render(<Avatar definition={definition} ariaLabel="Layered avatar" />)
     const svg = view.getByRole('img', { name: 'Layered avatar' }).querySelector('svg')
 
-    expect(svg?.querySelectorAll(':scope > path')).toHaveLength(37)
+    // The head, plus two slots behind and two in front for a body without nodes.
+    expect(svg?.querySelectorAll(':scope > path')).toHaveLength(5)
+
+    const withNodes: AvatarDefinition = {
+      ...definition,
+      body: {
+        ...definition.body,
+        nodes: [
+          {
+            surface: { type: 'sphere', width: 60, height: 60, depth: 60, roundness: 1 },
+            position: [-90, -90, 0],
+            rotation: [0, 0, 0],
+          },
+        ],
+      },
+    }
+    const noded = render(<Avatar definition={withNodes} ariaLabel="Noded avatar" />)
+    const nodedSvg = noded.getByRole('img', { name: 'Noded avatar' }).querySelector('svg')
+    // Every node can be on either side: one more slot behind and one more in front.
+    expect(nodedSvg?.querySelectorAll(':scope > path')).toHaveLength(7)
   })
 
   it('exposes semantic imperative controls without Studio identifiers', () => {

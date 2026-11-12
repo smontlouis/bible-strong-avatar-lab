@@ -1,10 +1,10 @@
 import {
   advanceAvatarPlayback,
-  applyAmbientMotion,
   createAvatarPlaybackState,
   pauseAvatarPlayback,
+  nextAvatarFrameAt,
   playAvatarAnimation,
-  renderAvatarExpression,
+  renderAvatarSample,
   resumeAvatarPlayback,
   sampleAvatarFrame,
   type AnimationKey,
@@ -41,6 +41,8 @@ export type AvatarEngine = {
   renderedAt: number
   /** When the current target started, for `settleAfterMs`. */
   targetStartedAt: number
+  /** The picture stays the same until this time: no frame is sampled before it. */
+  nextFrameAt: number
   /** Nothing moves until the next command: the frame callback can stop. */
   idle: boolean
   /** `seq` of the last command applied. */
@@ -70,6 +72,7 @@ export const createAvatarEngine = (expression: ExpressionKey): AvatarEngine => (
   sample: null,
   renderedAt: 0,
   targetStartedAt: 0,
+  nextFrameAt: 0,
   idle: false,
   processed: 0,
 })
@@ -109,23 +112,6 @@ export const greyOf = (color: string) => {
   return `rgb(${level}, ${level}, ${level})`
 }
 
-/** Whether a playback still changes from one frame to the next. */
-export const avatarNeedsFrames = (
-  definition: Readonly<AvatarDefinition>,
-  playback: Readonly<AvatarPlaybackState>,
-  reduceMotion: boolean
-) => {
-  'worklet'
-  if (playback.status === 'playing') return true
-  if (playback.status !== 'stopped' || reduceMotion) return false
-  const expression = definition.expressions[playback.activeExpression]
-  const motion = expression?.motion
-  return (
-    expression?.blinking === true ||
-    (motion !== undefined && (motion.eyes !== 'none' || motion.body !== 'none'))
-  )
-}
-
 export const applyAvatarCommand = (
   definition: Readonly<AvatarDefinition>,
   engine: Readonly<AvatarEngine>,
@@ -134,7 +120,7 @@ export const applyAvatarCommand = (
   environment: AvatarRuntimeEnvironment
 ): AvatarEngine => {
   'worklet'
-  const next = { ...engine, idle: false, renderedAt: 0, processed: command.seq }
+  const next = { ...engine, idle: false, renderedAt: 0, nextFrameAt: 0, processed: command.seq }
   const current = engine.playback
   if (command.type === 'wake') return next
   if (command.type === 'pause') {
@@ -176,7 +162,10 @@ export const applyAvatarCommand = (
   return { ...next, playback, targetStartedAt: now }
 }
 
-/** Advance the playback to `now` and draw its frame. */
+/**
+ * Advance the playback to `now` and draw its frame. The caller need not call it again before
+ * `engine.nextFrameAt`: a pose held between two blinks is the same picture.
+ */
 export const stepAvatarEngine = (
   definition: Readonly<AvatarDefinition>,
   engine: Readonly<AvatarEngine>,
@@ -188,16 +177,17 @@ export const stepAvatarEngine = (
   const before = engine.playback
   const playback = advanceAvatarPlayback(definition, before, now, environment)
   const sample = sampleAvatarFrame(definition, playback, now, environment)
-  const expression = environment.reduceMotion
-    ? sample.expression
-    : applyAmbientMotion(sample.expression, sample.sampledAt)
-  const scene = renderAvatarExpression(definition, expression, sample.colors, sample.blink)
+  const scene = renderAvatarSample(definition, sample, environment)
   // Between two blinks, once the pose is reached: a frame the avatar can hold.
   const resting =
     playback.directTransition === undefined &&
     (playback.activeAnimation === undefined || playback.phase === 'hold') &&
     sample.blink === 1
   const settled = settleAfterMs > 0 && now - engine.targetStartedAt >= settleAfterMs && resting
+  const changesAt = nextAvatarFrameAt(definition, playback, now, environment)
+  // A held pose is not sampled again, so the moment to settle has to be a frame of its own.
+  const settlesAt = settleAfterMs > 0 ? engine.targetStartedAt + settleAfterMs : Infinity
+  const nextFrameAt = settlesAt > now ? Math.min(changesAt, settlesAt) : changesAt
   const ended =
     before.status === 'playing' && playback.status === 'stopped'
       ? before.activeAnimation
@@ -208,7 +198,8 @@ export const stepAvatarEngine = (
       playback,
       sample,
       renderedAt: now,
-      idle: settled || !avatarNeedsFrames(definition, playback, environment.reduceMotion === true),
+      nextFrameAt,
+      idle: settled || nextFrameAt === Infinity,
     },
     frame: paintAvatarScene(scene),
     ...(ended ? { ended } : {}),

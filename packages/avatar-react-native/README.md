@@ -168,7 +168,12 @@ reports. `status` is `playing`, `paused` or `stopped`.
 
 ## When it stops sampling
 
-The frame callback stops by itself, and starts again on the next command or prop change:
+A pose held between two blinks is sampled once: nothing is computed on the UI thread until the
+next blink or step. For an avatar whose expressions have no ambient motion, that is about four
+frames in five.
+
+Beyond that, the frame callback stops by itself, and starts again on the next command or prop
+change:
 
 - while the app is not active;
 - on a paused avatar;
