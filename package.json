@@ -24,7 +24,7 @@
     "preview": "vite preview",
     "engine": "node scripts/generate-standalone-engine.mjs",
     "engine:check": "node scripts/generate-standalone-engine.mjs --check",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && pnpm --filter @bible-strong/avatar-react-native typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",

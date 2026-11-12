@@ -30,6 +30,15 @@ const pack = packageName => {
 const coreTarball = pack('avatar-core')
 const reactTarball = pack('avatar-react')
 const webTarball = pack('avatar-web')
+const nativeTarball = pack('avatar-react-native')
+// No React Native consumer is built here: check that the tarball holds what Metro will load.
+const nativeFiles = spawnSync('tar', ['-tzf', nativeTarball], { encoding: 'utf8' }).stdout
+for (const file of ['dist/index.js', 'dist/index.d.ts', 'dist/engine.js', 'README.md', 'LICENSE']) {
+  if (!nativeFiles.includes(`package/${file}`)) {
+    process.stderr.write(`avatar-react-native tarball is missing ${file}\n`)
+    process.exit(1)
+  }
+}
 
 await cp(path.join(root, 'examples/react-vite-consumer'), consumer, {
   recursive: true,
