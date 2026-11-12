@@ -148,6 +148,17 @@ export function createAvatar(
   const clipHeadPath = createSvgElement('path')
   clipPath.append(clipHeadPath)
   defs.append(clipPath)
+  // A node of another colour than the body shows in front only where it is nearer than the
+  // head: each front path has a clip for that region, itself held inside the head's outline.
+  const frontClips = Array.from({ length: definition.body.nodes.length + 2 }, (_, index) => {
+    const clip = createSvgElement('clipPath')
+    clip.id = `${clipId}-front-${index}`
+    clip.setAttribute('clip-path', `url(#${clipId})`)
+    const clipShape = createSvgElement('path')
+    clip.append(clipShape)
+    defs.append(clip)
+    return clipShape
+  })
   svg.append(defs)
 
   const initialScene = renderAvatarDefinition(definition)
@@ -223,6 +234,10 @@ export function createAvatar(
       element.setAttribute('d', scene.geometry.frontPaths[index] ?? '')
       element.setAttribute('fill', scene.bodyColors.front[index] ?? scene.colors.body)
       frontOutlines[index].setAttribute('d', scene.geometry.frontPaths[index] ?? '')
+      const clip = scene.geometry.frontClipPaths[index] ?? ''
+      frontClips[index].setAttribute('d', clip)
+      if (clip) element.setAttribute('clip-path', `url(#${clipId}-front-${index})`)
+      else element.removeAttribute('clip-path')
     })
   }
 

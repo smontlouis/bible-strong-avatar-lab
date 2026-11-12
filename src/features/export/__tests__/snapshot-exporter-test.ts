@@ -29,6 +29,35 @@ describe('avatar snapshot export', () => {
     expect(svg).not.toContain('width="300" height="300" fill=')
   })
 
+  it('exports the front copy of a coloured node clipped inside the head', () => {
+    const hand = {
+      id: 'hand',
+      name: 'Hand',
+      color: '#e5a15b',
+      surface: { ...surfacePresets.sphere, width: 70, height: 70, depth: 70 },
+      position: [-100, 0, 20] as [number, number, number],
+      rotation: [0, 0, 0] as [number, number, number],
+    }
+    const masked = renderAvatar(poseFromExpression(defaultExpression), surfacePresets.sphere, 1, {
+      bodyNodes: [hand],
+      nodeOcclusion: 'mask',
+      bodyColor: colors.body,
+    })
+    const svg = serializeAvatarSnapshot(
+      'Hands',
+      createRenderedScene(masked, [hand], colors.body),
+      colors,
+      { background: 'transparent', colorFrom: '#ffffff', colorTo: '#000000', size: 512 },
+      [hand]
+    )
+
+    expect(masked.frontClipPaths[0]).toMatch(/^M.*Z$/)
+    expect(svg).toContain(
+      `<clipPath id="snapshot-front-clip-0" clip-path="url(#snapshot-head-clip)"><path d="${masked.frontClipPaths[0]}"/></clipPath>`
+    )
+    expect(svg).toContain('<g clip-path="url(#snapshot-front-clip-0)"><path')
+  })
+
   it('applies logo framing without changing the rendered avatar scene', () => {
     const svg = serializeAvatarSnapshot('Strobi', scene, colors, {
       background: 'solid',

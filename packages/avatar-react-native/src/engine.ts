@@ -61,6 +61,8 @@ export type PaintedFrame = {
   mouthStrokeWidth: number
   back: string[]
   front: string[]
+  /** One clip per front path; empty when the path is drawn whole. */
+  frontClips: string[]
   backColors: string[]
   frontColors: string[]
   body: string
@@ -90,6 +92,7 @@ export const paintAvatarScene = (scene: AvatarScene): PaintedFrame => {
     mouthStrokeWidth: scene.geometry.mouthStrokeWidth,
     back: scene.geometry.backPaths,
     front: scene.geometry.frontPaths,
+    frontClips: scene.geometry.frontClipPaths,
     backColors: scene.bodyColors.back,
     frontColors: scene.bodyColors.front,
     body: scene.colors.body,

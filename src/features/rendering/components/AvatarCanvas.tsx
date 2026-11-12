@@ -48,6 +48,7 @@ import { LivePixelAvatarCanvas } from '@/features/rendering/components/PixelAvat
 import { type RenderedRotationGizmo } from '@/features/rendering/renderedRotationGizmo'
 import {
   findBodyNodePath,
+  frontClipId,
   type RenderedColors,
   type RenderedScene,
 } from '@/features/rendering/renderedScene'
@@ -562,6 +563,8 @@ export function AvatarCanvas({
     wirePaths,
     backPaths,
     frontPaths,
+    frontClipPaths,
+    frontClips,
     backColors,
     frontColors,
     backNodeIds,
@@ -846,6 +849,11 @@ export function AvatarCanvas({
           <clipPath id="avatar-head-clip">
             <motion.path d={headPath} />
           </clipPath>
+          {frontClipPaths.map((clipValue, index) => (
+            <clipPath id={frontClipId(index)} clipPath="url(#avatar-head-clip)" key={index}>
+              <motion.path d={clipValue} />
+            </clipPath>
+          ))}
         </defs>
         <motion.g style={{ x: offsetX, y: offsetY }}>
           {outline && (
@@ -909,7 +917,10 @@ export function AvatarCanvas({
               className={`avatar-head avatar-body-node ${highlight === 'head' ? 'cyan-outline' : ''}`}
               d={pathValue}
               style={
-                { '--avatar-node-color': frontColors[index] } as unknown as React.CSSProperties
+                {
+                  '--avatar-node-color': frontColors[index],
+                  clipPath: frontClips[index],
+                } as unknown as React.CSSProperties
               }
               key={index}
               onPointerDown={event => selectBodyPath(event, frontNodeIds.current[index])}

@@ -234,15 +234,32 @@ function BodyPath({
   muted,
   layer,
   index,
-}: Painted & { layer: 'back' | 'front'; index: number }) {
+  clipped,
+  clipPath,
+}: Painted & {
+  layer: 'back' | 'front'
+  index: number
+  /** For a front path: draw it only when it has a clip (true) or only when it has none. */
+  clipped?: boolean
+  clipPath?: string
+}) {
   const animatedProps = useAnimatedProps(() => {
     'worklet'
     const current = frame.get()
     const colors = layer === 'back' ? current.backColors : current.frontColors
+    const shown = clipped === undefined || ((current.frontClips[index] ?? '') !== '') === clipped
     return {
-      d: current[layer][index] ?? '',
+      d: shown ? (current[layer][index] ?? '') : '',
       fill: tint(colors[index] ?? current.body, muted),
     }
+  })
+  return <AnimatedPath animatedProps={animatedProps} clipPath={clipPath} />
+}
+
+function FrontClipShape({ frame, index }: { frame: SharedValue<PaintedFrame>; index: number }) {
+  const animatedProps = useAnimatedProps(() => {
+    'worklet'
+    return { d: frame.get().frontClips[index] ?? '' }
   })
   return <AnimatedPath animatedProps={animatedProps} />
 }
@@ -586,6 +603,8 @@ function AvatarInstance(props: AvatarProps): ReactElement {
   // A body node is drawn behind or in front of the head depending on the pose.
   const layers = Array.from({ length: definition.body.nodes.length + 2 }, (_, index) => index)
   const outline = definition.style?.outline?.enabled ? definition.style.outline : undefined
+  // Only a node with a colour of its own can sink into the head: without one, no clip exists.
+  const masked = definition.body.nodes.some(node => node.color !== undefined)
   return (
     <View
       accessible
@@ -598,6 +617,12 @@ function AvatarInstance(props: AvatarProps): ReactElement {
           <ClipPath id={clipId}>
             <OutlinePath frame={frame} layer="head" index={0} />
           </ClipPath>
+          {masked &&
+            layers.map(index => (
+              <ClipPath id={`${clipId}-front-${index}`} key={`front-clip-${index}`}>
+                <FrontClipShape frame={frame} index={index} />
+              </ClipPath>
+            ))}
         </Defs>
         {outline && (
           <G
@@ -640,8 +665,24 @@ function AvatarInstance(props: AvatarProps): ReactElement {
             muted={mutedProgress}
             layer="front"
             index={index}
+            clipped={masked ? false : undefined}
           />
         ))}
+        {masked && (
+          <G clipPath={`url(#${clipId})`}>
+            {layers.map(index => (
+              <BodyPath
+                key={`front-masked-${index}`}
+                frame={frame}
+                muted={mutedProgress}
+                layer="front"
+                index={index}
+                clipped
+                clipPath={`url(#${clipId}-front-${index})`}
+              />
+            ))}
+          </G>
+        )}
       </Svg>
     </View>
   )

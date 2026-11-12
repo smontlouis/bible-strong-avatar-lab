@@ -101,6 +101,37 @@ describe('@bible-strong/avatar-react', () => {
     expect(avatar.querySelector('svg path')).not.toBeNull()
   })
 
+  it('clips the front copy of a coloured node to where it is nearer than the head', () => {
+    const coloured: AvatarDefinition = {
+      ...definition,
+      body: {
+        ...definition.body,
+        nodes: [
+          {
+            color: '#e5a15b',
+            surface: { type: 'sphere', width: 70, height: 70, depth: 70, roundness: 1 },
+            position: [-100, 0, 20],
+            rotation: [0, 0, 0],
+          },
+        ],
+      },
+    }
+    const view = render(<Avatar definition={coloured} ariaLabel="Masked avatar" />)
+    const svg = view.getByRole('img', { name: 'Masked avatar' }).querySelector('svg')
+    const clip = svg?.querySelector('clipPath[id$="-front-0"]')
+    const clipped = svg?.querySelector(':scope > path[clip-path]')
+
+    expect(clip?.querySelector('path')?.getAttribute('d')).toMatch(/^M.*Z$/)
+    // The clip itself is held inside the head's outline.
+    expect(clip?.getAttribute('clip-path')).toMatch(/^url\(#.*-head\)$/)
+    expect(clipped?.getAttribute('clip-path')).toBe(`url(#${clip?.id})`)
+    expect(clipped?.getAttribute('fill')).toBe('#e5a15b')
+
+    const plain = render(<Avatar definition={definition} ariaLabel="Plain avatar" />)
+    const plainSvg = plain.getByRole('img', { name: 'Plain avatar' }).querySelector('svg')
+    expect(plainSvg?.querySelector(':scope > path[clip-path]')).toBeNull()
+  })
+
   it('keeps stable SVG layer slots for nodes moving in front of or behind the head', () => {
     const view = render(<Avatar definition={definition} ariaLabel="Layered avatar" />)
     const svg = view.getByRole('img', { name: 'Layered avatar' }).querySelector('svg')

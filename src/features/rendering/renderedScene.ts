@@ -8,6 +8,9 @@ export type RenderedScene = {
   headPath: MotionValue<string>
   backPaths: MotionValue<string>[]
   frontPaths: MotionValue<string>[]
+  /** The clip of each front path, and the CSS value that applies it or not. */
+  frontClipPaths: MotionValue<string>[]
+  frontClips: MotionValue<string>[]
   backColors: MotionValue<string>[]
   frontColors: MotionValue<string>[]
   backNodeIds: { current: (string | null)[] }
@@ -32,6 +35,11 @@ export type RenderedColors = {
 
 const bodyPathSlots = MAX_BODY_NODES + 2
 
+export const frontClipId = (index: number) => `avatar-front-clip-${index}`
+
+const frontClipValue = (clip: string | undefined, index: number) =>
+  clip ? `url(#${frontClipId(index)})` : 'none'
+
 const bodyNodeColor = (nodeId: string | null | undefined, nodes: BodyNode[], bodyColor: string) =>
   nodes.find(node => node.id === nodeId)?.color ?? bodyColor
 
@@ -46,6 +54,12 @@ export const createRenderedScene = (
   ),
   frontPaths: Array.from({ length: bodyPathSlots }, (_, index) =>
     motionValue(geometry.frontPaths[index] ?? '')
+  ),
+  frontClipPaths: Array.from({ length: bodyPathSlots }, (_, index) =>
+    motionValue(geometry.frontClipPaths[index] ?? '')
+  ),
+  frontClips: Array.from({ length: bodyPathSlots }, (_, index) =>
+    motionValue(frontClipValue(geometry.frontClipPaths[index], index))
   ),
   backColors: Array.from({ length: bodyPathSlots }, (_, index) =>
     motionValue(bodyNodeColor(geometry.backNodeIds[index], bodyNodes, bodyColor))
@@ -95,6 +109,10 @@ export const paintRenderedScene = (
   paintRenderedBodyColors(scene, bodyNodes, bodyColor)
   scene.backPaths.forEach((path, index) => path.set(geometry.backPaths[index] ?? ''))
   scene.frontPaths.forEach((path, index) => path.set(geometry.frontPaths[index] ?? ''))
+  scene.frontClipPaths.forEach((path, index) => path.set(geometry.frontClipPaths[index] ?? ''))
+  scene.frontClips.forEach((clip, index) =>
+    clip.set(frontClipValue(geometry.frontClipPaths[index], index))
+  )
   scene.leftPath.set(geometry.leftPath)
   scene.rightPath.set(geometry.rightPath)
   scene.nosePath.set(geometry.nosePath)
