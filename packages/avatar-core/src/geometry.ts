@@ -1429,7 +1429,36 @@ const headPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   return surface.type === 'trapezoid' ? smoothClosedPath(densifyClosedPoints(hull)) : path(hull)
 }
 
-const accessoryPath = (pose: AvatarPose, node: BodyNode) => {
+/** The pose of a node's own surface: the avatar's pose carried to the node's place and turn. */
+const nodePose = (pose: AvatarPose, node: BodyNode): AvatarPose => {
+  const center = transformPosePoint(pose, node.position)
+  return {
+    orientation: multiplyQuaternions(
+      pose.orientation,
+      quaternionFromEuler(
+        radians(node.rotation[0]),
+        radians(node.rotation[1]),
+        radians(node.rotation[2])
+      )
+    ),
+    expression: {
+      ...pose.expression,
+      positionX: center[0],
+      positionY: center[1],
+      positionZ: center[2],
+    },
+  }
+}
+
+// A node is a surface like the head, elsewhere: its outline is the head's exact outline in the
+// node's own pose. Only the trapezoid has no exact outline; it keeps the sampled one, which
+// projects several hundred points of the surface and wraps them.
+const accessoryPath = (pose: AvatarPose, node: BodyNode) =>
+  node.surface.type === 'trapezoid'
+    ? sampledAccessoryPath(pose, node)
+    : headPath(nodePose(pose, node), node.surface)
+
+const sampledAccessoryPath = (pose: AvatarPose, node: BodyNode) => {
   const key = surfaceCacheKey(node.surface)
   let localSamples = accessorySamplesCache.get(key)
   if (!localSamples) {
