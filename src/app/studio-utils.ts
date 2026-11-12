@@ -15,7 +15,7 @@ import { type SurfaceConfig } from '@/features/avatar/surfaces'
 export type Mode =
   'avatars' | 'manual' | 'expressions' | 'states' | 'export' | 'photo' | 'talk' | 'stream'
 export type PhotoTool = 'pose' | 'frame'
-export type ExportFormat = 'react' | 'javascript'
+export type ExportFormat = 'react' | 'javascript' | 'react-native'
 export type SnapshotFormat = 'svg' | 'png'
 export type PlaybackStatus = 'playing' | 'paused' | 'stopped'
 

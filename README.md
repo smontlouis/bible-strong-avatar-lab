@@ -68,7 +68,8 @@ controller (`play`, `pause`, `stop`, `setExpression`, `getState`) and the same t
 Each package README is written to be followed step by step, by a person or by a coding agent:
 setup, a minimal example, every prop, every error with its fix, and a checklist to verify the
 integration. It ships in the npm tarball, so it is readable in `node_modules`. The Studio's
-**Export** tab copies the same instructions for React and JavaScript.
+**Export** tab offers the three integrations and copies the same instructions, written for a coding
+agent: setup, example, props, every error with its fix, and a checklist.
 
 The integration ZIP of the JavaScript export contains the `.avatar.json`, a lightweight ESM wrapper
 and usage instructions; it does not copy the rendering engine into every avatar export.

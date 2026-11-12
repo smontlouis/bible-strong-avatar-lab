@@ -70,6 +70,7 @@ import { ColorField, LinkButton, NumericField } from '@/app/components/controls'
 import {
   COPY_FEEDBACK_DURATION_MS,
   formatSeconds,
+  type ExportFormat,
   type Side,
   type SnapshotFormat,
 } from '@/app/studio-utils'
@@ -91,6 +92,10 @@ import {
   buildRuntimeGuideText,
   RuntimeGuideDialog,
 } from '@/features/studio/components/RuntimeGuideDialog'
+import {
+  nativeAvatarExample,
+  nativeInstallExample,
+} from '@/features/studio/components/runtimeGuideSections'
 import { RuntimePreviewDialog } from '@/features/studio/components/RuntimePreviewDialog'
 import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
 import type { StudioController } from '@/features/studio/useStudioController'
@@ -453,7 +458,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
   const [runtimePreviewOpen, setRuntimePreviewOpen] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
   const [guideCopyFeedback, setGuideCopyFeedback] = useState<{
-    format: 'react' | 'javascript'
+    format: ExportFormat
     status: 'success' | 'error'
   } | null>(null)
   useEffect(() => {
@@ -1950,7 +1955,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                 <ExportSection
                   value="avatar"
                   title="Exporter l’avatar"
-                  subtitle="Choisis les animations puis utilise la même définition JSON avec React ou JavaScript."
+                  subtitle="Choisis les animations puis utilise la même définition JSON avec React, React Native ou JavaScript."
                 >
                   <InspectorCard>
                     <div className="export-avatar-summary">
@@ -1998,6 +2003,18 @@ export function StudioInspector({ controller }: { controller: StudioController }
                         <span>
                           <strong>{t('JavaScript / ESM')}</strong>
                           <small>{t('JSON runtime + avatar-web')}</small>
+                        </span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        aria-pressed={exportFormat === 'react-native'}
+                        onClick={() => setExportFormat('react-native')}
+                      >
+                        <FileCode2 />
+                        <span>
+                          <strong>React Native / Expo</strong>
+                          <small>{t('JSON runtime + avatar-react-native')}</small>
                         </span>
                       </Button>
                     </div>
@@ -2146,7 +2163,11 @@ export function StudioInspector({ controller }: { controller: StudioController }
                       <span>{t('Installation')}</span>
                       <code>
                         <HighlightedRuntimeCode>
-                          {exportFormat === 'react' ? reactQuickStartInstall : webQuickStartInstall}
+                          {exportFormat === 'react-native'
+                            ? nativeInstallExample
+                            : exportFormat === 'react'
+                              ? reactQuickStartInstall
+                              : webQuickStartInstall}
                         </HighlightedRuntimeCode>
                       </code>
                     </div>
@@ -2156,9 +2177,11 @@ export function StudioInspector({ controller }: { controller: StudioController }
                       <pre tabIndex={0}>
                         <code>
                           <HighlightedRuntimeCode>
-                            {exportFormat === 'react'
-                              ? reactQuickStartExample(runtimePreviewAnimation)
-                              : webQuickStartExample(runtimePreviewAnimation)}
+                            {exportFormat === 'react-native'
+                              ? nativeAvatarExample(runtimePreviewAnimation)
+                              : exportFormat === 'react'
+                                ? reactQuickStartExample(runtimePreviewAnimation)
+                                : webQuickStartExample(runtimePreviewAnimation)}
                           </HighlightedRuntimeCode>
                         </code>
                       </pre>
@@ -2179,9 +2202,11 @@ export function StudioInspector({ controller }: { controller: StudioController }
                       </div>
                       <p className="runtime-export-description">
                         {t(
-                          exportFormat === 'javascript'
-                            ? 'Le ZIP contient le JSON exporté, une démo index.html et son README. La démo charge avatar-web depuis un CDN.'
-                            : 'Le ZIP contient le JSON exporté et un projet Vite React TypeScript prêt à lancer avec npm install puis npm run dev.'
+                          exportFormat === 'react-native'
+                            ? 'Télécharge la définition .avatar.json et importe-la dans ton projet React Native. Le guide décrit la configuration à faire une fois.'
+                            : exportFormat === 'javascript'
+                              ? 'Le ZIP contient le JSON exporté, une démo index.html et son README. La démo charge avatar-web depuis un CDN.'
+                              : 'Le ZIP contient le JSON exporté et un projet Vite React TypeScript prêt à lancer avec npm install puis npm run dev.'
                         )}
                       </p>
                     </div>
@@ -2196,19 +2221,21 @@ export function StudioInspector({ controller }: { controller: StudioController }
                         <Download />
                         {t('Télécharger la définition .avatar.json')}
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={!runtimeDefinitionResult.ok}
-                        onClick={downloadAvatarExport}
-                      >
-                        <Download />
-                        {t(
-                          exportFormat === 'javascript'
-                            ? 'Télécharger la démo ESM (.zip)'
-                            : 'Télécharger la démo React (.zip)'
-                        )}
-                      </Button>
+                      {exportFormat !== 'react-native' && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={!runtimeDefinitionResult.ok}
+                          onClick={downloadAvatarExport}
+                        >
+                          <Download />
+                          {t(
+                            exportFormat === 'javascript'
+                              ? 'Télécharger la démo ESM (.zip)'
+                              : 'Télécharger la démo React (.zip)'
+                          )}
+                        </Button>
+                      )}
                       <div className="runtime-export-secondary-actions">
                         <Button
                           type="button"
