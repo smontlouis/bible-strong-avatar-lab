@@ -252,8 +252,8 @@ export const chinese: Record<string, string> = {
     '生成原有的 React 或 JavaScript 独立 ZIP 导出。',
   'Choisis les animations puis exporte le JSON runtime ou un package autonome.':
     '选择动画，然后导出运行时 JSON 或独立包。',
-  'Choisis les animations puis utilise la même définition JSON avec React ou JavaScript.':
-    '选择动画，然后在 React 或 JavaScript 中使用同一份 JSON 定义。',
+  'Choisis les animations puis utilise la même définition JSON avec React, React Native ou JavaScript.':
+    '选择动画，然后在 React、React Native 或 JavaScript 中使用同一份 JSON 定义。',
   'Avatar sélectionné': '已选头像',
   Format: '格式',
   'Choisis l’intégration correspondant à ton projet.': '选择适合项目的集成方式。',
@@ -281,6 +281,84 @@ export const chinese: Record<string, string> = {
   'Télécharger la démo React (.zip)': '下载 React 演示（.zip）',
   'Télécharger la démo ESM (.zip)': '下载 ESM 演示（.zip）',
   'Télécharger le JSON': '下载 JSON',
+  'Guide d’utilisation de l’avatar React Native': 'React Native 头像使用指南',
+  'Installe le package, active le Bundle Mode, puis crée ton composant.':
+    '安装包，启用 Bundle Mode，然后创建你的组件。',
+  'JSON runtime + avatar-react-native': '运行时 JSON + avatar-react-native',
+  'Télécharge la définition .avatar.json et importe-la dans ton projet React Native. Le guide décrit la configuration à faire une fois.':
+    '下载 .avatar.json 定义并在你的 React Native 项目中导入。指南说明了只需进行一次的配置。',
+  'Ajoute le renderer React Native et ses dépendances natives. avatar-core est installé automatiquement.':
+    '添加 React Native 渲染器及其原生依赖。avatar-core 会自动安装。',
+  'Configuration obligatoire : Bundle Mode': '必需配置：Bundle Mode',
+  'L’avatar calcule chaque image sur le thread UI. Active le Bundle Mode de react-native-worklets et transmets avatar-core au thread UI ; sans cela, le composant lève une erreur au premier rendu.':
+    '头像在 UI 线程上计算每一帧。请启用 react-native-worklets 的 Bundle Mode 并把 avatar-core 转发到 UI 线程；否则组件会在首次渲染时抛出错误。',
+  'babel.config.js, avec le plugin worklets en dernier :':
+    'babel.config.js，worklets 插件放在最后：',
+  'metro.config.js :': 'metro.config.js：',
+  'Redémarre ensuite Metro avec un cache vide (npx expo start --clear). Pour le web et pour Jest, laisse bundleMode désactivé.':
+    '然后清空缓存重启 Metro（npx expo start --clear）。在 Web 和 Jest 中保持 bundleMode 关闭。',
+  'Optionnelle, défaut 240. Largeur et hauteur en points.':
+    '可选，默认 240。宽度和高度，单位为点。',
+  'Optionnelle. Style de la View qui entoure l’avatar ; width et height viennent de size.':
+    '可选。包裹头像的 View 的样式；width 和 height 来自 size。',
+  'Optionnelle, défaut « Procedural avatar ». L’avatar est exposé comme une seule image portant ce nom.':
+    '可选，默认“Procedural avatar”。头像作为一张带有该名称的图片暴露给辅助功能。',
+  'Optionnelle, défaut false. Fait passer toutes les couleurs à leur gris en 300 ms.':
+    '可选，默认 false。在 300 毫秒内将所有颜色渐变为对应的灰色。',
+  'Optionnelle, défaut 0. Arrête le calcul ce délai après le début d’une cible, sur la prochaine pose tenue, yeux ouverts. À donner à tout avatar décoratif.':
+    '可选，默认 0。目标开始后经过该时长，在下一个保持的姿势（睁眼）处停止计算。装饰性头像都应设置。',
+  'Optionnelle, défaut 30. Images calculées par seconde sur le thread UI.':
+    '可选，默认 30。UI 线程每秒计算的帧数。',
+  'Erreurs et corrections': '错误与修复',
+  'Chaque erreur a une cause précise. Applique la correction indiquée plutôt que de contourner.':
+    '每个错误都有明确的原因。请按给出的方法修复，不要绕过。',
+  'Retournée par play() ou transmise à onError : la clé n’existe pas dans definition.animations. Utilise une clé du JSON.':
+    '由 play() 返回或传给 onError：definition.animations 中不存在该键。请使用 JSON 中的键。',
+  'Retournée par setExpression() ou transmise à onError : la clé n’existe pas dans definition.expressions. Utilise une clé du JSON.':
+    '由 setExpression() 返回或传给 onError：definition.expressions 中不存在该键。请使用 JSON 中的键。',
+  'Retournée par play() ou setExpression() quand la prop animation ou expression est définie. Change la prop, ou retire-la.':
+    '当设置了 animation 或 expression 属性时由 play() 或 setExpression() 返回。请修改该属性，或将其移除。',
+  'Levée au rendu : le JSON ne respecte pas le schéma. Réexporte-le depuis le Studio.':
+    '渲染时抛出：JSON 不符合 schema。请从 Studio 重新导出。',
+  'Levée au rendu : deux cibles ont été données (animation et expression, ou leurs variantes default). Gardes-en une.':
+    '渲染时抛出：给出了两个目标（animation 和 expression，或它们的 default 变体）。只保留一个。',
+  'Levée au rendu : la configuration du Bundle Mode manque, ou Metro a gardé un ancien cache. Applique la configuration ci-dessus puis redémarre Metro avec --clear.':
+    '渲染时抛出：缺少 Bundle Mode 配置，或 Metro 保留了旧缓存。按上面的配置操作后，用 --clear 重启 Metro。',
+  'Levée au rendu : le composant a été rendu sur le web. Utilise @bible-strong/avatar-react dans un fichier .web.tsx.':
+    '渲染时抛出：组件在 Web 上渲染。请在 .web.tsx 文件中使用 @bible-strong/avatar-react。',
+  'Levée par createAvatar : le sélecteur ne correspond à aucun élément. Appelle createAvatar une fois l’élément présent.':
+    '由 createAvatar 抛出：选择器没有匹配任何元素。请在元素存在后再调用 createAvatar。',
+  'Levée au rendu côté serveur : le composant lit window. Rends-le uniquement dans un composant client.':
+    '在服务器端渲染时抛出：组件会读取 window。请只在客户端组件中渲染。',
+  'À ne pas faire': '不要这样做',
+  'Ces raccourcis ont été mesurés et coûtent cher.': '这些捷径经过实测，代价很高。',
+  'Ne calcule pas les images sur le thread JS (requestAnimationFrame avec renderAvatarFrame) : 12 à 19 % d’un cœur au repos, et une boucle folle en arrière-plan.':
+    '不要在 JS 线程上计算帧（用 requestAnimationFrame 调用 renderAvatarFrame）：静止时占用一个核心的 12% 到 19%，并且在后台会失控循环。',
+  'N’écris pas les tracés avec setNativeProps : environ 64 ms par image, contre environ 2 ms avec ce package.':
+    '不要用 setNativeProps 写入路径：每帧约 64 毫秒，而本包约 2 毫秒。',
+  'N’importe pas ce package dans un fichier chargé par le bundle web.':
+    '不要在 Web bundle 会加载的文件中导入本包。',
+  'Ne reconstruis pas l’objet definition à chaque rendu : une nouvelle référence relance l’avatar.':
+    '不要在每次渲染时重新构建 definition 对象：新的引用会让头像重新开始。',
+  'Vérifier l’intégration': '检查集成',
+  'Avant de considérer l’intégration terminée, vérifie chaque point.':
+    '在认为集成完成之前，请逐项检查。',
+  'npx tsc --noEmit passe, et une clé d’animation fausse est une erreur de type avec createAvatar.':
+    'npx tsc --noEmit 通过，并且使用 createAvatar 时错误的动画键会产生类型错误。',
+  'L’avatar apparaît et cligne des yeux sur un simulateur iOS et sur un émulateur Android.':
+    '头像在 iOS 模拟器和 Android 模拟器上都能显示并眨眼。',
+  'Changer animation fait partir l’avatar de sa pose actuelle, sans saut.':
+    '更改 animation 时，头像从当前姿势过渡，不会跳变。',
+  'Aucune image n’est calculée une fois l’app en arrière-plan.': '应用进入后台后不再计算任何帧。',
+  'L’avatar apparaît à la taille attendue : s’il est sans style, l’import de la feuille de style manque.':
+    '头像以预期尺寸显示：如果没有样式，说明缺少样式表导入。',
+  'L’avatar apparaît dans la cible et cligne des yeux.': '头像出现在目标元素中并眨眼。',
+  'avatar.play() retourne { ok: true } pour une clé du JSON.':
+    '对于 JSON 中的键，avatar.play() 返回 { ok: true }。',
+  'avatar.destroy() est appelé partout où la page retire la cible.':
+    '在页面移除目标元素的每个地方都调用了 avatar.destroy()。',
+  'La référence complète est dans le README du package, lisible dans node_modules.':
+    '完整参考位于包的 README 中，可在 node_modules 里阅读。',
   'Utilisation minimale': '最简用法',
   'Utiliser cet avatar': '使用此头像',
   'Prêt à exporter': '可以导出',

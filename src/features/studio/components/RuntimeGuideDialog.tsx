@@ -1,4 +1,15 @@
-import { BookOpen, Code2, MousePointer2, Play, SlidersHorizontal, X } from 'lucide-react'
+import {
+  Ban,
+  BookOpen,
+  Code2,
+  ListChecks,
+  MousePointer2,
+  Play,
+  Settings2,
+  SlidersHorizontal,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
 
 import {
   Dialog,
@@ -10,6 +21,17 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { HighlightedRuntimeCode } from '@/features/studio/components/HighlightedRuntimeCode'
+import {
+  agentGuideSections,
+  callbackProps,
+  controllerProps,
+  guideSectionsText,
+  reactNativeGuideSections,
+  targetProps,
+  type GuideIcon,
+  type GuideIntegration,
+  type GuideSection,
+} from '@/features/studio/components/runtimeGuideSections'
 import { useStudioLanguage } from '@/i18n'
 
 const runtimeInstallExample = 'npm install @bible-strong/avatar-react react react-dom'
@@ -100,7 +122,7 @@ export function Controls() {
   </>
 }`
 
-export type RuntimeGuideIntegration = 'react' | 'javascript'
+export type RuntimeGuideIntegration = GuideIntegration
 
 type TranslateGuideText = (text: string) => string
 type RuntimeGuideProp = readonly [name: string, type: string, description: string]
@@ -124,6 +146,14 @@ export function buildRuntimeGuideText({
   const privatePackageNotice = t(
     'Les packages sont publiés sur npm sous licence MIT. Le README de chaque package, présent dans node_modules, contient la référence complète.'
   )
+
+  if (integration === 'react-native') {
+    return [
+      `# ${t('Guide d’utilisation de l’avatar React Native')}`,
+      t('Installe le package, active le Bundle Mode, puis crée ton composant.'),
+      guideSectionsText(reactNativeGuideSections(animationKey), t),
+    ].join('\n\n')
+  }
 
   if (integration === 'javascript') {
     const options: readonly RuntimeGuideProp[] = [
@@ -222,46 +252,10 @@ export function buildRuntimeGuideText({
       `## ${t('Navigateur sans bundler')}`,
       t('Utilise une URL ESM via un CDN ou une import map, puis charge la définition avec fetch.'),
       markdownCode(nativeBrowserExample, 'html'),
+      guideSectionsText(agentGuideSections('javascript'), t),
     ].join('\n\n')
   }
 
-  const targetProps: readonly RuntimeGuideProp[] = [
-    [
-      'definition',
-      'AvatarDefinition',
-      'Obligatoire. Objet AvatarDefinition validé contenant les expressions et les animations à afficher.',
-    ],
-    [
-      'animation',
-      'AnimationKey | undefined',
-      'Optionnelle. Contrôle une timeline par sa clé. Chaque étape choisit l’expression affichée. Mutuellement exclusive avec expression ; une cible contrôlée prend priorité sur les valeurs default.',
-    ],
-    [
-      'expression',
-      'ExpressionKey | undefined',
-      'Optionnelle. Contrôle directement une expression par sa clé. Mutuellement exclusive avec animation ; une cible contrôlée prend priorité sur les valeurs default.',
-    ],
-    [
-      'defaultAnimation',
-      'AnimationKey | undefined',
-      'Optionnelle. Définit la timeline initiale en mode non contrôlé. Lue au montage ; autoplay est activé par défaut. Mutuellement exclusive avec defaultExpression.',
-    ],
-    [
-      'defaultExpression',
-      'ExpressionKey | undefined',
-      'Optionnelle. Définit l’expression initiale en mode non contrôlé. Lue au montage, sans lancer de timeline. Mutuellement exclusive avec defaultAnimation.',
-    ],
-    [
-      'autoplay',
-      'boolean | undefined',
-      'Optionnelle, défaut true. Lance automatiquement defaultAnimation ; sans defaultAnimation, elle n’a aucun effet.',
-    ],
-    [
-      'ref',
-      'Ref<AvatarController> | undefined',
-      'Optionnelle. Donne accès à l’API impérative AvatarController.',
-    ],
-  ]
   const presentationProps: readonly RuntimeGuideProp[] = [
     [
       'size',
@@ -280,47 +274,6 @@ export function buildRuntimeGuideText({
       'Optionnelle, défaut « Procedural avatar ». Nom accessible annoncé aux lecteurs d’écran.',
     ],
   ]
-  const callbackProps: readonly RuntimeGuideProp[] = [
-    [
-      'onAnimationEnd',
-      '(animation: AnimationKey) => void',
-      'Optionnelle. Reçoit la clé de l’animation once terminée naturellement.',
-    ],
-    [
-      'onExpressionChange',
-      '(expression: ExpressionKey) => void',
-      'Optionnelle. Reçoit la clé de l’expression chaque fois que l’expression sémantique affichée change.',
-    ],
-    [
-      'onError',
-      '(error: AvatarRuntimeError) => void',
-      'Optionnelle. Reçoit une erreur typée lorsqu’une prop animation, expression ou default référence une clé inconnue.',
-    ],
-  ]
-  const controllerProps: readonly RuntimeGuideProp[] = [
-    [
-      'play(animation)',
-      '(animation: AnimationKey) => AvatarCommandResult',
-      'Lance ou reprend une animation et retourne un résultat typé.',
-    ],
-    ['pause()', '() => void', 'Met en pause la timeline à sa position exacte.'],
-    [
-      'stop()',
-      '() => void',
-      'En mode non contrôlé, arrête la lecture et revient à neutral. En mode contrôlé, les props restent la source de vérité.',
-    ],
-    [
-      'setExpression(expression)',
-      '(expression: ExpressionKey) => AvatarCommandResult',
-      'Affiche directement une expression.',
-    ],
-    [
-      'getState()',
-      '() => AvatarPlaybackState',
-      'Retourne l’animation, l’expression et le statut actifs.',
-    ],
-  ]
-
   return [
     `# ${t('Guide d’utilisation de l’avatar React')}`,
     t('Installe le package, crée ton composant et choisis le niveau de contrôle adapté.'),
@@ -351,6 +304,7 @@ export function buildRuntimeGuideText({
     t('Les commandes de cible sont disponibles en mode non contrôlé ; sinon utilise les props.'),
     markdownProps(controllerProps, t),
     markdownCode(imperativeExample(animationKey), 'tsx'),
+    guideSectionsText(agentGuideSections('react'), t),
   ].join('\n\n')
 }
 
@@ -376,6 +330,69 @@ function PropRow({ name, type, description }: { name: string; type: string; desc
   )
 }
 
+const guideIcons: Record<GuideIcon, typeof Code2> = {
+  install: Code2,
+  setup: Settings2,
+  component: Play,
+  props: SlidersHorizontal,
+  controls: MousePointer2,
+  errors: TriangleAlert,
+  avoid: Ban,
+  check: ListChecks,
+}
+
+function GuideSections({ sections }: { sections: readonly GuideSection[] }) {
+  const { t } = useStudioLanguage()
+  return sections.map(section => {
+    const Icon = guideIcons[section.icon]
+    return (
+      <section
+        className={`avatar-guide-section${section.accent ? ' avatar-guide-section--accent' : ''}${
+          section.blocks.some(block => block.kind === 'rows') ? ' avatar-guide-section--api' : ''
+        }`}
+        key={section.title}
+      >
+        <div className="avatar-guide-section-heading">
+          <Icon />
+          <div>
+            <h3>{t(section.title)}</h3>
+            {section.intro && <p>{t(section.intro)}</p>}
+          </div>
+        </div>
+        {section.blocks.map((block, index) => {
+          if (block.kind === 'code') return <GuideCode key={index}>{block.code}</GuideCode>
+          if (block.kind === 'text') {
+            return (
+              <p className="avatar-guide-notice" key={index}>
+                {t(block.text)}
+              </p>
+            )
+          }
+          if (block.kind === 'list') {
+            return (
+              <ul className="avatar-guide-list" key={index}>
+                {block.items.map(item => (
+                  <li key={item}>{t(item)}</li>
+                ))}
+              </ul>
+            )
+          }
+          return (
+            <div className="avatar-guide-prop-group" key={index}>
+              {block.title && <strong>{t(block.title)}</strong>}
+              <dl>
+                {block.rows.map(([name, type, description]) => (
+                  <PropRow key={name} name={name} type={type} description={t(description)} />
+                ))}
+              </dl>
+            </div>
+          )
+        })}
+      </section>
+    )
+  })
+}
+
 export function RuntimeGuideDialog({
   animationKey,
   integration = 'react',
@@ -399,16 +416,20 @@ export function RuntimeGuideDialog({
           </div>
           <DialogTitle>
             {t(
-              integration === 'react'
-                ? 'Guide d’utilisation de l’avatar React'
-                : 'Guide d’utilisation de l’avatar JavaScript'
+              integration === 'react-native'
+                ? 'Guide d’utilisation de l’avatar React Native'
+                : integration === 'react'
+                  ? 'Guide d’utilisation de l’avatar React'
+                  : 'Guide d’utilisation de l’avatar JavaScript'
             )}
           </DialogTitle>
           <DialogDescription>
             {t(
-              integration === 'react'
-                ? 'Installe le package, crée ton composant et choisis le niveau de contrôle adapté.'
-                : 'Installe le module ESM, charge la définition JSON et monte l’avatar dans un élément du DOM.'
+              integration === 'react-native'
+                ? 'Installe le package, active le Bundle Mode, puis crée ton composant.'
+                : integration === 'react'
+                  ? 'Installe le package, crée ton composant et choisis le niveau de contrôle adapté.'
+                  : 'Installe le module ESM, charge la définition JSON et monte l’avatar dans un élément du DOM.'
             )}
           </DialogDescription>
           <DialogClose
@@ -426,7 +447,9 @@ export function RuntimeGuideDialog({
         </DialogHeader>
 
         <div className="avatar-guide-body">
-          {integration === 'react' ? (
+          {integration === 'react-native' ? (
+            <GuideSections sections={reactNativeGuideSections(animationKey)} />
+          ) : integration === 'react' ? (
             <>
               <section className="avatar-guide-section avatar-guide-section--accent">
                 <div className="avatar-guide-section-heading">
@@ -825,6 +848,9 @@ export function RuntimeGuideDialog({
                 <GuideCode>{nativeBrowserExample}</GuideCode>
               </section>
             </>
+          )}
+          {integration !== 'react-native' && (
+            <GuideSections sections={agentGuideSections(integration)} />
           )}
         </div>
 

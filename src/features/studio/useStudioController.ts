@@ -1814,7 +1814,8 @@ export function useStudioController() {
     )
   }
   const downloadAvatarExport = () => {
-    if (!runtimeDefinitionResult.ok) return
+    // React Native has no demo project: its integration is the definition and the guide.
+    if (!runtimeDefinitionResult.ok || exportFormat === 'react-native') return
     downloadBlob(
       exportFormat === 'javascript'
         ? generateJavaScriptEsmPackage(runtimeDefinitionResult.value, activeAvatar.name)

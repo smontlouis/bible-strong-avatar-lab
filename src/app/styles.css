@@ -1533,6 +1533,10 @@ input {
   gap: 10px;
 }
 
+.export-format-grid > button:nth-child(3):last-child {
+  grid-column: 1 / -1;
+}
+
 .export-format-section {
   display: grid;
   min-width: 0;
@@ -3346,6 +3350,17 @@ p {
   margin-top: 2px;
   padding-top: 14px;
   border-top: 1px solid #e6e9ef;
+}
+.avatar-guide-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 16px;
+  list-style: disc;
+  color: #687281;
+  font-size: 11px;
+  line-height: 1.5;
+  text-wrap: pretty;
 }
 .avatar-guide-prop-group {
   display: grid;

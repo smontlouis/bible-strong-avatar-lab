@@ -290,8 +290,8 @@ const english: Record<string, string> = {
     'Generate the existing standalone React or JavaScript ZIP export.',
   'Choisis les animations puis exporte le JSON runtime ou un package autonome.':
     'Choose animations, then export runtime JSON or a standalone package.',
-  'Choisis les animations puis utilise la même définition JSON avec React ou JavaScript.':
-    'Choose animations, then use the same JSON definition with React or JavaScript.',
+  'Choisis les animations puis utilise la même définition JSON avec React, React Native ou JavaScript.':
+    'Choose animations, then use the same JSON definition with React, React Native or JavaScript.',
   'Avatar sélectionné': 'Selected avatar',
   Format: 'Format',
   'Choisis l’intégration correspondant à ton projet.':
@@ -320,6 +320,87 @@ const english: Record<string, string> = {
   'Télécharger la démo React (.zip)': 'Download React demo (.zip)',
   'Télécharger la démo ESM (.zip)': 'Download ESM demo (.zip)',
   'Télécharger le JSON': 'Download JSON',
+  'Guide d’utilisation de l’avatar React Native': 'React Native avatar usage guide',
+  'Installe le package, active le Bundle Mode, puis crée ton composant.':
+    'Install the package, turn on Bundle Mode, then create your component.',
+  'JSON runtime + avatar-react-native': 'Runtime JSON + avatar-react-native',
+  'Télécharge la définition .avatar.json et importe-la dans ton projet React Native. Le guide décrit la configuration à faire une fois.':
+    'Download the .avatar.json definition and import it in your React Native project. The guide describes the one-time setup.',
+  'Ajoute le renderer React Native et ses dépendances natives. avatar-core est installé automatiquement.':
+    'Add the React Native renderer and its native dependencies. avatar-core is installed automatically.',
+  'Configuration obligatoire : Bundle Mode': 'Required setup: Bundle Mode',
+  'L’avatar calcule chaque image sur le thread UI. Active le Bundle Mode de react-native-worklets et transmets avatar-core au thread UI ; sans cela, le composant lève une erreur au premier rendu.':
+    'The avatar computes every frame on the UI thread. Turn on the Bundle Mode of react-native-worklets and forward avatar-core to the UI thread; without it, the component throws on first render.',
+  'babel.config.js, avec le plugin worklets en dernier :':
+    'babel.config.js, with the worklets plugin last:',
+  'metro.config.js :': 'metro.config.js:',
+  'Redémarre ensuite Metro avec un cache vide (npx expo start --clear). Pour le web et pour Jest, laisse bundleMode désactivé.':
+    'Then restart Metro with a clean cache (npx expo start --clear). For the web and for Jest, keep bundleMode off.',
+  'Optionnelle, défaut 240. Largeur et hauteur en points.':
+    'Optional, default 240. Width and height in points.',
+  'Optionnelle. Style de la View qui entoure l’avatar ; width et height viennent de size.':
+    'Optional. Style of the View around the avatar; width and height come from size.',
+  'Optionnelle, défaut « Procedural avatar ». L’avatar est exposé comme une seule image portant ce nom.':
+    'Optional, default “Procedural avatar”. The avatar is exposed as one image with this name.',
+  'Optionnelle, défaut false. Fait passer toutes les couleurs à leur gris en 300 ms.':
+    'Optional, default false. Fades every colour to its grey in 300 ms.',
+  'Optionnelle, défaut 0. Arrête le calcul ce délai après le début d’une cible, sur la prochaine pose tenue, yeux ouverts. À donner à tout avatar décoratif.':
+    'Optional, default 0. Stops computing this long after a target starts, at the next held pose with eyes open. Give it to any decorative avatar.',
+  'Optionnelle, défaut 30. Images calculées par seconde sur le thread UI.':
+    'Optional, default 30. Frames computed per second on the UI thread.',
+  'Erreurs et corrections': 'Errors and fixes',
+  'Chaque erreur a une cause précise. Applique la correction indiquée plutôt que de contourner.':
+    'Each error has one precise cause. Apply the fix given instead of working around it.',
+  'Retournée par play() ou transmise à onError : la clé n’existe pas dans definition.animations. Utilise une clé du JSON.':
+    'Returned by play() or passed to onError: the key is not in definition.animations. Use a key of the JSON.',
+  'Retournée par setExpression() ou transmise à onError : la clé n’existe pas dans definition.expressions. Utilise une clé du JSON.':
+    'Returned by setExpression() or passed to onError: the key is not in definition.expressions. Use a key of the JSON.',
+  'Retournée par play() ou setExpression() quand la prop animation ou expression est définie. Change la prop, ou retire-la.':
+    'Returned by play() or setExpression() when the animation or expression prop is set. Change the prop, or remove it.',
+  'Levée au rendu : le JSON ne respecte pas le schéma. Réexporte-le depuis le Studio.':
+    'Thrown on render: the JSON does not match the schema. Export it again from the Studio.',
+  'Levée au rendu : deux cibles ont été données (animation et expression, ou leurs variantes default). Gardes-en une.':
+    'Thrown on render: two targets were given (animation and expression, or their default variants). Keep one.',
+  'Levée au rendu : la configuration du Bundle Mode manque, ou Metro a gardé un ancien cache. Applique la configuration ci-dessus puis redémarre Metro avec --clear.':
+    'Thrown on render: the Bundle Mode setup is missing, or Metro kept an old cache. Apply the setup above, then restart Metro with --clear.',
+  'Levée au rendu : le composant a été rendu sur le web. Utilise @bible-strong/avatar-react dans un fichier .web.tsx.':
+    'Thrown on render: the component was rendered on the web. Use @bible-strong/avatar-react in a .web.tsx file.',
+  'Levée par createAvatar : le sélecteur ne correspond à aucun élément. Appelle createAvatar une fois l’élément présent.':
+    'Thrown by createAvatar: the selector matches no element. Call createAvatar once the element exists.',
+  'Levée au rendu côté serveur : le composant lit window. Rends-le uniquement dans un composant client.':
+    'Thrown when rendering on a server: the component reads window. Render it in a client component only.',
+  'À ne pas faire': 'Do not',
+  'Ces raccourcis ont été mesurés et coûtent cher.':
+    'These shortcuts were measured and are expensive.',
+  'Ne calcule pas les images sur le thread JS (requestAnimationFrame avec renderAvatarFrame) : 12 à 19 % d’un cœur au repos, et une boucle folle en arrière-plan.':
+    'Do not compute frames on the JS thread (requestAnimationFrame with renderAvatarFrame): 12 to 19 % of a core at rest, and a runaway loop in background.',
+  'N’écris pas les tracés avec setNativeProps : environ 64 ms par image, contre environ 2 ms avec ce package.':
+    'Do not write the paths with setNativeProps: about 64 ms a frame, against about 2 ms with this package.',
+  'N’importe pas ce package dans un fichier chargé par le bundle web.':
+    'Do not import this package in a file that the web bundle loads.',
+  'Ne reconstruis pas l’objet definition à chaque rendu : une nouvelle référence relance l’avatar.':
+    'Do not rebuild the definition object at every render: a new reference restarts the avatar.',
+  'Vérifier l’intégration': 'Check your integration',
+  'Avant de considérer l’intégration terminée, vérifie chaque point.':
+    'Before calling the integration done, check each point.',
+  'npx tsc --noEmit passe, et une clé d’animation fausse est une erreur de type avec createAvatar.':
+    'npx tsc --noEmit passes, and a wrong animation key is a type error with createAvatar.',
+  'L’avatar apparaît et cligne des yeux sur un simulateur iOS et sur un émulateur Android.':
+    'The avatar appears and blinks on an iOS simulator and on an Android emulator.',
+  'Changer animation fait partir l’avatar de sa pose actuelle, sans saut.':
+    'Changing animation moves the avatar from its current pose, without a jump.',
+  'Aucune image n’est calculée une fois l’app en arrière-plan.':
+    'No frame is computed once the app is in background.',
+  'L’avatar apparaît à la taille attendue : s’il est sans style, l’import de la feuille de style manque.':
+    'The avatar appears at the expected size: if it is unstyled, the stylesheet import is missing.',
+  'L’avatar apparaît dans la cible et cligne des yeux.':
+    'The avatar appears in the target and blinks.',
+  'avatar.play() retourne { ok: true } pour une clé du JSON.':
+    'avatar.play() returns { ok: true } for a key of the JSON.',
+  'avatar.destroy() est appelé partout où la page retire la cible.':
+    'avatar.destroy() is called wherever the page removes the target.',
+  'La référence complète est dans le README du package, lisible dans node_modules.':
+    'The complete reference is in the package README, readable in node_modules.',
   'Utilisation minimale': 'Minimal usage',
   'Utiliser cet avatar': 'Use this avatar',
   'Prêt à exporter': 'Ready to export',
