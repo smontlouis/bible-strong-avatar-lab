@@ -1,124 +1,162 @@
 # @bible-strong/avatar-react
 
-React 19 renderer for a validated Bible Strong `AvatarDefinition`. React and React DOM 19 are peer
-dependencies; `@bible-strong/avatar-core` is installed as a normal dependency.
+React 19 renderer for a Bible Strong `AvatarDefinition` (an `.avatar.json` file exported by
+[Avatar Lab](https://avatars.bible-strong.app)). It draws an inline SVG and animates it with
+`requestAnimationFrame`.
 
-## Install
+MIT licensed. Runs in the browser, and in React Native Web.
+
+## Which package
+
+| Target                       | Package                             |
+| ---------------------------- | ----------------------------------- |
+| React DOM, React Native Web  | `@bible-strong/avatar-react`        |
+| React Native (iOS, Android)  | `@bible-strong/avatar-react-native` |
+| Browser without React        | `@bible-strong/avatar-web`          |
+| Your own renderer, or a test | `@bible-strong/avatar-core`         |
+
+All four read the same `.avatar.json`.
+
+## Setup
 
 ```sh
-pnpm add @bible-strong/avatar-react react react-dom
+npm install @bible-strong/avatar-react
 ```
 
-Import the package stylesheet once in the application entry point:
+React and React DOM 19 are peer dependencies. `@bible-strong/avatar-core` comes as a dependency.
+Import the stylesheet once, in the entry point of the application:
 
 ```tsx
-import { Avatar, type AvatarController } from '@bible-strong/avatar-react'
-import type { AvatarDefinition } from '@bible-strong/avatar-core'
 import '@bible-strong/avatar-react/styles.css'
-import { useRef } from 'react'
-
-export function Assistant({ definition }: { definition: AvatarDefinition }) {
-  const avatar = useRef<AvatarController>(null)
-  return (
-    <>
-      <Avatar ref={avatar} definition={definition} defaultAnimation="idle" />
-      <button onClick={() => avatar.current?.play('happy')}>Play happy</button>
-      <button onClick={() => avatar.current?.setExpression('neutral')}>Neutral</button>
-    </>
-  )
-}
 ```
 
-For a reusable component tied to one JSON definition, use `createAvatar`. It validates the
-definition once and, when the JSON is statically typed, narrows `animation`, `defaultAnimation`,
-`expression` and `defaultExpression` to the semantic keys present in that definition:
+The component reads `window` when it renders: in a server-rendered application, render it in a
+client component only.
+
+## Minimal example
 
 ```tsx
 import { createAvatar } from '@bible-strong/avatar-react'
+import '@bible-strong/avatar-react/styles.css'
 import avatarJson from './strobi.avatar.json'
 
+// Validates the JSON once. `animation` and `expression` are typed with its keys.
 const StrobiAvatar = createAvatar(avatarJson)
 
-export function Strobi() {
-  return <StrobiAvatar defaultAnimation="idle" />
+export function Assistant({ thinking }: { thinking: boolean }) {
+  return <StrobiAvatar animation={thinking ? 'thinking' : 'idle'} size={96} />
 }
 ```
 
-Definitions fetched at runtime are validated by the same factory, but their keys are necessarily
-checked at runtime rather than inferred by TypeScript.
+`resolveJsonModule` must be on in `tsconfig.json` for the keys to be typed.
 
-`play` and `setExpression` return `{ ok: true }` or a typed error with one of
-`unknown_animation`, `unknown_expression` or `controlled_by_props`. `pause` freezes the exact
-timeline position, calling `play` with the paused key resumes it, and `stop` returns an
-uncontrolled avatar to `neutral`.
+For a definition loaded at run time, use `Avatar` and validate first:
 
-## Props reference
+```tsx
+import { parseAvatarDefinition } from '@bible-strong/avatar-core'
+import { Avatar } from '@bible-strong/avatar-react'
 
-`Avatar` exposes typed props for the definition, playback state and presentation. `AnimationKey`
-and `ExpressionKey` are semantic string keys from the supplied definition.
+const parsed = parseAvatarDefinition(jsonText)
+if (!parsed.ok) throw new Error(parsed.errors[0].message)
 
-### Definition and playback
+<Avatar definition={parsed.value} defaultAnimation="idle" />
+```
 
-| Prop                | Type                                 | Default  | Behavior                                                                                                                   |
-| ------------------- | ------------------------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `definition`        | `AvatarDefinition`                   | required | Validated JSON definition containing the expressions and animations to render.                                             |
-| `animation`         | `AnimationKey \| undefined`          | —        | Controlled timeline. Each step chooses the displayed expression. Mutually exclusive with `expression`.                     |
-| `expression`        | `ExpressionKey \| undefined`         | —        | Controlled direct expression. Mutually exclusive with `animation`.                                                         |
-| `defaultAnimation`  | `AnimationKey \| undefined`          | —        | Initial uncontrolled timeline, read on mount. Autoplay is enabled by default. Mutually exclusive with `defaultExpression`. |
-| `defaultExpression` | `ExpressionKey \| undefined`         | —        | Initial uncontrolled expression, read on mount without starting a timeline. Mutually exclusive with `defaultAnimation`.    |
-| `autoplay`          | `boolean \| undefined`               | `true`   | Starts `defaultAnimation` automatically. It has no effect without `defaultAnimation`.                                      |
-| `ref`               | `Ref<AvatarController> \| undefined` | —        | Exposes the imperative API described below.                                                                                |
+The definition is validated once per object reference, and the avatar starts again when that
+reference changes: keep the validated object, do not rebuild it at every render.
 
-`animation` and `expression` are two alternative sources of truth. Passing both throws an error;
-the component never silently overrides one with the other. A controlled target takes priority over
-an uncontrolled default when they are intentionally mixed.
+## Props
+
+### Target
+
+| Prop                | Type                    | Default  | Behavior                                                                     |
+| ------------------- | ----------------------- | -------- | ---------------------------------------------------------------------------- |
+| `definition`        | `AvatarDefinition`      | required | The validated definition. Absent from a component made by `createAvatar`.    |
+| `animation`         | `AnimationKey`          | —        | Controlled timeline. Changing it plays the new one from the frame on screen. |
+| `expression`        | `ExpressionKey`         | —        | Controlled single expression, reached with a 420 ms transition.              |
+| `defaultAnimation`  | `AnimationKey`          | —        | Uncontrolled initial timeline, read on mount.                                |
+| `defaultExpression` | `ExpressionKey`         | —        | Uncontrolled initial expression, read on mount.                              |
+| `autoplay`          | `boolean`               | `true`   | Starts `defaultAnimation` on mount.                                          |
+| `ref`               | `Ref<AvatarController>` | —        | The imperative API below.                                                    |
+
+`animation` with `expression`, or `defaultAnimation` with `defaultExpression`, throws: choose one.
+A controlled target takes priority over an uncontrolled default.
 
 ### Presentation
 
-| Prop        | Type                            | Default             | Behavior                                                                    |
-| ----------- | ------------------------------- | ------------------- | --------------------------------------------------------------------------- |
-| `size`      | `number \| string \| undefined` | `240`               | Number or CSS value applied to the wrapper width and height.                |
-| `className` | `string \| undefined`           | —                   | CSS class added to the outer wrapper.                                       |
-| `style`     | `CSSProperties \| undefined`    | —                   | Inline styles for the outer wrapper. `width` and `height` come from `size`. |
-| `ariaLabel` | `string \| undefined`           | `Procedural avatar` | Accessible name announced to screen readers.                                |
+| Prop        | Type               | Default             | Behavior                                                             |
+| ----------- | ------------------ | ------------------- | -------------------------------------------------------------------- |
+| `size`      | `number \| string` | `240`               | Number or CSS value for the width and height of the wrapper.         |
+| `className` | `string`           | —                   | Class added to the wrapper.                                          |
+| `style`     | `CSSProperties`    | —                   | Inline styles of the wrapper. `width` and `height` come from `size`. |
+| `ariaLabel` | `string`           | `Procedural avatar` | Accessible name of the image.                                        |
 
-### Playback callbacks
+The stylesheet exposes `.bs-avatar` (wrapper) and `.bs-avatar__svg`. To grey an avatar out, set
+`style={{ filter: 'grayscale(1)' }}`.
 
-| Prop                 | Type                                  | Receives                                                               |
-| -------------------- | ------------------------------------- | ---------------------------------------------------------------------- |
-| `onAnimationEnd`     | `(animation: AnimationKey) => void`   | The key of a `once` animation when it completes naturally.             |
-| `onExpressionChange` | `(expression: ExpressionKey) => void` | The semantic expression key whenever the displayed expression changes. |
-| `onError`            | `(error: AvatarRuntimeError) => void` | An unknown animation or expression key supplied through props.         |
+### Callbacks
 
-Unknown keys passed through `animation`, `expression`, `defaultAnimation` or `defaultExpression`
-are reported to `onError`. Without an error handler, the component writes the typed runtime error
-to the developer console instead of failing silently.
+| Prop                 | Receives                                                               |
+| -------------------- | ---------------------------------------------------------------------- |
+| `onAnimationEnd`     | The key of a `once` animation when it completes.                       |
+| `onExpressionChange` | The key of the displayed expression, on mount and whenever it changes. |
+| `onError`            | An `AvatarRuntimeError` for an unknown key passed through props.       |
+
+Without `onError`, the error is written with `console.error`.
 
 ## Imperative API
 
-Pass a `ref` to receive an `AvatarController`. Use it when buttons, events or another imperative
-source need to drive an uncontrolled avatar:
+```tsx
+const avatar = useRef<AvatarController>(null)
 
-| Method                      | Type                                                 | Behavior                                                       |
-| --------------------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
-| `play(animation)`           | `(animation: AnimationKey) => AvatarCommandResult`   | Starts an animation or resumes it from its paused position.    |
-| `pause()`                   | `() => void`                                         | Freezes the exact timeline position.                           |
-| `stop()`                    | `() => void`                                         | Stops playback and resets an uncontrolled avatar to `neutral`. |
-| `setExpression(expression)` | `(expression: ExpressionKey) => AvatarCommandResult` | Shows one expression directly.                                 |
-| `getState()`                | `() => AvatarPlaybackState`                          | Returns `activeAnimation?`, `activeExpression` and `status`.   |
+<StrobiAvatar ref={avatar} defaultAnimation="idle" />
+<button onClick={() => avatar.current?.play('celebrate')}>Celebrate</button>
+```
 
-`play` and `setExpression` return `{ ok: true }` or `{ ok: false, error }`. Errors include
-`unknown_animation`, `unknown_expression` and `controlled_by_props`. When `animation` or
-`expression` is controlled by props, use those props to change the target; imperative target
-commands cannot replace the parent value.
+| Method                      | Returns               | Behavior                                                      |
+| --------------------------- | --------------------- | ------------------------------------------------------------- |
+| `play(animation)`           | `AvatarCommandResult` | Starts an animation, or resumes it when it is the paused one. |
+| `setExpression(expression)` | `AvatarCommandResult` | Shows one expression.                                         |
+| `pause()`                   | `void`                | Freezes the exact frame.                                      |
+| `stop()`                    | `void`                | Returns an uncontrolled avatar to `neutral`.                  |
+| `getState()`                | `AvatarPlaybackState` | `{ activeAnimation?, activeExpression, status }`.             |
 
-The definition is validated once per immutable object reference and revalidated/reinitialized when
-that reference changes.
+`play` and `setExpression` return `{ ok: true }` or `{ ok: false, error }`.
 
-## Styling hooks
+| `error.code`          | Cause                                                           | Fix                          |
+| --------------------- | --------------------------------------------------------------- | ---------------------------- |
+| `unknown_animation`   | The key is not in `definition.animations`.                      | Use a key of the JSON.       |
+| `unknown_expression`  | The key is not in `definition.expressions`.                     | Use a key of the JSON.       |
+| `controlled_by_props` | `animation` or `expression` is set: the parent owns the target. | Change the prop, or drop it. |
 
-The stylesheet exposes `.bs-avatar` and `.bs-avatar__svg`. Consumer `className` and `style` are
-applied to the outer wrapper.
+`status` is `playing`, `paused` or `stopped`.
+
+## Errors thrown on render
+
+| Message starts with                             | Cause                               | Fix                                                |
+| ----------------------------------------------- | ----------------------------------- | -------------------------------------------------- |
+| `Invalid avatar definition`                     | The JSON does not match the schema. | Export it again from Avatar Lab, or read `errors`. |
+| `Avatar accepts either animation or expression` | Two targets were given.             | Keep one.                                          |
+| `window is not defined`                         | The component rendered on a server. | Render it in a client component.                   |
+
+## Behavior to know
+
+- The frame loop stops by itself on an expression with no blink and no ambient motion, and on a
+  paused avatar.
+- A pose held between two blinks is drawn once: nothing is computed until the next blink or step.
+- An avatar scrolled out of view keeps its timeline and its callbacks, but is not drawn.
+- With `prefers-reduced-motion: reduce`, transitions and ambient motion jump to their target.
+- The avatar does not receive pointer events. Wrap it in a `button` to make it one.
+- In a React Native app, do not render this package on iOS or Android: use
+  `@bible-strong/avatar-react-native` there and keep this one for the `.web.tsx` file.
+
+## Check your integration
+
+1. `npx tsc --noEmit` passes, and a wrong animation key is a type error with `createAvatar`.
+2. The avatar appears at the expected size: if it is unstyled, the stylesheet import is missing.
+3. Changing `animation` moves the avatar from its current pose, without a jump.
+
+## Versions
 
 The public component never exposes Studio IDs or document types. The package follows Semantic
 Versioning. While it remains below `1.0.0`, breaking API changes increment the minor version and

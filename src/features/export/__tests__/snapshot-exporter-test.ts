@@ -45,6 +45,24 @@ describe('avatar snapshot export', () => {
     expect(svg).toContain('fill="#818181"')
   })
 
+  it('draws the silhouette outline beneath every body fill', () => {
+    const svg = serializeAvatarSnapshot('Strobi', scene, colors, {
+      background: 'transparent',
+      colorFrom: '#ffffff',
+      colorTo: '#000000',
+      size: 512,
+      renderStyle: {
+        type: 'vector',
+        outline: { enabled: true, color: '#222222', width: 8, opacity: 1 },
+      },
+    })
+    const outlinedHead = `d="${geometry.headPath}" fill="none"`
+    const filledHead = `d="${geometry.headPath}" fill="#5b7fe5"`
+
+    expect(svg.indexOf(outlinedHead)).toBeLessThan(svg.indexOf(filledHead))
+    expect(svg).not.toContain('paint-order')
+  })
+
   it('embeds a radial background without external dependencies', () => {
     const svg = serializeAvatarSnapshot('Strobi', scene, colors, {
       background: 'radial',

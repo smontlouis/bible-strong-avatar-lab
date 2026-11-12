@@ -75,6 +75,41 @@ export type AvatarRuntimeEnvironment = {
   reduceMotion?: boolean
 }
 
+export const EXPRESSION_BLINK_SETTINGS = {
+  minIntervalMs: 3400,
+  maxIntervalMs: 6200,
+  durationMs: 280,
+} as const
+
+const randomExpressionBlinkInterval = (environment: AvatarRuntimeEnvironment) =>
+  EXPRESSION_BLINK_SETTINGS.minIntervalMs +
+  Math.max(0, Math.min(1, environment.random())) *
+    (EXPRESSION_BLINK_SETTINGS.maxIntervalMs - EXPRESSION_BLINK_SETTINGS.minIntervalMs)
+
+const advanceExpressionBlink = (
+  definition: Readonly<AvatarDefinition>,
+  state: Readonly<AvatarPlaybackState>,
+  now: number,
+  environment: AvatarRuntimeEnvironment
+): AvatarPlaybackState => {
+  const blinking = definition.expressions[state.activeExpression]?.blinking === true
+  if (!blinking || environment.reduceMotion) {
+    if (state.blinkDueAt === undefined && state.blinkStartedAt === undefined) return { ...state }
+    const { blinkDueAt: _blinkDueAt, blinkStartedAt: _blinkStartedAt, ...rest } = state
+    return rest
+  }
+  if (state.blinkDueAt === undefined) {
+    return { ...state, blinkDueAt: now + randomExpressionBlinkInterval(environment) }
+  }
+  if (now < state.blinkDueAt) return { ...state }
+  return {
+    ...state,
+    blinkStartedAt: now,
+    blinkDueAt:
+      now + EXPRESSION_BLINK_SETTINGS.durationMs + randomExpressionBlinkInterval(environment),
+  }
+}
+
 export const createAvatarPlaybackState = (): AvatarPlaybackState => ({
   activeExpression: 'neutral',
   status: 'stopped',
@@ -142,9 +177,10 @@ export const advanceAvatarPlayback = (
       return { ...state }
     }
     const { directTransition: _directTransition, ...next } = state
-    return { ...next, status: 'stopped' }
+    return advanceExpressionBlink(definition, { ...next, status: 'stopped' }, now, environment)
   }
-  if (state.status !== 'playing' || !state.activeAnimation) return { ...state }
+  if (!state.activeAnimation) return advanceExpressionBlink(definition, state, now, environment)
+  if (state.status !== 'playing') return { ...state }
   const resolved = resolveAnimation(definition, state.activeAnimation)
   if (!resolved.ok || !resolved.value.steps.length) return { ...createAvatarPlaybackState() }
   const animation = resolved.value
@@ -173,6 +209,8 @@ export const advanceAvatarPlayback = (
     if (cursor.complete) {
       next.status = 'stopped'
       delete next.activeAnimation
+      delete next.blinkDueAt
+      delete next.blinkStartedAt
       break
     }
     next.stepIndex = cursor.stepIndex
@@ -271,6 +309,13 @@ export const blinkOpacityAt = (
   return Math.abs(progress * 2 - 1)
 }
 
+const expressionBlinkOpacityAt = (state: Readonly<AvatarPlaybackState>, now: number) => {
+  if (state.blinkStartedAt === undefined) return 1
+  const progress = (now - state.blinkStartedAt) / EXPRESSION_BLINK_SETTINGS.durationMs
+  if (progress < 0 || progress >= 1) return 1
+  return Math.abs(progress * 2 - 1)
+}
+
 export const sampleAvatarFrame = (
   definition: Readonly<AvatarDefinition>,
   state: Readonly<AvatarPlaybackState>,
@@ -330,8 +375,22 @@ export const sampleAvatarFrame = (
       }
       blink = blinkOpacityAt(resolved.value, state, sampledAt)
     }
+  } else if (targetDefinition.blinking && !environment.reduceMotion) {
+    blink = expressionBlinkOpacityAt(state, sampledAt)
   }
   return { expression, colors, blink, sampledAt }
+}
+
+/** The scene of a sampled frame, ambient motion included. */
+export const renderAvatarSample = (
+  definition: Readonly<AvatarDefinition>,
+  frame: ReturnType<typeof sampleAvatarFrame>,
+  environment: AvatarRuntimeEnvironment
+): AvatarScene => {
+  const expression = environment.reduceMotion
+    ? frame.expression
+    : applyAmbientMotion(frame.expression, frame.sampledAt)
+  return renderAvatarExpression(definition, expression, frame.colors, frame.blink)
 }
 
 export const renderAvatarFrame = (
@@ -339,10 +398,56 @@ export const renderAvatarFrame = (
   state: Readonly<AvatarPlaybackState>,
   now: number,
   environment: AvatarRuntimeEnvironment
-): AvatarScene => {
-  const frame = sampleAvatarFrame(definition, state, now, environment)
-  const expression = environment.reduceMotion
-    ? frame.expression
-    : applyAmbientMotion(frame.expression, frame.sampledAt)
-  return renderAvatarExpression(definition, expression, frame.colors, frame.blink)
+): AvatarScene =>
+  renderAvatarSample(
+    definition,
+    sampleAvatarFrame(definition, state, now, environment),
+    environment
+  )
+
+/**
+ * The earliest time at which the frame of `state` can differ from its frame at `now`, for a state
+ * that `advanceAvatarPlayback` has just brought to `now`. A renderer that drew the frame at `now`
+ * need not advance, sample or draw again before that time: a held pose between two blinks stays
+ * the same picture. `now` means the picture is changing; `Infinity` means it never will until a
+ * new command.
+ */
+export const nextAvatarFrameAt = (
+  definition: Readonly<AvatarDefinition>,
+  state: Readonly<AvatarPlaybackState>,
+  now: number,
+  environment: AvatarRuntimeEnvironment
+): number => {
+  if (state.status === 'paused') return Infinity
+  const reduceMotion = environment.reduceMotion === true
+  if (state.directTransition) {
+    return reduceMotion ? state.directTransition.startedAt + state.directTransition.durationMs : now
+  }
+  const expression = definition.expressions[state.activeExpression]
+  if (!expression) return now
+  const moving =
+    !reduceMotion && (expression.motion.eyes !== 'none' || expression.motion.body !== 'none')
+  if (state.activeAnimation && state.status === 'playing') {
+    const animation = definition.animations[state.activeAnimation]
+    const step = animation?.steps[state.stepIndex]
+    if (!animation || !step) return now
+    const blinking =
+      animation.blink.enabled &&
+      state.blinkStartedAt !== undefined &&
+      now < state.blinkStartedAt + animation.blink.durationMs
+    if (moving || blinking || (state.phase === 'transition' && !reduceMotion)) return now
+    const phaseEndsAt =
+      state.phaseStartedAt + (state.phase === 'transition' ? step.transitionMs : step.holdMs)
+    return animation.blink.enabled && state.blinkDueAt !== undefined
+      ? Math.min(phaseEndsAt, state.blinkDueAt)
+      : phaseEndsAt
+  }
+  if (moving) return now
+  if (expression.blinking === true && !reduceMotion) {
+    const blinking =
+      state.blinkStartedAt !== undefined &&
+      now < state.blinkStartedAt + EXPRESSION_BLINK_SETTINGS.durationMs
+    return blinking ? now : (state.blinkDueAt ?? now)
+  }
+  return Infinity
 }

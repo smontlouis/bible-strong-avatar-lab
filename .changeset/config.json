@@ -3,7 +3,12 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [
-    ["@bible-strong/avatar-core", "@bible-strong/avatar-react", "@bible-strong/avatar-web"]
+    [
+      "@bible-strong/avatar-core",
+      "@bible-strong/avatar-react",
+      "@bible-strong/avatar-web",
+      "@bible-strong/avatar-react-native"
+    ]
   ],
   "linked": [],
   "access": "public",

@@ -83,6 +83,33 @@ describe('studioAvatarFromDefinition', () => {
     })
   })
 
+  it('round-trips neutral position and expression-relative translation', () => {
+    const customized = structuredClone(strobi) as AvatarDefinition
+    customized.expressions.neutral.position = { x: 15, y: -10, z: 35 }
+    customized.expressions['upward-side-glance'].position = { x: 30, y: 5, z: -20 }
+
+    const imported = studioAvatarFromDefinition(customized)
+    const glance = imported.expressions.find(
+      expression => expression.semanticKey === 'upward-side-glance'
+    )
+
+    expect(imported.avatar.eyes).toMatchObject({ positionX: 15, positionY: -10, positionZ: 35 })
+    expect(glance).toMatchObject({ positionX: 15, positionY: 15, positionZ: -55 })
+
+    const result = createAvatarDefinition({
+      avatar: imported.avatar,
+      behavior: { expressions: imported.expressions, sequences: imported.sequences },
+    })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.expressions.neutral.position).toEqual({ x: 15, y: -10, z: 35 })
+    expect(result.value.expressions['upward-side-glance'].position).toEqual({
+      x: 30,
+      y: 5,
+      z: -20,
+    })
+  })
+
   it('preserves animation steps targeting the neutral appearance', () => {
     const customized = structuredClone(strobi) as AvatarDefinition
     customized.animations.sleeping.steps[0].expression = 'neutral'

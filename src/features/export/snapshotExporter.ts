@@ -1,4 +1,5 @@
-import type { AvatarColors } from '../avatar/avatars'
+import type { AvatarColors, AvatarRenderStyle } from '../avatar/avatars'
+import type { BodyNode } from '../avatar/body'
 import type { RenderedScene } from '../rendering/renderedScene'
 import {
   defaultSnapshotComposition,
@@ -15,6 +16,7 @@ export type SnapshotOptions = {
   colorTo: string
   size: number
   composition?: SnapshotComposition
+  renderStyle?: AvatarRenderStyle
 }
 
 const escapeXml = (value: string) =>
@@ -28,8 +30,13 @@ const escapeXml = (value: string) =>
     return entities[character]
   })
 
-const path = (value: string, fill: string, opacity = 1) =>
-  value ? `<path d="${escapeXml(value)}" fill="${fill}" opacity="${opacity}"/>` : ''
+const path = (value: string, fill: string, opacity = 1, outline = '') =>
+  value ? `<path d="${escapeXml(value)}" fill="${fill}" opacity="${opacity}"${outline}/>` : ''
+
+const mouthPath = (value: string, color: string, strokeWidth: number) =>
+  strokeWidth > 0
+    ? `<path d="${escapeXml(value)}" fill="none" stroke="${escapeXml(color)}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/>`
+    : path(value, color)
 
 const backgroundMarkup = (options: SnapshotOptions) => {
   if (options.background === 'transparent') return ''
@@ -56,27 +63,43 @@ export const serializeAvatarSnapshot = (
   name: string,
   scene: RenderedScene,
   colors: AvatarColors,
-  options: SnapshotOptions
+  options: SnapshotOptions,
+  bodyNodes: BodyNode[] = []
 ) => {
   const composition = normalizeSnapshotComposition(
     options.composition ?? defaultSnapshotComposition
   )
   const headPath = scene.headPath.get()
-  const backPaths = scene.backPaths.flatMap(item => {
+  const backPaths = scene.backPaths.flatMap((item, index) => {
     const value = item.get()
-    return value ? [value] : []
+    return value ? [{ value, nodeId: scene.backNodeIds.current[index] }] : []
   })
-  const frontPaths = scene.frontPaths.flatMap(item => {
+  const frontPaths = scene.frontPaths.flatMap((item, index) => {
     const value = item.get()
-    return value ? [value] : []
+    return value ? [{ value, nodeId: scene.frontNodeIds.current[index] }] : []
   })
+  const nodeColor = (nodeId: string | null | undefined) =>
+    bodyNodes.find(node => node.id === nodeId)?.color ?? colors.body
   const offsetX = scene.offsetX.get()
   const offsetY = scene.offsetY.get()
+  const outlineStyle =
+    options.renderStyle?.type === 'vector' && options.renderStyle.outline?.enabled
+      ? options.renderStyle.outline
+      : null
+  const outline = outlineStyle
+    ? ` stroke="${escapeXml(outlineStyle.color)}" stroke-width="${outlineStyle.width}" stroke-opacity="${outlineStyle.opacity}" stroke-linejoin="round"`
+    : ''
+  const silhouetteOutline = outlineStyle
+    ? [...backPaths.map(item => item.value), headPath, ...frontPaths.map(item => item.value)]
+        .map(value => path(value, 'none', 1, outline))
+        .join('')
+    : ''
   const body = [
-    ...backPaths.map(value => path(value, colors.body)),
+    silhouetteOutline,
+    ...backPaths.map(item => path(item.value, nodeColor(item.nodeId))),
     path(headPath, colors.body),
-    `<g clip-path="url(#snapshot-head-clip)">${path(scene.leftPath.get(), colors.eyes, scene.leftOpacity.get())}${path(scene.rightPath.get(), colors.eyes, scene.rightOpacity.get())}</g>`,
-    ...frontPaths.map(value => path(value, colors.body)),
+    `<g clip-path="url(#snapshot-head-clip)">${path(scene.leftPath.get(), colors.eyes, scene.leftOpacity.get())}${path(scene.rightPath.get(), colors.eyes, scene.rightOpacity.get())}${path(scene.nosePath.get(), colors.eyes)}${mouthPath(scene.mouthPath.get(), colors.eyes, scene.mouthStrokeWidth.get())}</g>`,
+    ...frontPaths.map(item => path(item.value, nodeColor(item.nodeId))),
   ].join('')
 
   return `<?xml version="1.0" encoding="UTF-8"?>

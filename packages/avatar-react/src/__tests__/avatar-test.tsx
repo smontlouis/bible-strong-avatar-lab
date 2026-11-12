@@ -24,6 +24,11 @@ const ambientExpression = {
   motion: { eyes: 'none', body: 'shake' },
 } as const
 
+const blinkingExpression = {
+  ...expression,
+  blinking: true,
+} as const
+
 const definition: AvatarDefinition = {
   schema: 'bible-strong/avatar-definition',
   schemaVersion: 1,
@@ -37,8 +42,9 @@ const definition: AvatarDefinition = {
     neutral: expression,
     smile: { ...expression, head: { x: 0, y: 10, z: 0 } },
     restless: ambientExpression,
+    blinking: blinkingExpression,
   },
-  expressionOrder: ['neutral', 'smile', 'restless'],
+  expressionOrder: ['neutral', 'smile', 'restless', 'blinking'],
   animations: {
     greet: {
       playbackMode: 'loop',
@@ -99,7 +105,26 @@ describe('@bible-strong/avatar-react', () => {
     const view = render(<Avatar definition={definition} ariaLabel="Layered avatar" />)
     const svg = view.getByRole('img', { name: 'Layered avatar' }).querySelector('svg')
 
-    expect(svg?.querySelectorAll(':scope > path')).toHaveLength(37)
+    // The head, plus two slots behind and two in front for a body without nodes.
+    expect(svg?.querySelectorAll(':scope > path')).toHaveLength(5)
+
+    const withNodes: AvatarDefinition = {
+      ...definition,
+      body: {
+        ...definition.body,
+        nodes: [
+          {
+            surface: { type: 'sphere', width: 60, height: 60, depth: 60, roundness: 1 },
+            position: [-90, -90, 0],
+            rotation: [0, 0, 0],
+          },
+        ],
+      },
+    }
+    const noded = render(<Avatar definition={withNodes} ariaLabel="Noded avatar" />)
+    const nodedSvg = noded.getByRole('img', { name: 'Noded avatar' }).querySelector('svg')
+    // Every node can be on either side: one more slot behind and one more in front.
+    expect(nodedSvg?.querySelectorAll(':scope > path')).toHaveLength(7)
   })
 
   it('exposes semantic imperative controls without Studio identifiers', () => {
@@ -329,6 +354,31 @@ describe('@bible-strong/avatar-react', () => {
     })
 
     expect(request).toHaveBeenCalledTimes(4)
+    expect(frames).toHaveLength(1)
+    request.mockRestore()
+    cancel.mockRestore()
+  })
+
+  it('keeps scheduling frames for a controlled expression with automatic blinking', () => {
+    let nextFrame = 0
+    const frames = new Map<number, FrameRequestCallback>()
+    const request = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.set(++nextFrame, callback)
+      return nextFrame
+    })
+    const cancel = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => {
+      frames.delete(id)
+    })
+
+    render(<Avatar definition={definition} expression="blinking" />)
+
+    act(() => {
+      const callback = [...frames.values()].at(-1)
+      frames.clear()
+      callback?.(1_000)
+    })
+
+    expect(request).toHaveBeenCalledTimes(2)
     expect(frames).toHaveLength(1)
     request.mockRestore()
     cancel.mockRestore()

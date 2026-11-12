@@ -3,6 +3,7 @@ import {
   bodyFromDefinition,
   createAvatarPlaybackState,
   expressionFromDefinition,
+  interpolatePose,
   parseAvatarDefinition,
   playAvatarAnimation,
   pauseAvatarPlayback,
@@ -67,6 +68,22 @@ const definition: AvatarDefinition = {
 }
 
 describe('@bible-strong/avatar-core', () => {
+  it('interpolates spatial pose translation', () => {
+    const from = poseFromExpression(expressionFromDefinition('neutral', expression))
+    const to = poseFromExpression(
+      expressionFromDefinition('translated', {
+        ...expression,
+        position: { x: 80, y: -30, z: 120 },
+      })
+    )
+
+    expect(interpolatePose(from, to, 0.25).expression).toMatchObject({
+      positionX: 20,
+      positionY: -7.5,
+      positionZ: 30,
+    })
+  })
+
   it('loads a JSON definition and resolves an explicit semantic animation', () => {
     const parsed = parseAvatarDefinition(JSON.stringify(definition))
     expect(parsed.ok).toBe(true)
@@ -241,6 +258,38 @@ describe('@bible-strong/avatar-core', () => {
     expect(scene.colors).toEqual(definition.colors)
   })
 
+  it('keeps custom body-node colors while inherited nodes follow the expression body color', () => {
+    const coloredNodes: AvatarDefinition = {
+      ...definition,
+      body: {
+        ...definition.body,
+        nodes: [
+          {
+            color: '#00aaff',
+            surface: { type: 'sphere', width: 42, height: 42, depth: 42, roundness: 1 },
+            position: [-70, -65, -15],
+            rotation: [0, 0, 0],
+          },
+          {
+            surface: { type: 'sphere', width: 42, height: 42, depth: 42, roundness: 1 },
+            position: [70, -65, -15],
+            rotation: [0, 0, 0],
+          },
+        ],
+      },
+      expressions: {
+        ...definition.expressions,
+        neutral: { ...definition.expressions.neutral, colors: { body: '#ff3355' } },
+      },
+    }
+
+    const scene = renderAvatarDefinition(coloredNodes)
+
+    expect([...scene.bodyColors.back, ...scene.bodyColors.front]).toEqual(
+      expect.arrayContaining(['#00aaff', '#ff3355'])
+    )
+  })
+
   it('does not alias cached geometry for surfaces that differ beyond four decimals', () => {
     const narrow: AvatarDefinition = {
       ...definition,
@@ -308,6 +357,53 @@ describe('@bible-strong/avatar-core', () => {
     const open = renderAvatarFrame(definition, blinking, 3_600, { random: () => 0 })
     const closed = renderAvatarFrame(definition, blinking, 3_740, { random: () => 0 })
     expect(closed.geometry.leftPath).not.toBe(open.geometry.leftPath)
+  })
+
+  it('blinks a stopped expression at deterministic random intervals when enabled', () => {
+    const blinkingDefinition: AvatarDefinition = {
+      ...definition,
+      expressions: {
+        ...definition.expressions,
+        neutral: { ...definition.expressions.neutral, blinking: true },
+      },
+    }
+    const initial = createAvatarPlaybackState()
+    const scheduled = advanceAvatarPlayback(blinkingDefinition, initial, 1_000, {
+      random: () => 0,
+    })
+
+    expect(scheduled).toMatchObject({
+      status: 'stopped',
+      activeExpression: 'neutral',
+      blinkDueAt: 4_400,
+    })
+
+    const blinking = advanceAvatarPlayback(blinkingDefinition, scheduled, 4_400, {
+      random: () => 0,
+    })
+    expect(blinking.blinkStartedAt).toBe(4_400)
+    expect(blinking.blinkDueAt).toBe(8_080)
+
+    const open = renderAvatarFrame(blinkingDefinition, blinking, 4_400, { random: () => 0 })
+    const closed = renderAvatarFrame(blinkingDefinition, blinking, 4_540, { random: () => 0 })
+    expect(closed.geometry.leftPath).not.toBe(open.geometry.leftPath)
+  })
+
+  it('does not schedule expression blinking when reduced motion is requested', () => {
+    const blinkingDefinition: AvatarDefinition = {
+      ...definition,
+      expressions: {
+        ...definition.expressions,
+        neutral: { ...definition.expressions.neutral, blinking: true },
+      },
+    }
+
+    expect(
+      advanceAvatarPlayback(blinkingDefinition, createAvatarPlaybackState(), 1_000, {
+        random: () => 0,
+        reduceMotion: true,
+      })
+    ).not.toHaveProperty('blinkDueAt')
   })
 
   it('returns a typed error for an animation that is not present in the definition', () => {

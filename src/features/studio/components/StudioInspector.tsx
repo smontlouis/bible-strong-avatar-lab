@@ -21,7 +21,15 @@ import {
   Upload,
 } from 'lucide-react'
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'motion/react'
-import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  type CSSProperties,
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 
 import {
   Accordion,
@@ -67,13 +75,13 @@ import {
 } from '@/app/studio-utils'
 import { SequenceWorkspace } from '@/features/animation/components/SequenceWorkspace'
 import { groupSequences, resolveSequenceExpression } from '@/features/animation/sequences'
-import { defaultAvatarEyes } from '@/features/avatar/avatars'
+import { defaultAvatarEyes, defaultAvatarOutlineStyle } from '@/features/avatar/avatars'
 import {
   ExpressionCard,
   ExpressionPreview,
   ExpressionWorkspace,
 } from '@/features/avatar/components/ExpressionWorkspace'
-import { defaultExpression } from '@/features/avatar/presets'
+import { avatarIdentityExpression, defaultExpression } from '@/features/avatar/presets'
 import { randomSnapshotPalette } from '@/features/export/snapshotPalette'
 import { type SnapshotBackground } from '@/features/export/snapshotExporter'
 import { AvatarPage } from '@/features/studio/components/AvatarDrawer'
@@ -86,6 +94,18 @@ import {
 import { RuntimePreviewDialog } from '@/features/studio/components/RuntimePreviewDialog'
 import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
 import type { StudioController } from '@/features/studio/useStudioController'
+
+const TalkModePanel = lazy(() =>
+  import('@/features/talk/components/TalkModePanel').then(module => ({
+    default: module.TalkModePanel,
+  }))
+)
+
+const StreamModePanel = lazy(() =>
+  import('@/features/talk/components/StreamModePanel').then(module => ({
+    default: module.StreamModePanel,
+  }))
+)
 
 const reactQuickStartInstall = 'npm install @bible-strong/avatar-react react react-dom'
 const webQuickStartInstall = 'npm install @bible-strong/avatar-web'
@@ -113,6 +133,7 @@ const avatar = createAvatar('#avatar', {
 function PoseControls({ controller }: { controller: StudioController }) {
   const {
     activeAvatar,
+    activeAvatarEyes,
     expression,
     linked,
     setLinked,
@@ -155,6 +176,30 @@ function PoseControls({ controller }: { controller: StudioController }) {
               <RotateCcw />
             </Button>
           )}
+        </InspectorCard>
+        <InspectorCard>
+          <PanelTitle
+            level={3}
+            title="Position dans l’espace"
+            subtitle="Déplace la pose sur les axes X, Y et Z."
+          />
+          {(['positionX', 'positionY', 'positionZ'] as const).map(field => (
+            <NumericField
+              key={field}
+              label={`Position ${field.at(-1)?.toUpperCase()}`}
+              value={expression[field] + activeAvatarEyes[field] - defaultAvatarEyes[field]}
+              min={field === 'positionZ' ? -300 : -200}
+              max={field === 'positionZ' ? 300 : 200}
+              unit="u"
+              onActiveChange={active => updateHighlight(active ? 'head' : null)}
+              onChange={value =>
+                updateImmediate({
+                  ...expression,
+                  [field]: value - activeAvatarEyes[field] + defaultAvatarEyes[field],
+                })
+              }
+            />
+          ))}
         </InspectorCard>
         <InspectorCard>
           <PanelTitle
@@ -550,6 +595,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
     updateAvatarEyePosition,
     updateAvatarEyeSize,
     updateAvatarEyes,
+    updateAvatarRenderStyle,
     updateDimension,
     updateHighlight,
     updateImmediate,
@@ -647,7 +693,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
   return (
     <Drawer>
       <main
-        className={`inspector ${editing ? 'expression-workspace-active' : sequenceEditing ? 'sequence-workspace-active' : bodyEditing ? 'body-workspace' : 'studio-workspace'}${activeSequence && !editorPageOpen && mode !== 'photo' ? ' state-player-active' : ''}${mode === 'photo' ? ' photo-inspector-active' : ''}`}
+        className={`inspector ${editing ? 'expression-workspace-active' : sequenceEditing ? 'sequence-workspace-active' : bodyEditing ? 'body-workspace' : 'studio-workspace'}${activeSequence && !editorPageOpen && mode !== 'photo' && mode !== 'talk' ? ' state-player-active' : ''}${mode === 'photo' ? ' photo-inspector-active' : ''}`}
       >
         <StudioIdentity
           className="inspector-identity"
@@ -673,7 +719,6 @@ export function StudioInspector({ controller }: { controller: StudioController }
               renderStyle={activeAvatar.renderStyle}
               selectedStepId={selectedSequenceStepId}
               backButtonRef={workspaceBackButtonRef}
-              reduceMotion={Boolean(reduceMotion)}
               onSelectedStepChange={setSelectedSequenceStepId}
               onChange={draft =>
                 setSequenceEditing(current => (current ? { ...current, draft } : current))
@@ -709,6 +754,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
             <ExpressionWorkspace
               editing={editing}
               avatarColors={activeAvatar.colors}
+              avatarEyes={activeAvatarEyes}
               backButtonRef={workspaceBackButtonRef}
               onChange={previewExpressionDraft}
               onCancel={cancelExpressionEditing}
@@ -759,9 +805,9 @@ export function StudioInspector({ controller }: { controller: StudioController }
           <motion.div
             className="mode-page-transition"
             key={mode}
-            initial={reduceMotion ? false : { opacity: 0, x: 18 }}
+            initial={{ opacity: 0, x: 18 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={reduceMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: -18 }}
+            exit={{ opacity: 0, x: -18 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
             {!editorPageOpen && (
@@ -780,7 +826,11 @@ export function StudioInspector({ controller }: { controller: StudioController }
                               ? 'Animations'
                               : mode === 'photo'
                                 ? 'Mode photo'
-                                : 'Exporter'
+                                : mode === 'talk'
+                                  ? 'Talk Mode'
+                                  : mode === 'stream'
+                                    ? 'Stream Mode'
+                                    : 'Exporter'
                     )}
                   </h1>
                 </div>
@@ -801,6 +851,12 @@ export function StudioInspector({ controller }: { controller: StudioController }
                     {t('Quitter')}
                   </Button>
                 )}
+                {(mode === 'talk' || mode === 'stream') && (
+                  <Button variant="outline" type="button" onClick={() => setMode('avatars')}>
+                    <ArrowLeft />
+                    {t('Quitter')}
+                  </Button>
+                )}
               </header>
             )}
 
@@ -812,10 +868,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                       title="Corps"
                       subtitle="Construction, forme et couleur de la tête de l’avatar."
                     >
-                      <BodyConstructionAccordion
-                        controller={controller}
-                        reduceMotion={Boolean(reduceMotion)}
-                      />
+                      <BodyConstructionAccordion controller={controller} />
                       <InspectorCard className="color-panel">
                         <PanelTitle
                           level={3}
@@ -831,17 +884,103 @@ export function StudioInspector({ controller }: { controller: StudioController }
                     </ControlSection>
                     <ControlSection
                       title="Rendu"
-                      subtitle="Le rendu Pixel est temporairement désactivé."
+                      subtitle="Finition vectorielle et contour de la silhouette."
                     >
-                      <InspectorCard className="render-style-panel render-style-disabled">
+                      <InspectorCard className="render-style-panel">
                         <PanelTitle
                           level={3}
                           title="Type de rendu"
-                          subtitle="Le mode Vectoriel est utilisé pour l’instant."
+                          subtitle="Le mode vectoriel peut recevoir un contour de style cel-shading."
                         />
                         <div className="render-style-status">
                           <Badge variant="secondary">{t('Vectoriel')}</Badge>
                         </div>
+                        {activeAvatar.renderStyle.type === 'vector' &&
+                          (() => {
+                            const outline =
+                              activeAvatar.renderStyle.outline ?? defaultAvatarOutlineStyle
+                            return (
+                              <div className="dialog-fields">
+                                <div className="switch">
+                                  <span>{t('Afficher le contour')}</span>
+                                  <Switch
+                                    checked={outline.enabled}
+                                    onCheckedChange={enabled =>
+                                      updateAvatarRenderStyle({
+                                        type: 'vector',
+                                        outline: { ...outline, enabled },
+                                      })
+                                    }
+                                    aria-label={t('Afficher le contour')}
+                                  />
+                                </div>
+                                {outline.enabled && (
+                                  <>
+                                    <ColorField
+                                      label="Contour"
+                                      value={outline.color}
+                                      onChange={color =>
+                                        updateAvatarRenderStyle({
+                                          type: 'vector',
+                                          outline: { ...outline, color },
+                                        })
+                                      }
+                                    />
+                                    <NumericField
+                                      label="Épaisseur"
+                                      value={outline.width}
+                                      min={1}
+                                      max={24}
+                                      unit="u"
+                                      onChange={width =>
+                                        updateAvatarRenderStyle({
+                                          type: 'vector',
+                                          outline: { ...outline, width },
+                                        })
+                                      }
+                                    />
+                                    <NumericField
+                                      label="Opacité"
+                                      value={outline.opacity * 100}
+                                      min={0}
+                                      max={100}
+                                      unit="%"
+                                      onChange={opacity =>
+                                        updateAvatarRenderStyle({
+                                          type: 'vector',
+                                          outline: { ...outline, opacity: opacity / 100 },
+                                        })
+                                      }
+                                    />
+                                  </>
+                                )}
+                              </div>
+                            )
+                          })()}
+                      </InspectorCard>
+                    </ControlSection>
+                    <ControlSection
+                      title="Position dans l’espace"
+                      subtitle="Position neutre héritée par toutes les poses et expressions."
+                    >
+                      <InspectorCard>
+                        <PanelTitle
+                          level={3}
+                          title="Position de l’avatar"
+                          subtitle="X et Y déplacent l’avatar dans le plan ; Z l’avance ou le recule."
+                        />
+                        {(['positionX', 'positionY', 'positionZ'] as const).map(field => (
+                          <NumericField
+                            key={field}
+                            label={`Position ${field.at(-1)?.toUpperCase()}`}
+                            value={activeAvatarEyes[field]}
+                            min={field === 'positionZ' ? -300 : -200}
+                            max={field === 'positionZ' ? 300 : 200}
+                            unit="u"
+                            onActiveChange={active => updateHighlight(active ? 'head' : null)}
+                            onChange={value => updateAvatarEyes({ [field]: value })}
+                          />
+                        ))}
                       </InspectorCard>
                     </ControlSection>
                     <ControlSection
@@ -853,6 +992,45 @@ export function StudioInspector({ controller }: { controller: StudioController }
                           'Définis l’identité du regard de cet avatar. Les poses s’ajoutent ensuite à cette base.'
                         )}
                       </p>
+                      <InspectorCard>
+                        <PanelTitle
+                          level={3}
+                          title="Forme des yeux"
+                          subtitle="Ellipse parfaite ou rectangle aux coins réglables."
+                        />
+                        <Field orientation="horizontal">
+                          <FieldTitle>{t('Forme')}</FieldTitle>
+                          <Select
+                            value={activeAvatarEyes.eyeShape}
+                            items={[
+                              { value: 'rounded', label: t('Rectangle arrondi') },
+                              { value: 'ellipse', label: t('Ellipse') },
+                            ]}
+                            onValueChange={value =>
+                              value &&
+                              updateAvatarEyes({ eyeShape: value as 'rounded' | 'ellipse' })
+                            }
+                          >
+                            <SelectTrigger aria-label={t('Forme des yeux')}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="rounded">{t('Rectangle arrondi')}</SelectItem>
+                              <SelectItem value="ellipse">{t('Ellipse')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        {activeAvatarEyes.eyeShape === 'rounded' && (
+                          <NumericField
+                            label="Rondeur"
+                            value={activeAvatarEyes.eyeRoundness}
+                            min={0}
+                            max={100}
+                            unit="%"
+                            onChange={eyeRoundness => updateAvatarEyes({ eyeRoundness })}
+                          />
+                        )}
+                      </InspectorCard>
                       {(['width', 'height', 'size'] as const).map(dimension => (
                         <InspectorCard className="compact" key={`avatar-${dimension}`}>
                           <div className="panel-inline-title">
@@ -1044,6 +1222,170 @@ export function StudioInspector({ controller }: { controller: StudioController }
                         />
                       </InspectorCard>
                     </ControlSection>
+                    <ControlSection
+                      title="Nez"
+                      subtitle="Caractéristique permanente du visage neutre."
+                    >
+                      <InspectorCard>
+                        <div className="switch">
+                          <span>{t('Afficher le nez')}</span>
+                          <Switch
+                            checked={activeAvatarEyes.noseEnabled}
+                            onCheckedChange={noseEnabled => updateAvatarEyes({ noseEnabled })}
+                            aria-label={t('Afficher le nez')}
+                          />
+                        </div>
+                        {activeAvatarEyes.noseEnabled && (
+                          <>
+                            <Field orientation="horizontal">
+                              <FieldTitle>{t('Forme')}</FieldTitle>
+                              <Select
+                                value={activeAvatarEyes.noseShape}
+                                items={[
+                                  { value: 'inverted-triangle', label: t('Triangle inversé') },
+                                  { value: 'ellipse', label: t('Ellipse') },
+                                  { value: 'rounded', label: t('Arrondi') },
+                                ]}
+                                onValueChange={value =>
+                                  value &&
+                                  updateAvatarEyes({
+                                    noseShape: value as typeof activeAvatarEyes.noseShape,
+                                  })
+                                }
+                              >
+                                <SelectTrigger aria-label={t('Forme du nez')}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="inverted-triangle">
+                                    {t('Triangle inversé')}
+                                  </SelectItem>
+                                  <SelectItem value="ellipse">{t('Ellipse')}</SelectItem>
+                                  <SelectItem value="rounded">{t('Arrondi')}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </Field>
+                            {activeAvatarEyes.noseShape === 'inverted-triangle' && (
+                              <NumericField
+                                label={t('Rondeur')}
+                                value={activeAvatarEyes.noseRoundness}
+                                min={0}
+                                max={100}
+                                unit="%"
+                                onChange={noseRoundness => updateAvatarEyes({ noseRoundness })}
+                              />
+                            )}
+                            {(
+                              ['noseWidth', 'noseHeight', 'noseX', 'noseY', 'noseAngle'] as const
+                            ).map(field => (
+                              <NumericField
+                                key={field}
+                                label={t(
+                                  {
+                                    noseWidth: 'Largeur',
+                                    noseHeight: 'Hauteur',
+                                    noseX: 'Position X',
+                                    noseY: 'Position Y',
+                                    noseAngle: 'Rotation',
+                                  }[field]
+                                )}
+                                value={activeAvatarEyes[field]}
+                                min={field === 'noseWidth' || field === 'noseHeight' ? 2 : -100}
+                                max={field === 'noseWidth' || field === 'noseHeight' ? 80 : 100}
+                                unit={field === 'noseAngle' ? '°' : 'u'}
+                                onChange={value => updateAvatarEyes({ [field]: value })}
+                              />
+                            ))}
+                          </>
+                        )}
+                      </InspectorCard>
+                    </ControlSection>
+                    <ControlSection
+                      title="Bouche neutre"
+                      subtitle="Base héritée puis modifiable ou masquable dans chaque expression."
+                    >
+                      <InspectorCard>
+                        <div className="switch">
+                          <span>{t('Afficher la bouche')}</span>
+                          <Switch
+                            checked={activeAvatarEyes.mouthEnabled}
+                            onCheckedChange={mouthEnabled => updateAvatarEyes({ mouthEnabled })}
+                            aria-label={t('Afficher la bouche')}
+                          />
+                        </div>
+                        {activeAvatarEyes.mouthEnabled && (
+                          <>
+                            <Field orientation="horizontal">
+                              <FieldTitle>{t('Forme')}</FieldTitle>
+                              <Select
+                                value={activeAvatarEyes.mouthShape}
+                                items={[
+                                  { value: 'curve', label: t('Courbe') },
+                                  { value: 'ellipse', label: t('Ellipse') },
+                                  { value: 'rounded', label: t('Arrondi') },
+                                  { value: 'rounded-triangle', label: t('Triangle arrondi') },
+                                ]}
+                                onValueChange={value =>
+                                  value &&
+                                  updateAvatarEyes({
+                                    mouthShape: value as typeof activeAvatarEyes.mouthShape,
+                                  })
+                                }
+                              >
+                                <SelectTrigger aria-label={t('Forme de la bouche')}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="curve">{t('Courbe')}</SelectItem>
+                                  <SelectItem value="ellipse">{t('Ellipse')}</SelectItem>
+                                  <SelectItem value="rounded">{t('Arrondi')}</SelectItem>
+                                  <SelectItem value="rounded-triangle">
+                                    {t('Triangle arrondi')}
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </Field>
+                            {activeAvatarEyes.mouthShape === 'curve' && (
+                              <NumericField
+                                label="Courbure"
+                                value={activeAvatarEyes.mouthCurve}
+                                min={-100}
+                                max={100}
+                                unit="%"
+                                onChange={mouthCurve => updateAvatarEyes({ mouthCurve })}
+                              />
+                            )}
+                            {(
+                              [
+                                'mouthWidth',
+                                'mouthHeight',
+                                'mouthX',
+                                'mouthY',
+                                'mouthAngle',
+                              ] as const
+                            ).map(field => (
+                              <NumericField
+                                key={field}
+                                label={t(
+                                  {
+                                    mouthWidth: 'Largeur',
+                                    mouthHeight: 'Hauteur',
+                                    mouthX: 'Position X',
+                                    mouthY: 'Position Y',
+                                    mouthAngle: 'Rotation',
+                                  }[field]
+                                )}
+                                value={activeAvatarEyes[field]}
+                                min={field === 'mouthWidth' || field === 'mouthHeight' ? 2 : -120}
+                                max={field === 'mouthWidth' || field === 'mouthHeight' ? 120 : 120}
+                                unit={field === 'mouthAngle' ? '°' : 'u'}
+                                onChange={value => updateAvatarEyes({ [field]: value })}
+                              />
+                            ))}
+                          </>
+                        )}
+                      </InspectorCard>
+                    </ControlSection>
                   </>
                 )}
                 {!bodyEditing && <PoseControls controller={controller} />}
@@ -1092,11 +1434,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                           opacity: draggingExpressionId === preset.id ? 0.28 : 1,
                           scale: draggingExpressionId === preset.id ? 0.96 : 1,
                         }}
-                        transition={
-                          reduceMotion
-                            ? { duration: 0 }
-                            : { type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }
-                        }
+                        transition={{ type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }}
                       >
                         <ExpressionCard
                           expression={preset}
@@ -1282,11 +1620,12 @@ export function StudioInspector({ controller }: { controller: StudioController }
                                   opacity: draggingStateId === sequence.id ? 0.28 : 1,
                                   scale: draggingStateId === sequence.id ? 0.96 : 1,
                                 }}
-                                transition={
-                                  reduceMotion
-                                    ? { duration: 0 }
-                                    : { type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }
-                                }
+                                transition={{
+                                  type: 'spring',
+                                  stiffness: 520,
+                                  damping: 42,
+                                  mass: 0.7,
+                                }}
                               >
                                 <ContextMenu>
                                   <ContextMenuTrigger render={card} />
@@ -1594,6 +1933,18 @@ export function StudioInspector({ controller }: { controller: StudioController }
               </div>
             )}
 
+            {!sequenceEditing && !editing && !bodyEditing && mode === 'talk' && (
+              <Suspense fallback={<div className="talk-panel-loading">{t('Chargement…')}</div>}>
+                <TalkModePanel key={activeAvatar.id} controller={controller} />
+              </Suspense>
+            )}
+
+            {!sequenceEditing && !editing && !bodyEditing && mode === 'stream' && (
+              <Suspense fallback={<div className="talk-panel-loading">{t('Chargement…')}</div>}>
+                <StreamModePanel key={activeAvatar.id} controller={controller} />
+              </Suspense>
+            )}
+
             {!sequenceEditing && !editing && !bodyEditing && mode === 'export' && (
               <Accordion className="export-panel" defaultValue={['avatar']}>
                 <ExportSection
@@ -1604,7 +1955,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                   <InspectorCard>
                     <div className="export-avatar-summary">
                       <ExpressionPreview
-                        expression={expressions[0] ?? defaultExpression}
+                        expression={avatarIdentityExpression}
                         surface={activeAvatar.body.primary}
                         bodyNodes={activeAvatar.body.nodes}
                         colors={activeAvatar.colors}
@@ -1965,7 +2316,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
             )}
           </motion.div>
         </AnimatePresence>
-        {activeSequence && !editorPageOpen && mode !== 'photo' && (
+        {activeSequence && !editorPageOpen && mode !== 'photo' && mode !== 'talk' && (
           <motion.footer
             className={`state-playback-footer${statePlayerExpanded ? ' is-expanded' : ''}`}
             style={{ y: playbackFooterY }}
@@ -2115,7 +2466,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
             </motion.div>
           </motion.footer>
         )}
-        {!editorPageOpen && mode !== 'photo' && (
+        {!editorPageOpen && mode !== 'photo' && mode !== 'talk' && (
           <nav className="mobile-mode-tabs" aria-label={t('Mode d’édition')}>
             <Button
               className="mobile-mode-tab mobile-avatar-tab"
@@ -2126,7 +2477,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
               onClick={() => setMode('avatars')}
             >
               <ExpressionPreview
-                expression={expressions[0] ?? defaultExpression}
+                expression={avatarIdentityExpression}
                 surface={activeAvatar.body.primary}
                 bodyNodes={activeAvatar.body.nodes}
                 colors={activeAvatar.colors}

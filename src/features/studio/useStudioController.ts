@@ -1,5 +1,6 @@
 import { animate, useMotionValue, useMotionValueEvent, useReducedMotion } from 'motion/react'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { EXPRESSION_BLINK_SETTINGS } from '@bible-strong/avatar-core'
 
 import { useStudioLanguage } from '@/i18n'
 
@@ -60,10 +61,12 @@ import {
   createAvatar,
   createUnkeyedExpressionCopy,
   defaultAvatarEyes,
+  prepareMouthTransition,
   resolveAvatarBehavior,
   type AvatarBehaviorLibrary,
   type AvatarColors,
   type AvatarEyeDefaults,
+  type AvatarRenderStyle,
   type StudioAvatar,
 } from '@/features/avatar/avatars'
 import {
@@ -78,6 +81,7 @@ import {
   type BodyNode,
 } from '@/features/avatar/body'
 import {
+  blendExpressionTransitionTarget,
   scaleEye,
   updateEyeDimension,
   updateEyePosition,
@@ -119,6 +123,7 @@ import {
 import {
   createRenderedColors,
   createRenderedScene,
+  paintRenderedBodyColors,
   paintRenderedColors,
   paintRenderedOffset,
   paintRenderedScene,
@@ -133,6 +138,17 @@ import {
   type StatePlaybackSelection,
   type StudioDocument,
 } from '@/features/studio/studioDocument'
+import { type TalkPlaybackStatus } from '@/features/talk/animalese'
+import { DEFAULT_TALK_TRANSITION_MS, type TalkTransform } from '@/features/talk/talkScript'
+import {
+  applyTalkTransformOverride,
+  createTalkTransformTransition,
+  resolveTalkTransformOverride,
+  talkExpressionTransformFields,
+  type TalkExpressionTransformOverride,
+} from '@/features/talk/talkTransform'
+
+const mouthShapeGeometryFieldSet = new Set<string>(['mouthCurve', 'mouthWidth', 'mouthHeight'])
 
 export function useStudioController() {
   const { language, setLanguage, t } = useStudioLanguage()
@@ -172,6 +188,9 @@ export function useStudioController() {
   const [photoTool, setPhotoTool] = useState<PhotoTool>('frame')
   const [photoPanelSections, setPhotoPanelSections] = useState<PhotoTool[]>([])
   const [photoFlash, setPhotoFlash] = useState(0)
+  const [expressionBlinkCycle, setExpressionBlinkCycle] = useState(0)
+  const [talkBubbleText, setTalkBubbleText] = useState('')
+  const [talkPlaybackStatus, setTalkPlaybackStatus] = useState<TalkPlaybackStatus>('idle')
   const [runtimeCopyFeedback, setRuntimeCopyFeedback] = useState<{
     status: 'idle' | 'success' | 'error'
     source?: readonly unknown[]
@@ -323,6 +342,8 @@ export function useStudioController() {
   })
   const { pose: initialPose, geometry: initialGeometry } = initialRender
   const displayedPose = useRef<AvatarPose>(initialPose)
+  const talkTransformFrame = useRef<number | null>(null)
+  const talkTransformOverride = useRef<TalkExpressionTransformOverride>({})
   const transitionFrame = useRef<number | null>(null)
   const ambientFrame = useRef<number | null>(null)
   const eyeAmbientStartedAt = useRef(-1)
@@ -338,6 +359,7 @@ export function useStudioController() {
   const retargetFrom = useRef<Expression | null>(null)
   const retargetTo = useRef<Expression | null>(null)
   const retargetStartedAt = useRef<number | null>(null)
+  const transitionMouthShapeChanges = useRef(false)
   const [transitionVelocity] = useState(
     () =>
       Object.fromEntries(expressionFields.map(field => [field, 0])) as Record<
@@ -362,7 +384,12 @@ export function useStudioController() {
   const blinkControls = useRef<ReturnType<typeof animate> | null>(null)
   const blinkAnimating = useRef(false)
   const blinkValue = useMotionValue(1)
-  const [renderedScene] = useState(() => createRenderedScene(initialGeometry))
+  const [renderedScene] = useState(() =>
+    createRenderedScene(initialGeometry, bodyNodes, initialDisplayColors.body)
+  )
+  useMotionValueEvent(renderedColors.body, 'change', latest =>
+    paintRenderedBodyColors(renderedScene, bodyNodesRef.current, latest)
+  )
   const [renderedRotationGizmo] = useState(() => createRenderedRotationGizmo(initialExpression))
   const bodyColorAnimation = useRef<ReturnType<typeof animate> | null>(null)
   const eyeColorAnimation = useRef<ReturnType<typeof animate> | null>(null)
@@ -377,7 +404,6 @@ export function useStudioController() {
     const resolvedAmbientStrength =
       ambientStrength ?? (transitionFrame.current === null ? 1 : lastAmbientStrength.current)
     lastAmbientStrength.current = resolvedAmbientStrength
-    paintRenderedRotationGizmo(renderedRotationGizmo, pose.expression)
     const avatar = avatarsRef.current.find(item => item.id === activeAvatarIdRef.current)
     const eyeAmbientEnabled = !reduceMotion && pose.expression.eyeMotion !== 'none'
     const bodyAmbientEnabled = !reduceMotion && pose.expression.bodyMotion !== 'none'
@@ -411,15 +437,20 @@ export function useStudioController() {
     const eyeOffset = eyeAmbientEnabled
       ? ambientEyeOffset(pose.expression, lastEyeAmbientElapsed.current, resolvedAmbientStrength)
       : { x: 0, y: 0 }
+    const transformedExpression = applyTalkTransformOverride(
+      renderedExpression,
+      talkTransformOverride.current
+    )
+    paintRenderedRotationGizmo(renderedRotationGizmo, transformedExpression)
     const renderPose = avatar
-      ? poseWithAvatarEyes(renderedExpression, avatar.eyes ?? defaultAvatarEyes)
-      : poseFromExpression(renderedExpression)
+      ? poseWithAvatarEyes(transformedExpression, avatar.eyes ?? defaultAvatarEyes)
+      : poseFromExpression(transformedExpression)
     const geometry = renderAvatar(renderPose, surfaceRef.current, blink ?? blinkValue.get(), {
       includeWire: showWireRef.current || highlightRef.current === 'head',
       bodyNodes: bodyNodesRef.current,
       eyeOffset,
     })
-    paintRenderedScene(renderedScene, geometry)
+    paintRenderedScene(renderedScene, geometry, bodyNodesRef.current, renderedColors.body.get())
     paintRenderedOffset(
       renderedScene,
       bodyAmbientEnabled
@@ -457,6 +488,7 @@ export function useStudioController() {
   useEffect(
     () => () => {
       if (transitionFrame.current !== null) cancelAnimationFrame(transitionFrame.current)
+      if (talkTransformFrame.current !== null) cancelAnimationFrame(talkTransformFrame.current)
       blinkControls.current?.stop()
       bodyColorAnimation.current?.stop()
       eyeColorAnimation.current?.stop()
@@ -473,6 +505,7 @@ export function useStudioController() {
     retargetFrom.current = null
     retargetTo.current = null
     retargetStartedAt.current = null
+    transitionMouthShapeChanges.current = false
     lastInspectorFrame.current = 0
     if (resetVelocity) {
       expressionFields.forEach(field => {
@@ -488,9 +521,72 @@ export function useStudioController() {
     eyeColorAnimation.current = null
   }
 
+  const stopTalkTransformTransition = () => {
+    if (talkTransformFrame.current !== null) cancelAnimationFrame(talkTransformFrame.current)
+    talkTransformFrame.current = null
+  }
+
+  const materializeTalkTransform = () => {
+    stopTalkTransformTransition()
+    const effectiveExpression = applyTalkTransformOverride(
+      displayedPose.current.expression,
+      talkTransformOverride.current
+    )
+    talkTransformOverride.current = {}
+    displayedPose.current = poseFromExpression(effectiveExpression)
+    return effectiveExpression
+  }
+
+  const clearTalkTransform = () => {
+    stopTalkTransformTransition()
+    talkTransformOverride.current = {}
+    paintPose(displayedPose.current)
+  }
+
+  const transitionTalkTransform = (transform: TalkTransform, durationMs?: number) => {
+    stopTalkTransformTransition()
+    const avatar = avatarsRef.current.find(item => item.id === activeAvatarIdRef.current)
+    const nextOverride = resolveTalkTransformOverride(transform, avatar?.eyes ?? defaultAvatarEyes)
+    const duration = reduceMotion ? 0 : (durationMs ?? DEFAULT_TALK_TRANSITION_MS)
+    if (duration <= 0) {
+      talkTransformOverride.current = nextOverride
+      paintPose(displayedPose.current)
+      return
+    }
+
+    const transition = createTalkTransformTransition(
+      displayedPose.current.expression,
+      talkTransformOverride.current,
+      nextOverride
+    )
+    let startedAt: number | null = null
+    const tick = (time: number) => {
+      if (startedAt === null) startedAt = time
+      const progress = Math.min((time - startedAt) / duration, 1)
+      const eased = progress * progress * (3 - 2 * progress)
+      const underlying = displayedPose.current.expression
+      talkTransformOverride.current = Object.fromEntries(
+        talkExpressionTransformFields.map(field => {
+          const from = transition.from[field] ?? underlying[field]
+          const to = nextOverride[field] ?? underlying[field]
+          return [field, from + (to - from) * eased]
+        })
+      )
+      paintPose(displayedPose.current, undefined, time)
+      if (progress < 1) {
+        talkTransformFrame.current = requestAnimationFrame(tick)
+        return
+      }
+      talkTransformFrame.current = null
+      talkTransformOverride.current = nextOverride
+      paintPose(displayedPose.current)
+    }
+    talkTransformFrame.current = requestAnimationFrame(tick)
+  }
+
   const freezeLivePreviewForManipulation = () => {
     if (statePlaying) pauseState()
-    const renderedExpression = { ...displayedPose.current.expression }
+    const renderedExpression = materializeTalkTransform()
     stopTransition(true)
     stopColorTransitions()
     activeSequenceTransition.current = null
@@ -507,6 +603,20 @@ export function useStudioController() {
     setPhotoTool('frame')
     setPhotoPanelSections([])
     setMode('photo')
+  }
+
+  const openTalkMode = () => {
+    freezeLivePreviewForManipulation()
+    setTalkBubbleText('')
+    setTalkPlaybackStatus('idle')
+    setMode('talk')
+  }
+
+  const openStreamMode = () => {
+    freezeLivePreviewForManipulation()
+    setTalkBubbleText('')
+    setTalkPlaybackStatus('idle')
+    setMode('stream')
   }
 
   const updateImmediate = (next: Expression, preservePlayback = false) => {
@@ -541,6 +651,17 @@ export function useStudioController() {
       return
     }
     const current = displayedPose.current.expression
+    const preparedMouthTransition = prepareMouthTransition(
+      current,
+      next,
+      avatar?.eyes ?? defaultAvatarEyes
+    )
+    const transitionSource = preparedMouthTransition.from
+    const transitionDestination = preparedMouthTransition.to
+    const mouthShapeChanges = preparedMouthTransition.changesShape
+    if (transitionSource !== current) {
+      displayedPose.current = poseFromExpression(transitionSource)
+    }
     const nearestAngle = (target: number, from: number) => {
       let resolved = target
       while (resolved - from > 180) resolved -= 360
@@ -549,12 +670,12 @@ export function useStudioController() {
     }
     canonicalTarget.current = next
     const resolvedTarget = {
-      ...next,
-      headX: nearestAngle(next.headX, current.headX),
-      headY: nearestAngle(next.headY, current.headY),
-      headZ: nearestAngle(next.headZ, current.headZ),
-      leftAngle: nearestAngle(next.leftAngle, current.leftAngle),
-      rightAngle: nearestAngle(next.rightAngle, current.rightAngle),
+      ...transitionDestination,
+      headX: nearestAngle(transitionDestination.headX, transitionSource.headX),
+      headY: nearestAngle(transitionDestination.headY, transitionSource.headY),
+      headZ: nearestAngle(transitionDestination.headZ, transitionSource.headZ),
+      leftAngle: nearestAngle(transitionDestination.leftAngle, transitionSource.leftAngle),
+      rightAngle: nearestAngle(transitionDestination.rightAngle, transitionSource.rightAngle),
     }
 
     if (transitionSettings) {
@@ -562,7 +683,7 @@ export function useStudioController() {
       stopColorTransitions()
       const durationMs = transitionSettings.transitionMs
       lastAmbientStrength.current = 0
-      const from = { ...current }
+      const from = { ...transitionSource }
       const fromColors = {
         body: renderedColors.body.get(),
         eyes: renderedColors.eyes.get(),
@@ -587,8 +708,12 @@ export function useStudioController() {
               : 1 - Math.exp(-6 * progress) * Math.cos(8 * progress)
         const animated = { ...from, eyeMotion: next.eyeMotion, bodyMotion: next.bodyMotion }
         expressionFields.forEach(field => {
-          animated[field] = from[field] + (resolvedTarget[field] - from[field]) * eased
+          animated[field] =
+            mouthShapeChanges && mouthShapeGeometryFieldSet.has(field)
+              ? resolvedTarget[field]
+              : from[field] + (resolvedTarget[field] - from[field]) * eased
         })
+        if (mouthShapeChanges) animated.mouthShape = resolvedTarget.mouthShape
         activeSequenceTransition.current = {
           target: next,
           index,
@@ -635,6 +760,7 @@ export function useStudioController() {
       })
     }
 
+    transitionMouthShapeChanges.current = mouthShapeChanges
     if (transitionFrame.current !== null) {
       retargetFrom.current = { ...transitionTarget.current }
       retargetTo.current = resolvedTarget
@@ -644,7 +770,7 @@ export function useStudioController() {
     transitionTarget.current = resolvedTarget
     lastAmbientStrength.current = 0
     const initialTransitionDistance = expressionFields.reduce(
-      (total, field) => total + Math.abs(resolvedTarget[field] - current[field]),
+      (total, field) => total + Math.abs(resolvedTarget[field] - transitionSource[field]),
       0
     )
     let transitionProgress = 0
@@ -664,12 +790,12 @@ export function useStudioController() {
         const linearProgress = Math.min((time - retargetStartedAt.current) / RETARGET_BLEND_MS, 1)
         const smoothProgress =
           linearProgress ** 3 * (linearProgress * (linearProgress * 6 - 15) + 10)
-        const blendedTarget = { ...retargetTo.current }
-        expressionFields.forEach(field => {
-          blendedTarget[field] =
-            retargetFrom.current![field] +
-            (retargetTo.current![field] - retargetFrom.current![field]) * smoothProgress
-        })
+        const blendedTarget = blendExpressionTransitionTarget(
+          retargetFrom.current,
+          retargetTo.current,
+          smoothProgress,
+          transitionMouthShapeChanges.current
+        )
         transitionTarget.current = blendedTarget
         if (linearProgress === 1) {
           transitionTarget.current = retargetTo.current
@@ -694,6 +820,11 @@ export function useStudioController() {
       animated.bodyMotion = target.bodyMotion
 
       expressionFields.forEach(field => {
+        if (transitionMouthShapeChanges.current && mouthShapeGeometryFieldSet.has(field)) {
+          transitionVelocity[field] = 0
+          animated[field] = target[field]
+          return
+        }
         const displacement = target[field] - currentExpression[field]
         const acceleration = (stiffness * displacement - damping * transitionVelocity[field]) / mass
         const velocity = transitionVelocity[field] + acceleration * deltaTime
@@ -703,6 +834,12 @@ export function useStudioController() {
         const tolerance = field === 'perspective' ? 0.0001 : 0.005
         if (Math.abs(displacement) > tolerance || Math.abs(velocity) > tolerance) settled = false
       })
+      if (transitionMouthShapeChanges.current) animated.mouthShape = target.mouthShape
+      if (transitionProgress >= 0.5) {
+        animated.eyeShape = target.eyeShape
+        animated.mouthEnabled = target.mouthEnabled
+        if (!transitionMouthShapeChanges.current) animated.mouthShape = target.mouthShape
+      }
 
       if (settled) {
         const finalExpression = canonicalTarget.current
@@ -737,6 +874,26 @@ export function useStudioController() {
       },
     })
   }
+
+  const playExpressionBlink = useEffectEvent(() => blink(EXPRESSION_BLINK_SETTINGS.durationMs))
+  const expressionBlinkTarget = editing?.draft ?? expression
+  const expressionBlinking =
+    !reduceMotion &&
+    (editing
+      ? expressionBlinkTarget.blinking === true
+      : playbackStatus === 'stopped' && expressionBlinkTarget.blinking === true)
+  useEffect(() => {
+    if (!expressionBlinking) return
+    const range = EXPRESSION_BLINK_SETTINGS.maxIntervalMs - EXPRESSION_BLINK_SETTINGS.minIntervalMs
+    const delay = EXPRESSION_BLINK_SETTINGS.minIntervalMs + Math.random() * range
+    const timer = setTimeout(() => {
+      playExpressionBlink()
+      setExpressionBlinkCycle(cycle => cycle + 1)
+    }, delay)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [expressionBlinkCycle, expressionBlinkTarget.id, expressionBlinking])
 
   const updateDimension = (side: Side, dimension: 'width' | 'height', value: number) => {
     updateImmediate(updateEyeDimension(expression, side, dimension, value, linked[dimension]))
@@ -792,6 +949,10 @@ export function useStudioController() {
     const colors = { ...avatar.colors, ...changes }
     updateActiveAvatar(current => ({ ...current, colors }))
     setDisplayColors(resolveColors(expression, colors))
+  }
+
+  const updateAvatarRenderStyle = (renderStyle: AvatarRenderStyle) => {
+    updateActiveAvatar(avatar => ({ ...avatar, renderStyle }))
   }
 
   const updateAvatarEyes = (changes: Partial<AvatarEyeDefaults>) => {
@@ -1177,6 +1338,27 @@ export function useStudioController() {
     }
   }
 
+  const transitionTalkToExpression = (
+    next: Expression,
+    index: number | null,
+    durationMs?: number
+  ) => {
+    if (statePlaying) pauseState(false)
+    materializeTalkTransform()
+    stopTransition(true)
+    stopColorTransitions()
+    transitionToExpression(
+      next,
+      index,
+      durationMs === undefined ? undefined : { transitionMs: durationMs, transition: 'smooth' }
+    )
+  }
+
+  const launchTalkSequence = (sequence: AvatarSequence) => {
+    materializeTalkTransform()
+    launchSequence(sequence)
+  }
+
   const toggleStatePlayback = () => {
     if (!activeState || !activeSequenceRef.current) return
     if (statePlaying) pauseState()
@@ -1325,7 +1507,9 @@ export function useStudioController() {
             includeWire: showWireRef.current || highlightRef.current === 'head',
             bodyNodes: bodyNodesRef.current,
           }
-        )
+        ),
+        bodyNodesRef.current,
+        renderedColors.body.get()
       )
       return
     }
@@ -1690,7 +1874,9 @@ export function useStudioController() {
         colorTo: snapshotColorTo,
         size: Number(snapshotSize),
         composition: snapshotComposition,
-      }
+        renderStyle: activeAvatar.renderStyle,
+      },
+      activeAvatar.body.nodes
     )
 
   const createPixelSnapshotCanvas = () => {
@@ -1967,6 +2153,7 @@ export function useStudioController() {
     cancelExpressionMove,
     cancelSequenceEditing,
     cancelStateMove,
+    clearTalkTransform,
     canvasExpression,
     commitAvatarMove,
     commitBodyNode,
@@ -2011,10 +2198,13 @@ export function useStudioController() {
     highlight,
     language,
     launchSequence,
+    launchTalkSequence,
     linked,
     mode,
     openExpressionEditor,
     openPhotoMode,
+    openTalkMode,
+    openStreamMode,
     openSequenceEditor,
     pauseState,
     pendingProjectImport,
@@ -2082,6 +2272,8 @@ export function useStudioController() {
     setSnapshotSize,
     setSpringSpeed,
     setStatePlayerExpanded,
+    setTalkBubbleText,
+    setTalkPlaybackStatus,
     showWire,
     snapshotBackground,
     snapshotColorFrom,
@@ -2099,14 +2291,19 @@ export function useStudioController() {
     surface,
     t,
     takePicture,
+    talkBubbleText,
+    talkPlaybackStatus,
     toggleExportAnimation,
     toggleStatePlayback,
     transitionToExpression,
+    transitionTalkToExpression,
+    transitionTalkTransform,
     updateAvatarColors,
     updateAvatarEyeDimension,
     updateAvatarEyePosition,
     updateAvatarEyeSize,
     updateAvatarEyes,
+    updateAvatarRenderStyle,
     updateDimension,
     updateHighlight,
     updateImmediate,

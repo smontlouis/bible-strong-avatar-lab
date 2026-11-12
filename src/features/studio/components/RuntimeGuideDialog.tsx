@@ -122,7 +122,7 @@ export function buildRuntimeGuideText({
   t: TranslateGuideText
 }) {
   const privatePackageNotice = t(
-    'Les packages sont encore privés. Cette commande fonctionnera après leur publication ; utilise le workspace ou les tarballs pour les tests locaux.'
+    'Les packages sont publiés sur npm sous licence MIT. Le README de chaque package, présent dans node_modules, contient la référence complète.'
   )
 
   if (integration === 'javascript') {
@@ -439,7 +439,7 @@ export function RuntimeGuideDialog({
                 <GuideCode>{runtimeInstallExample}</GuideCode>
                 <p className="avatar-guide-notice">
                   {t(
-                    'Les packages sont encore privés. Cette commande fonctionnera après leur publication ; utilise le workspace ou les tarballs pour les tests locaux.'
+                    'Les packages sont publiés sur npm sous licence MIT. Le README de chaque package, présent dans node_modules, contient la référence complète.'
                   )}
                 </p>
               </section>
@@ -666,7 +666,7 @@ export function RuntimeGuideDialog({
                 <GuideCode>{webInstallExample}</GuideCode>
                 <p className="avatar-guide-notice">
                   {t(
-                    'Les packages sont encore privés. Cette commande fonctionnera après leur publication ; utilise le workspace ou les tarballs pour les tests locaux.'
+                    'Les packages sont publiés sur npm sous licence MIT. Le README de chaque package, présent dans node_modules, contient la référence complète.'
                   )}
                 </p>
               </section>

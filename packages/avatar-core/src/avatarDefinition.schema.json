@@ -20,6 +20,7 @@
     "name": { "type": "string", "maxLength": 120 },
     "body": { "$ref": "#/$defs/body" },
     "colors": { "$ref": "#/$defs/colors" },
+    "style": { "$ref": "#/$defs/style" },
     "expressions": {
       "type": "object",
       "minProperties": 1,
@@ -60,21 +61,34 @@
     "boundedNumber": { "type": "number", "minimum": -10000, "maximum": 10000 },
     "dimension": { "type": "number", "minimum": 0.001, "maximum": 10000 },
     "roundness": { "type": "number", "minimum": 0, "maximum": 2 },
+    "surfaceRoundness": { "type": "number", "minimum": 0, "maximum": 5 },
     "surface": {
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "width", "height", "depth", "roundness"],
       "properties": {
         "type": {
-          "enum": ["sphere", "mickey", "cursor", "cube", "capsule", "cylinder", "cone", "diamond"]
+          "enum": [
+            "sphere",
+            "mickey",
+            "cursor",
+            "cube",
+            "capsule",
+            "cylinder",
+            "cone",
+            "diamond",
+            "trapezoid"
+          ]
         },
         "width": { "$ref": "#/$defs/dimension" },
         "height": { "$ref": "#/$defs/dimension" },
         "depth": { "$ref": "#/$defs/dimension" },
-        "roundness": { "$ref": "#/$defs/roundness" },
+        "roundness": { "$ref": "#/$defs/surfaceRoundness" },
         "morphRoundness": { "$ref": "#/$defs/roundness" },
         "tipRoundness": { "$ref": "#/$defs/roundness" },
-        "baseRoundness": { "$ref": "#/$defs/roundness" }
+        "baseRoundness": { "$ref": "#/$defs/roundness" },
+        "topScale": { "type": "number", "minimum": 0.05, "maximum": 1.5 },
+        "bottomScale": { "type": "number", "minimum": 0.05, "maximum": 1.5 }
       }
     },
     "nodeSurface": {
@@ -83,7 +97,9 @@
         {
           "type": "object",
           "properties": {
-            "type": { "enum": ["sphere", "cube", "capsule", "cylinder", "cone", "diamond"] }
+            "type": {
+              "enum": ["sphere", "cube", "capsule", "cylinder", "cone", "diamond", "trapezoid"]
+            }
           }
         }
       ]
@@ -122,6 +138,7 @@
             "additionalProperties": false,
             "required": ["surface", "position", "rotation"],
             "properties": {
+              "color": { "$ref": "#/$defs/hexColor" },
               "surface": { "$ref": "#/$defs/nodeSurface" },
               "position": { "$ref": "#/$defs/position" },
               "rotation": { "$ref": "#/$defs/rotation" }
@@ -139,11 +156,58 @@
         "eyes": { "$ref": "#/$defs/hexColor" }
       }
     },
+    "style": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "outline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "color", "width", "opacity"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "color": { "$ref": "#/$defs/hexColor" },
+            "width": { "type": "number", "minimum": 0, "maximum": 24 },
+            "opacity": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
     "eye": {
       "type": "object",
       "additionalProperties": false,
       "required": ["width", "height", "x", "y", "angle"],
       "properties": {
+        "width": { "$ref": "#/$defs/boundedNumber" },
+        "height": { "$ref": "#/$defs/boundedNumber" },
+        "x": { "$ref": "#/$defs/boundedNumber" },
+        "y": { "$ref": "#/$defs/boundedNumber" },
+        "angle": { "$ref": "#/$defs/boundedNumber" }
+      }
+    },
+    "nose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "shape", "width", "height", "x", "y", "angle"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "shape": { "enum": ["ellipse", "inverted-triangle", "rounded"] },
+        "roundness": { "$ref": "#/$defs/boundedNumber" },
+        "width": { "$ref": "#/$defs/boundedNumber" },
+        "height": { "$ref": "#/$defs/boundedNumber" },
+        "x": { "$ref": "#/$defs/boundedNumber" },
+        "y": { "$ref": "#/$defs/boundedNumber" },
+        "angle": { "$ref": "#/$defs/boundedNumber" }
+      }
+    },
+    "mouth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "shape", "curve", "width", "height", "x", "y", "angle"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "shape": { "enum": ["curve", "ellipse", "rounded", "rounded-triangle"] },
+        "curve": { "$ref": "#/$defs/boundedNumber" },
         "width": { "$ref": "#/$defs/boundedNumber" },
         "height": { "$ref": "#/$defs/boundedNumber" },
         "x": { "$ref": "#/$defs/boundedNumber" },
@@ -166,6 +230,16 @@
             "z": { "$ref": "#/$defs/boundedNumber" }
           }
         },
+        "position": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "$ref": "#/$defs/boundedNumber" },
+            "y": { "$ref": "#/$defs/boundedNumber" },
+            "z": { "$ref": "#/$defs/boundedNumber" }
+          }
+        },
         "eyes": {
           "type": "object",
           "additionalProperties": false,
@@ -173,10 +247,15 @@
           "properties": {
             "left": { "$ref": "#/$defs/eye" },
             "right": { "$ref": "#/$defs/eye" },
-            "spacing": { "$ref": "#/$defs/boundedNumber" }
+            "spacing": { "$ref": "#/$defs/boundedNumber" },
+            "shape": { "enum": ["rounded", "ellipse"] },
+            "roundness": { "type": "number", "minimum": 0, "maximum": 100 }
           }
         },
+        "nose": { "$ref": "#/$defs/nose" },
+        "mouth": { "$ref": "#/$defs/mouth" },
         "perspective": { "type": "number", "minimum": 0.1, "maximum": 10 },
+        "blinking": { "type": "boolean" },
         "motion": {
           "type": "object",
           "additionalProperties": false,

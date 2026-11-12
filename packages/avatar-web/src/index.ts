@@ -1,11 +1,11 @@
 import {
   advanceAvatarPlayback,
   createAvatarPlaybackState,
-  MAX_BODY_NODES,
+  nextAvatarFrameAt,
   pauseAvatarPlayback,
   playAvatarAnimation,
   renderAvatarDefinition,
-  renderAvatarFrame,
+  renderAvatarSample,
   resolveAnimation,
   resolveExpression,
   resumeAvatarPlayback,
@@ -49,7 +49,6 @@ export type CreateAvatarOptions = {
 
 const svgNamespace = 'http://www.w3.org/2000/svg'
 const controlledExpressionTransitionMs = 420
-const bodyPathSlots = MAX_BODY_NODES + 2
 let avatarInstanceId = 0
 
 const dimension = (size: number | string) => (typeof size === 'number' ? `${size}px` : size)
@@ -78,10 +77,33 @@ const playbackSnapshot = (state: CorePlaybackState): AvatarPlaybackState => ({
   status: state.status,
 })
 
-const runtimeEnvironment = () => ({
-  random: Math.random,
-  reduceMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
-})
+// One media query for every avatar of the page, read each frame rather than created each frame.
+let reducedMotion: { source: typeof window.matchMedia; query: MediaQueryList } | undefined
+const runtimeEnvironment = () => {
+  if (reducedMotion?.source !== window.matchMedia) {
+    reducedMotion = {
+      source: window.matchMedia,
+      query: window.matchMedia?.('(prefers-reduced-motion: reduce)'),
+    }
+  }
+  return { random: Math.random, reduceMotion: reducedMotion.query?.matches ?? false }
+}
+
+const shouldRunFrameLoop = (
+  definition: AvatarDefinition,
+  playback: Readonly<CorePlaybackState>,
+  reduceMotion: boolean
+) => {
+  if (playback.status === 'playing') return true
+  const expression = definition.expressions[playback.activeExpression]
+  return (
+    playback.status === 'stopped' &&
+    !reduceMotion &&
+    (expression?.blinking === true ||
+      expression?.motion.eyes !== 'none' ||
+      expression?.motion.body !== 'none')
+  )
+}
 
 export function createAvatar(
   target: string | HTMLElement,
@@ -129,15 +151,40 @@ export function createAvatar(
   svg.append(defs)
 
   const initialScene = renderAvatarDefinition(definition)
+  // A body node is drawn behind or in front of the head depending on the pose.
+  const bodyPathSlots = definition.body.nodes.length + 2
   const backPaths = Array.from({ length: bodyPathSlots }, () => createSvgElement('path'))
   const headPath = createSvgElement('path')
+  const backOutlines = Array.from({ length: bodyPathSlots }, () => createSvgElement('path'))
+  const headOutline = createSvgElement('path')
   const eyeGroup = createSvgElement('g')
   eyeGroup.setAttribute('clip-path', `url(#${clipId})`)
   const leftPath = createSvgElement('path')
   const rightPath = createSvgElement('path')
-  eyeGroup.append(leftPath, rightPath)
+  const nosePath = createSvgElement('path')
+  const mouthPath = createSvgElement('path')
+  eyeGroup.append(leftPath, rightPath, nosePath, mouthPath)
   const frontPaths = Array.from({ length: bodyPathSlots }, () => createSvgElement('path'))
-  svg.append(...backPaths, headPath, eyeGroup, ...frontPaths)
+  const frontOutlines = Array.from({ length: bodyPathSlots }, () => createSvgElement('path'))
+  const outline = definition.style?.outline?.enabled ? definition.style.outline : undefined
+  ;[...backOutlines, headOutline, ...frontOutlines].forEach(element => {
+    element.setAttribute('fill', 'none')
+  })
+  if (outline) {
+    ;[...backOutlines, headOutline, ...frontOutlines].forEach(element => {
+      element.setAttribute('stroke', outline.color)
+      element.setAttribute('stroke-width', String(outline.width))
+      element.setAttribute('stroke-opacity', String(outline.opacity))
+      element.setAttribute('stroke-linejoin', 'round')
+    })
+  }
+  svg.append(
+    ...(outline ? [...backOutlines, headOutline, ...frontOutlines] : []),
+    ...backPaths,
+    headPath,
+    eyeGroup,
+    ...frontPaths
+  )
   host.append(svg)
   mount.append(host)
 
@@ -148,6 +195,7 @@ export function createAvatar(
   const paint = (scene: ReturnType<typeof renderAvatarDefinition>) => {
     clipHeadPath.setAttribute('d', scene.geometry.headPath)
     headPath.setAttribute('d', scene.geometry.headPath)
+    headOutline.setAttribute('d', scene.geometry.headPath)
     headPath.setAttribute('fill', scene.colors.body)
     leftPath.setAttribute('d', scene.geometry.leftPath)
     leftPath.setAttribute('fill', scene.colors.eyes)
@@ -155,13 +203,26 @@ export function createAvatar(
     rightPath.setAttribute('d', scene.geometry.rightPath)
     rightPath.setAttribute('fill', scene.colors.eyes)
     rightPath.setAttribute('opacity', scene.geometry.rightVisible ? '1' : '0')
+    nosePath.setAttribute('d', scene.geometry.nosePath)
+    nosePath.setAttribute('fill', scene.colors.eyes)
+    mouthPath.setAttribute('d', scene.geometry.mouthPath)
+    mouthPath.setAttribute('fill', scene.geometry.mouthStrokeWidth > 0 ? 'none' : scene.colors.eyes)
+    mouthPath.setAttribute(
+      'stroke',
+      scene.geometry.mouthStrokeWidth > 0 ? scene.colors.eyes : 'none'
+    )
+    mouthPath.setAttribute('stroke-width', String(scene.geometry.mouthStrokeWidth))
+    mouthPath.setAttribute('stroke-linecap', 'round')
+    mouthPath.setAttribute('stroke-linejoin', 'round')
     backPaths.forEach((element, index) => {
       element.setAttribute('d', scene.geometry.backPaths[index] ?? '')
-      element.setAttribute('fill', scene.colors.body)
+      element.setAttribute('fill', scene.bodyColors.back[index] ?? scene.colors.body)
+      backOutlines[index].setAttribute('d', scene.geometry.backPaths[index] ?? '')
     })
     frontPaths.forEach((element, index) => {
       element.setAttribute('d', scene.geometry.frontPaths[index] ?? '')
-      element.setAttribute('fill', scene.colors.body)
+      element.setAttribute('fill', scene.bodyColors.front[index] ?? scene.colors.body)
+      frontOutlines[index].setAttribute('d', scene.geometry.frontPaths[index] ?? '')
     })
   }
 
@@ -171,6 +232,11 @@ export function createAvatar(
   let completedAnimation: AnimationKey | undefined
   let lastExpression: ExpressionKey | undefined
   let paintedFrame: ReturnType<typeof sampleAvatarFrame> | undefined
+  // Until when the picture stays the same, whether the avatar is in view, and whether the
+  // picture on screen is behind the timeline.
+  let nextFrameAt = 0
+  let visible = true
+  let stale = false
 
   const notifyExpression = () => {
     if (lastExpression === playback.activeExpression) return
@@ -180,28 +246,50 @@ export function createAvatar(
   const renderCurrent = (now: number) => {
     const environment = runtimeEnvironment()
     paintedFrame = sampleAvatarFrame(definition, playback, now, environment)
-    paint(renderAvatarFrame(definition, playback, now, environment))
+    paint(renderAvatarSample(definition, paintedFrame, environment))
+    stale = false
     notifyExpression()
   }
   const tick = (now: number) => {
     frameRequest = null
     if (destroyed) return
+    if (now < nextFrameAt && !(visible && stale)) {
+      frameRequest = requestAnimationFrame(tick)
+      return
+    }
+    const environment = runtimeEnvironment()
     const currentAnimation = playback.activeAnimation
     const wasPlaying = playback.status === 'playing'
-    playback = advanceAvatarPlayback(definition, playback, now, {
-      random: Math.random,
-      reduceMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
-    })
-    renderCurrent(now)
+    playback = advanceAvatarPlayback(definition, playback, now, environment)
+    if (visible) renderCurrent(now)
+    else {
+      // Out of view the timeline goes on, undrawn. A new target starts from a fresh sample.
+      stale = true
+      paintedFrame = undefined
+      notifyExpression()
+    }
+    nextFrameAt = nextAvatarFrameAt(definition, playback, now, environment)
     if (wasPlaying && playback.status === 'stopped' && currentAnimation) {
       if (completedAnimation !== currentAnimation) onAnimationEnd?.(currentAnimation)
       completedAnimation = currentAnimation
     }
-    if (playback.status === 'playing') frameRequest = requestAnimationFrame(tick)
+    if (shouldRunFrameLoop(definition, playback, runtimeEnvironment().reduceMotion))
+      frameRequest = requestAnimationFrame(tick)
   }
   const schedule = () => {
+    // A command changes the picture now, whatever was planned.
+    nextFrameAt = 0
     if (frameRequest === null && !destroyed) frameRequest = requestAnimationFrame(tick)
   }
+
+  const observer =
+    typeof IntersectionObserver === 'undefined'
+      ? undefined
+      : new IntersectionObserver(entries => {
+          visible = entries[entries.length - 1]?.isIntersecting ?? true
+          if (visible && stale && !destroyed) renderCurrent(performance.now())
+        })
+  observer?.observe(host)
 
   const controller: AvatarController = {
     play(animation) {
@@ -247,7 +335,7 @@ export function createAvatar(
             }),
       }
       renderCurrent(performance.now())
-      if (playback.status === 'playing') schedule()
+      if (shouldRunFrameLoop(definition, playback, runtimeEnvironment().reduceMotion)) schedule()
       return { ok: true }
     },
     pause() {
@@ -262,12 +350,14 @@ export function createAvatar(
       frameRequest = null
       paint(renderAvatarDefinition(definition))
       notifyExpression()
+      if (shouldRunFrameLoop(definition, playback, runtimeEnvironment().reduceMotion)) schedule()
     },
     getState() {
       return playbackSnapshot(playback)
     },
     destroy() {
       destroyed = true
+      observer?.disconnect()
       if (frameRequest !== null) cancelAnimationFrame(frameRequest)
       frameRequest = null
       host.remove()
@@ -284,6 +374,7 @@ export function createAvatar(
         activeExpression: resolved.value.steps[0]?.expression ?? 'neutral',
       }
       renderCurrent(performance.now())
+      if (shouldRunFrameLoop(definition, playback, runtimeEnvironment().reduceMotion)) schedule()
     }
   } else if (defaultExpression !== undefined) {
     const resolved = resolveExpression(definition, defaultExpression)
@@ -291,11 +382,13 @@ export function createAvatar(
     else {
       playback = { ...createAvatarPlaybackState(), activeExpression: defaultExpression }
       renderCurrent(performance.now())
+      if (shouldRunFrameLoop(definition, playback, runtimeEnvironment().reduceMotion)) schedule()
     }
   } else {
     paint(initialScene)
     paintedFrame = sampleAvatarFrame(definition, playback, performance.now(), runtimeEnvironment())
     notifyExpression()
+    if (shouldRunFrameLoop(definition, playback, runtimeEnvironment().reduceMotion)) schedule()
   }
 
   return controller

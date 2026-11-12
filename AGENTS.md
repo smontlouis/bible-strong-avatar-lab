@@ -27,6 +27,19 @@ pnpm check
 - Keep English, French and Simplified Chinese copy synchronized across `src/i18n/index.ts` and `src/i18n/zh.ts`.
 - Preserve project JSON compatibility only with the current pre-release schema unless a migration is explicitly requested.
 
+## Runtime packages
+
+- `packages/*` are published to npm under the MIT license; the Studio stays under the AGPL. Do not
+  copy Studio code into a package.
+- The renderers (`avatar-react`, `avatar-web`, `avatar-react-native`) keep one public API. Change
+  a prop, a controller method or an error code in all three, with their READMEs.
+- A package README is the integration contract read by coding agents in `node_modules`. Every
+  statement in it must be true of the code: update it in the same change.
+- In `avatar-react-native`, every function that runs on the UI thread starts with the `worklet`
+  directive and reaches `avatar-core` by import only. Keep playback logic in `src/engine.ts`, which
+  is tested in Node; verify the component on an iOS simulator and an Android emulator.
+- Add a changeset (`pnpm changeset`) to any change of a published package.
+
 ## UI conventions
 
 - Reuse components under `src/components/ui/` rather than adding one-off controls.

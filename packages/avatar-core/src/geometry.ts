@@ -11,6 +11,9 @@ export type Quaternion = readonly [number, number, number, number]
 export type Point3 = readonly [number, number, number]
 export type EyeMotion = 'none' | 'microSaccades' | 'shake'
 export type BodyMotion = 'none' | 'slowDrift' | 'shake'
+export type EyeShape = 'rounded' | 'ellipse'
+export type NoseShape = 'ellipse' | 'inverted-triangle' | 'rounded'
+export type MouthShape = 'curve' | 'ellipse' | 'rounded' | 'rounded-triangle'
 
 export type Expression = {
   id: string
@@ -18,6 +21,9 @@ export type Expression = {
   headX: number
   headY: number
   headZ: number
+  positionX: number
+  positionY: number
+  positionZ: number
   widthLeft: number
   widthRight: number
   heightLeft: number
@@ -29,7 +35,26 @@ export type Expression = {
   positionYRight: number
   leftAngle: number
   rightAngle: number
+  eyeShape?: EyeShape
+  eyeRoundness: number
+  mouthEnabled?: boolean
+  mouthShape?: MouthShape
+  mouthCurve: number
+  mouthWidth: number
+  mouthHeight: number
+  mouthX: number
+  mouthY: number
+  mouthAngle: number
+  noseEnabled: boolean
+  noseShape: NoseShape
+  noseRoundness: number
+  noseWidth: number
+  noseHeight: number
+  noseX: number
+  noseY: number
+  noseAngle: number
   perspective: number
+  blinking?: boolean
   eyeMotion: EyeMotion
   bodyMotion: BodyMotion
   bodyColor?: string
@@ -38,7 +63,18 @@ export type Expression = {
 
 export type ExpressionNumericField = Exclude<
   keyof Expression,
-  'id' | 'semanticKey' | 'bodyColor' | 'eyeColor' | 'eyeMotion' | 'bodyMotion'
+  | 'id'
+  | 'semanticKey'
+  | 'bodyColor'
+  | 'eyeColor'
+  | 'eyeMotion'
+  | 'bodyMotion'
+  | 'eyeShape'
+  | 'mouthEnabled'
+  | 'mouthShape'
+  | 'noseEnabled'
+  | 'noseShape'
+  | 'blinking'
 >
 
 export type AvatarPose = {
@@ -54,6 +90,9 @@ export type AvatarGeometry = {
   headPath: string
   leftPath: string
   rightPath: string
+  nosePath: string
+  mouthPath: string
+  mouthStrokeWidth: number
   leftVisible: boolean
   rightVisible: boolean
   wirePaths: string[]
@@ -94,6 +133,9 @@ export const expressionFields: ExpressionNumericField[] = [
   'headX',
   'headY',
   'headZ',
+  'positionX',
+  'positionY',
+  'positionZ',
   'widthLeft',
   'widthRight',
   'heightLeft',
@@ -105,8 +147,27 @@ export const expressionFields: ExpressionNumericField[] = [
   'positionYRight',
   'leftAngle',
   'rightAngle',
+  'eyeRoundness',
+  'mouthCurve',
+  'mouthWidth',
+  'mouthHeight',
+  'mouthX',
+  'mouthY',
+  'mouthAngle',
+  'noseWidth',
+  'noseRoundness',
+  'noseHeight',
+  'noseX',
+  'noseY',
+  'noseAngle',
   'perspective',
 ]
+
+const mouthShapeGeometryFields = new Set<ExpressionNumericField>([
+  'mouthCurve',
+  'mouthWidth',
+  'mouthHeight',
+])
 
 export const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value))
@@ -228,10 +289,14 @@ export const rotateWithQuaternion = ([w, x, y, z]: Quaternion, [px, py, pz]: Poi
   ]
 }
 
-const roundedRectangle = (width: number, height: number): (readonly [number, number])[] => {
+const roundedRectangle = (
+  width: number,
+  height: number,
+  roundness = 1
+): (readonly [number, number])[] => {
   const halfWidth = width / 2
   const halfHeight = height / 2
-  const cornerRadius = Math.min(halfHeight, halfWidth)
+  const cornerRadius = Math.min(halfHeight, halfWidth) * clamp(roundness, 0, 1)
   const points: (readonly [number, number])[] = []
   const addLine = (start: readonly [number, number], end: readonly [number, number]) => {
     const samples = Math.max(2, Math.ceil(Math.hypot(end[0] - start[0], end[1] - start[1]) / 1.5))
@@ -268,6 +333,18 @@ const project = (point: Point3, perspective: number): Point3 => {
   const scale = Math.abs(denominator) < 0.0001 ? FOCAL_LENGTH / 0.0001 : FOCAL_LENGTH / denominator
   return [point[0] * scale, point[1] * scale, point[2]]
 }
+
+const transformPosePoint = (pose: AvatarPose, point: Point3): Point3 => {
+  const rotated = rotateWithQuaternion(pose.orientation, point)
+  return [
+    rotated[0] + pose.expression.positionX,
+    rotated[1] + pose.expression.positionY,
+    rotated[2] + pose.expression.positionZ,
+  ]
+}
+
+const projectPosePoint = (pose: AvatarPose, point: Point3) =>
+  project(transformPosePoint(pose, point), pose.expression.perspective)
 
 export const axisVector = (axis: 'x' | 'y' | 'z'): Point3 =>
   axis === 'x' ? [1, 0, 0] : axis === 'y' ? [0, 1, 0] : [0, 0, 1]
@@ -330,8 +407,7 @@ export const renderBodyNodeEditor = (
   axisLength = 34,
   ringRadius = 26
 ): BodyNodeEditorGeometry => {
-  const projectInHeadSpace = (point: Point3) =>
-    project(rotateWithQuaternion(pose.orientation, point), pose.expression.perspective)
+  const projectInHeadSpace = (point: Point3) => projectPosePoint(pose, point)
   const center = projectInHeadSpace(node.position)
   const localOrientation = quaternionFromEuler(
     radians(node.rotation[0]),
@@ -411,7 +487,8 @@ export const translateBodyNodeInCameraPlane = (
   screenDeltaY: number
 ): BodyNode => {
   const cameraPosition = rotateWithQuaternion(pose.orientation, node.position)
-  const denominator = FOCAL_LENGTH - cameraPosition[2] * pose.expression.perspective
+  const denominator =
+    FOCAL_LENGTH - (cameraPosition[2] + pose.expression.positionZ) * pose.expression.perspective
   const perspectiveScale =
     Math.abs(denominator) < 0.0001 ? FOCAL_LENGTH / 0.0001 : FOCAL_LENGTH / denominator
   const [w, x, y, z] = pose.orientation
@@ -477,6 +554,8 @@ export const poseFromExpression = (expression: Expression): AvatarPose => ({
 
 export const interpolatePose = (from: AvatarPose, to: AvatarPose, progress: number): AvatarPose => {
   const expression: Expression = { ...from.expression }
+  const mouthShapeChanges =
+    (from.expression.mouthShape ?? 'curve') !== (to.expression.mouthShape ?? 'curve')
   expressionFields.forEach(field => {
     let target = to.expression[field]
     if (
@@ -488,8 +567,19 @@ export const interpolatePose = (from: AvatarPose, to: AvatarPose, progress: numb
     ) {
       target = nearestEquivalentAngle(target, from.expression[field])
     }
-    expression[field] = from.expression[field] + (target - from.expression[field]) * progress
+    expression[field] =
+      mouthShapeChanges && mouthShapeGeometryFields.has(field) && progress > 0
+        ? target
+        : from.expression[field] + (target - from.expression[field]) * progress
   })
+  if (mouthShapeChanges && progress > 0) expression.mouthShape = to.expression.mouthShape
+  if (progress >= 0.5) {
+    expression.eyeShape = to.expression.eyeShape
+    expression.mouthEnabled = to.expression.mouthEnabled
+    if (!mouthShapeChanges) expression.mouthShape = to.expression.mouthShape
+    expression.noseEnabled = to.expression.noseEnabled
+    expression.noseShape = to.expression.noseShape
+  }
   return {
     expression,
     orientation: poseFromExpression(expression).orientation,
@@ -519,6 +609,8 @@ const surfaceCacheKey = (surface: SurfaceConfig) =>
     surface.morphRoundness,
     surface.tipRoundness,
     surface.baseRoundness,
+    surface.topScale,
+    surface.bottomScale,
   ])
 
 const cacheSurfaceValue = <Value>(cache: Map<string, Value>, key: string, value: Value) => {
@@ -537,7 +629,7 @@ const projectLocalSurfacePoint = (
   pose: AvatarPose,
   sample: LocalSurfacePoint
 ): ProjectedSurfacePoint => ({
-  point: project(rotateWithQuaternion(pose.orientation, sample.point), pose.expression.perspective),
+  point: projectPosePoint(pose, sample.point),
   normal: rotateWithQuaternion(pose.orientation, sample.normal),
 })
 
@@ -572,11 +664,197 @@ const eyePoints = (
   const centerX = (side * expression.spacing) / 2 + expression[`positionX${suffix}`] + offset.x
   const centerY = expression[`positionY${suffix}`] + offset.y
   const angle = radians(side < 0 ? expression.leftAngle : expression.rightAngle)
-  return roundedRectangle(width, height).map(([localX, localY]) => {
+  const localPoints =
+    (expression.eyeShape ?? 'rounded') === 'ellipse'
+      ? Array.from({ length: 56 }, (_, index) => {
+          const angle = (index / 56) * Math.PI * 2
+          return [Math.cos(angle) * width * 0.5, Math.sin(angle) * height * 0.5] as const
+        })
+      : roundedRectangle(width, height, expression.eyeRoundness / 100)
+  return localPoints.map(([localX, localY]) => {
     const rotatedX = localX * Math.cos(angle) - localY * Math.sin(angle)
     const rotatedY = localX * Math.sin(angle) + localY * Math.cos(angle)
     return projectFacePoint(pose, surface, centerX + rotatedX, centerY + rotatedY)
   })
+}
+
+const densify2d = (points: readonly (readonly [number, number])[], samples = 14) =>
+  points.flatMap((point, index) => {
+    const next = points[(index + 1) % points.length]
+    return Array.from({ length: samples }, (_, sample) => {
+      const progress = sample / samples
+      return [
+        point[0] + (next[0] - point[0]) * progress,
+        point[1] + (next[1] - point[1]) * progress,
+      ] as const
+    })
+  })
+
+const faceMarkPoints = (
+  pose: AvatarPose,
+  surface: SurfaceConfig,
+  x: number,
+  y: number,
+  angleDegrees: number,
+  localPoints: readonly (readonly [number, number])[]
+) => {
+  const angle = radians(angleDegrees)
+  return localPoints.map(([localX, localY]) => {
+    const rotatedX = localX * Math.cos(angle) - localY * Math.sin(angle)
+    const rotatedY = localX * Math.sin(angle) + localY * Math.cos(angle)
+    return projectFacePoint(pose, surface, x + rotatedX, y + rotatedY)
+  })
+}
+
+const ellipseMark = (width: number, height: number) =>
+  Array.from({ length: 56 }, (_, index) => {
+    const angle = (index / 56) * Math.PI * 2
+    return [Math.cos(angle) * width * 0.5, Math.sin(angle) * height * 0.5] as const
+  })
+
+const triangleMark = (width: number, height: number, inverted = false) => {
+  const sign = inverted ? -1 : 1
+  return densify2d([
+    [0, (-height / 2) * sign],
+    [width / 2, (height / 2) * sign],
+    [-width / 2, (height / 2) * sign],
+  ])
+}
+
+const roundedTriangleMark = (
+  width: number,
+  height: number,
+  roundness: number,
+  inverted = false
+) => {
+  const sign = inverted ? -1 : 1
+  const corners = [
+    [0, (-height / 2) * sign],
+    [width / 2, (height / 2) * sign],
+    [-width / 2, (height / 2) * sign],
+  ] as const
+  const cornerCut = clamp(roundness / 100, 0, 1) * 0.5
+  if (cornerCut === 0) return densify2d(corners)
+  return corners.flatMap((corner, index) => {
+    const previous = corners[(index + corners.length - 1) % corners.length]
+    const next = corners[(index + 1) % corners.length]
+    const entry = [
+      corner[0] + (previous[0] - corner[0]) * cornerCut,
+      corner[1] + (previous[1] - corner[1]) * cornerCut,
+    ] as const
+    const exit = [
+      corner[0] + (next[0] - corner[0]) * cornerCut,
+      corner[1] + (next[1] - corner[1]) * cornerCut,
+    ] as const
+    return Array.from({ length: 14 }, (_, sample) => {
+      const progress = sample / 13
+      const inverse = 1 - progress
+      return [
+        inverse * inverse * entry[0] +
+          2 * inverse * progress * corner[0] +
+          progress * progress * exit[0],
+        inverse * inverse * entry[1] +
+          2 * inverse * progress * corner[1] +
+          progress * progress * exit[1],
+      ] as const
+    })
+  })
+}
+
+const nosePoints = (pose: AvatarPose, surface: SurfaceConfig) => {
+  const expression = pose.expression
+  if (!expression.noseEnabled) return []
+  const localPoints =
+    expression.noseShape === 'ellipse'
+      ? ellipseMark(expression.noseWidth, expression.noseHeight)
+      : expression.noseShape === 'rounded'
+        ? roundedRectangle(expression.noseWidth, expression.noseHeight, 1)
+        : roundedTriangleMark(
+            expression.noseWidth,
+            expression.noseHeight,
+            expression.noseRoundness,
+            true
+          )
+  return faceMarkPoints(
+    pose,
+    surface,
+    expression.noseX,
+    expression.noseY,
+    expression.noseAngle,
+    localPoints
+  )
+}
+
+const mouthPoints = (pose: AvatarPose, surface: SurfaceConfig) => {
+  const expression = pose.expression
+  if (!expression.mouthEnabled) return []
+  let localPoints: readonly (readonly [number, number])[]
+  if (expression.mouthShape === 'ellipse') {
+    localPoints = ellipseMark(expression.mouthWidth, expression.mouthHeight)
+  } else if (expression.mouthShape === 'rounded-triangle') {
+    localPoints = triangleMark(expression.mouthWidth, expression.mouthHeight)
+  } else if (expression.mouthShape === 'rounded') {
+    localPoints = roundedRectangle(expression.mouthWidth, expression.mouthHeight, 1)
+  } else {
+    const halfWidth = Math.max(1, expression.mouthWidth / 2)
+    const halfHeight = Math.max(0.5, expression.mouthHeight / 2)
+    const curve = Math.max(-1, Math.min(1, expression.mouthCurve / 100))
+    const curveDepth = curve * expression.mouthWidth * 0.28
+    const curveSteps = 28
+    const capSteps = 32
+    const centerline = Array.from({ length: curveSteps + 1 }, (_, index) => {
+      const progress = index / curveSteps
+      const x = -halfWidth + expression.mouthWidth * progress
+      const normalizedX = x / halfWidth
+      const y = curveDepth * (1 - normalizedX ** 2)
+      const slope = (-2 * curveDepth * x) / halfWidth ** 2
+      const tangentLength = Math.hypot(1, slope)
+      return {
+        center: [x, y] as const,
+        normal: [-slope / tangentLength, 1 / tangentLength] as const,
+        tangent: [1 / tangentLength, slope / tangentLength] as const,
+      }
+    })
+    const top = centerline.map(
+      ({ center, normal }) =>
+        [center[0] - normal[0] * halfHeight, center[1] - normal[1] * halfHeight] as const
+    )
+    const right = centerline.at(-1)!
+    const rightCap = Array.from({ length: capSteps + 1 }, (_, index) => {
+      const angle = -Math.PI / 2 + (index / capSteps) * Math.PI
+      return [
+        right.center[0] +
+          (Math.cos(angle) * right.tangent[0] + Math.sin(angle) * right.normal[0]) * halfHeight,
+        right.center[1] +
+          (Math.cos(angle) * right.tangent[1] + Math.sin(angle) * right.normal[1]) * halfHeight,
+      ] as const
+    })
+    const bottom = [...centerline]
+      .reverse()
+      .map(
+        ({ center, normal }) =>
+          [center[0] + normal[0] * halfHeight, center[1] + normal[1] * halfHeight] as const
+      )
+    const left = centerline[0]!
+    const leftCap = Array.from({ length: capSteps + 1 }, (_, index) => {
+      const angle = Math.PI / 2 + (index / capSteps) * Math.PI
+      return [
+        left.center[0] +
+          (Math.cos(angle) * left.tangent[0] + Math.sin(angle) * left.normal[0]) * halfHeight,
+        left.center[1] +
+          (Math.cos(angle) * left.tangent[1] + Math.sin(angle) * left.normal[1]) * halfHeight,
+      ] as const
+    })
+    localPoints = [...top, ...rightCap.slice(1), ...bottom.slice(1), ...leftCap.slice(1)]
+  }
+  return faceMarkPoints(
+    pose,
+    surface,
+    expression.mouthX,
+    expression.mouthY,
+    expression.mouthAngle,
+    localPoints
+  )
 }
 
 const visiblePath = (points: ProjectedSurfacePoint[]) => {
@@ -762,8 +1040,7 @@ const smoothOpenPath = (points: Point3[]) => {
     .join('')
 }
 
-const projectLocalPoint = (pose: AvatarPose, point: Point3) =>
-  project(rotateWithQuaternion(pose.orientation, point), pose.expression.perspective)
+const projectLocalPoint = (pose: AvatarPose, point: Point3) => projectPosePoint(pose, point)
 
 const ringPoints = (width: number, depth: number, y: number) =>
   Array.from({ length: PRIMITIVE_RING_SAMPLES + 1 }, (_, index) => {
@@ -937,7 +1214,7 @@ const projectedEllipsoid = (
     rotateWithQuaternion(pose.orientation, [0, 1, 0]),
     rotateWithQuaternion(pose.orientation, [0, 0, 1]),
   ]
-  const center = rotateWithQuaternion(pose.orientation, localCenter)
+  const center = transformPosePoint(pose, localCenter)
 
   if (Math.abs(pose.expression.perspective) < 0.0001) {
     const covarianceXX = rotatedAxes.reduce(
@@ -1033,8 +1310,8 @@ const projectedEllipsoidPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   if (ellipse && isSphere) {
     const radius = (ellipse.majorRadius + ellipse.minorRadius) / 2
     return ellipsePath({
-      centerX: 0,
-      centerY: 0,
+      centerX: Math.abs(ellipse.centerX) < 0.0001 ? 0 : ellipse.centerX,
+      centerY: Math.abs(ellipse.centerY) < 0.0001 ? 0 : ellipse.centerY,
       majorRadius: radius,
       minorRadius: radius,
       rotation: 0,
@@ -1146,10 +1423,10 @@ const headPath = (pose: AvatarPose, surface: SurfaceConfig) => {
     }).flat()
     cacheSurfaceValue(headSamplesCache, key, localSamples)
   }
-  const projectedSamples = localSamples.map(sample =>
-    project(rotateWithQuaternion(pose.orientation, sample), pose.expression.perspective)
-  )
-  return path(convexHull(projectedSamples))
+  const projectedSamples = localSamples.map(sample => projectPosePoint(pose, sample))
+  const hull = convexHull(projectedSamples)
+  if (surface.type === 'trapezoid' && surface.roundness <= 0) return path(hull)
+  return surface.type === 'trapezoid' ? smoothClosedPath(densifyClosedPoints(hull)) : path(hull)
 }
 
 const accessoryPath = (pose: AvatarPose, node: BodyNode) => {
@@ -1178,11 +1455,13 @@ const accessoryPath = (pose: AvatarPose, node: BodyNode) => {
       locallyRotated[1] + node.position[1],
       locallyRotated[2] + node.position[2],
     ]
-    return project(rotateWithQuaternion(pose.orientation, positioned), pose.expression.perspective)
+    return projectPosePoint(pose, positioned)
   })
   const hull = convexHull(projected)
   if (
-    (node.surface.type === 'cube' || node.surface.type === 'diamond') &&
+    (node.surface.type === 'cube' ||
+      node.surface.type === 'diamond' ||
+      node.surface.type === 'trapezoid') &&
     node.surface.roundness <= 0
   ) {
     return path(hull)
@@ -1244,6 +1523,8 @@ export const renderAvatar = (
   const rightSamples = eyePoints(pose, surface, 1, blink, options.eyeOffset)
   const left = leftSamples.map(sample => sample.point)
   const right = rightSamples.map(sample => sample.point)
+  const nose = nosePoints(pose, surface)
+  const mouth = mouthPoints(pose, surface)
   const accessories = accessoryLayers(pose, options.bodyNodes ?? [])
   const compositePaths = compositeBackPaths(pose, surface)
   return {
@@ -1254,6 +1535,12 @@ export const renderAvatar = (
     headPath: headPath(pose, surface),
     leftPath: path(left),
     rightPath: path(right),
+    nosePath: path(nose.map(sample => sample.point)),
+    mouthPath: path(
+      mouth.map(sample => sample.point),
+      true
+    ),
+    mouthStrokeWidth: 0,
     leftVisible: leftSamples.reduce((total, sample) => total + sample.normal[2], 0) > 0,
     rightVisible: rightSamples.reduce((total, sample) => total + sample.normal[2], 0) > 0,
     wirePaths: options.includeWire === false ? [] : wirePaths(pose, surface),

@@ -12,7 +12,8 @@ import { type BodyNode } from '@/features/avatar/body'
 import { poseFromExpression, renderAvatar, type Expression } from '@/features/avatar/geometry'
 import { type SurfaceConfig } from '@/features/avatar/surfaces'
 
-export type Mode = 'avatars' | 'manual' | 'expressions' | 'states' | 'export' | 'photo'
+export type Mode =
+  'avatars' | 'manual' | 'expressions' | 'states' | 'export' | 'photo' | 'talk' | 'stream'
 export type PhotoTool = 'pose' | 'frame'
 export type ExportFormat = 'react' | 'javascript'
 export type SnapshotFormat = 'svg' | 'png'

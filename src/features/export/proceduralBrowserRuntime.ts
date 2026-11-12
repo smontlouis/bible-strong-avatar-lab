@@ -15,6 +15,11 @@ const nearestAngle = (target, current) => {
   while (resolved - current < -180) resolved += 360;
   return resolved;
 };
+const MOUTH_SHAPE_GEOMETRY_FIELDS = new Set([
+  'mouthCurve',
+  'mouthWidth',
+  'mouthHeight',
+]);
 const resolvedTargetExpression = (target, current) => ({
   ...target,
   headX: nearestAngle(target.headX, current.headX),
@@ -46,25 +51,33 @@ const canvasPath = (context, value, color, opacity = 1) => {
   context.fillStyle = color;
   context.fill(new Path2D(value));
 };
+const bodyPathColors = (geometry, colors) => {
+  const nodeColors = new Map(DATA.avatar.bodyNodes.map(node => [node.id, node.color || colors.body]));
+  return {
+    back: geometry.backNodeIds.map(id => id ? nodeColors.get(id) || colors.body : colors.body),
+    front: geometry.frontNodeIds.map(id => id ? nodeColors.get(id) || colors.body : colors.body),
+  };
+};
 const paintPixelGeometry = (context, geometry, offset, colors, resolution) => {
+  const pathColors = bodyPathColors(geometry, colors);
   const scale = resolution / 300;
   context.clearRect(0, 0, resolution, resolution);
   context.imageSmoothingEnabled = false;
   context.save();
   context.setTransform(scale, 0, 0, scale, resolution / 2, resolution / 2);
   context.translate(offset.x, offset.y);
-  geometry.backPaths.forEach(value => canvasPath(context, value, colors.body));
+  geometry.backPaths.forEach((value, index) => canvasPath(context, value, pathColors.back[index]));
   canvasPath(context, geometry.headPath, colors.body);
   context.save();
   context.clip(new Path2D(geometry.headPath));
   canvasPath(context, geometry.leftPath, colors.eyes, geometry.leftVisible ? 1 : 0);
   canvasPath(context, geometry.rightPath, colors.eyes, geometry.rightVisible ? 1 : 0);
   context.restore();
-  geometry.frontPaths.forEach(value => canvasPath(context, value, colors.body));
+  geometry.frontPaths.forEach((value, index) => canvasPath(context, value, pathColors.front[index]));
   context.restore();
   const image = context.getImageData(0, 0, resolution, resolution);
-  const body = colorChannels(colors.body);
-  const eyes = colorChannels(colors.eyes);
+  const palette = [...new Set([colors.body, colors.eyes, ...DATA.avatar.bodyNodes.flatMap(node => node.color ? [node.color] : [])])]
+    .map(colorChannels);
   for (let index = 0; index < image.data.length; index += 4) {
     if (image.data[index + 3] < 128) {
       image.data[index] = 0;
@@ -73,11 +86,11 @@ const paintPixelGeometry = (context, geometry, offset, colors, resolution) => {
       image.data[index + 3] = 0;
       continue;
     }
-    const bodyDistance = (image.data[index] - body[0]) ** 2 +
-      (image.data[index + 1] - body[1]) ** 2 + (image.data[index + 2] - body[2]) ** 2;
-    const eyeDistance = (image.data[index] - eyes[0]) ** 2 +
-      (image.data[index + 1] - eyes[1]) ** 2 + (image.data[index + 2] - eyes[2]) ** 2;
-    const color = bodyDistance <= eyeDistance ? body : eyes;
+    const color = palette.reduce((closest, candidate) => {
+      const candidateDistance = (image.data[index] - candidate[0]) ** 2 +
+        (image.data[index + 1] - candidate[1]) ** 2 + (image.data[index + 2] - candidate[2]) ** 2;
+      return candidateDistance < closest.distance ? { value: candidate, distance: candidateDistance } : closest;
+    }, { value: palette[0], distance: Number.POSITIVE_INFINITY }).value;
     image.data[index] = color[0];
     image.data[index + 1] = color[1];
     image.data[index + 2] = color[2];
@@ -134,12 +147,12 @@ function mountAvatar(target, options = {}) {
   const renderElement = pixelStyle ? canvas : svg;
   host.replaceChildren(renderElement);
 
-  const ensurePaths = (group, paths, fill) => {
+  const ensurePaths = (group, paths, fills) => {
     while (group.children.length < paths.length) group.append(svgElement('path'));
     while (group.children.length > paths.length) group.lastElementChild.remove();
     paths.forEach((path, index) => {
       group.children[index].setAttribute('d', path);
-      group.children[index].setAttribute('fill', fill);
+      group.children[index].setAttribute('fill', fills[index]);
     });
   };
   let currentAnimation = options.animation && DATA.animations[options.animation] ? options.animation : animationNames[0];
@@ -200,8 +213,9 @@ function mountAvatar(target, options = {}) {
       return;
     }
     motionLayer.setAttribute('transform', 'translate(' + offset.x + ' ' + offset.y + ')');
-    ensurePaths(backLayer, geometry.backPaths, currentColors.body);
-    ensurePaths(frontLayer, geometry.frontPaths, currentColors.body);
+    const pathColors = bodyPathColors(geometry, currentColors);
+    ensurePaths(backLayer, geometry.backPaths, pathColors.back);
+    ensurePaths(frontLayer, geometry.frontPaths, pathColors.front);
     head.setAttribute('d', geometry.headPath);
     head.setAttribute('fill', currentColors.body);
     clipHead.setAttribute('d', geometry.headPath);
@@ -219,10 +233,18 @@ function mountAvatar(target, options = {}) {
       const eased = easeProgress(linear, transitionState.transition);
       ambientStrength = clamp01(eased);
       const expression = { ...transitionState.fromPose.expression };
+      const mouthShapeChanges =
+        (transitionState.fromPose.expression.mouthShape || 'curve') !==
+        (transitionState.toPose.expression.mouthShape || 'curve');
       AvatarProceduralEngine.expressionFields.forEach(field => {
-        expression[field] = transitionState.fromPose.expression[field] +
-          (transitionState.toPose.expression[field] - transitionState.fromPose.expression[field]) * eased;
+        expression[field] = mouthShapeChanges && MOUTH_SHAPE_GEOMETRY_FIELDS.has(field) && linear > 0
+          ? transitionState.toPose.expression[field]
+          : transitionState.fromPose.expression[field] +
+            (transitionState.toPose.expression[field] - transitionState.fromPose.expression[field]) * eased;
       });
+      if (mouthShapeChanges && linear > 0) {
+        expression.mouthShape = transitionState.toPose.expression.mouthShape;
+      }
       expression.eyeMotion = transitionState.toPose.expression.eyeMotion;
       expression.bodyMotion = transitionState.toPose.expression.bodyMotion;
       currentPose = AvatarProceduralEngine.poseFromExpression(expression);

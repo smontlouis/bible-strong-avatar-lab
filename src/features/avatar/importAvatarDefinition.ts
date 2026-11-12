@@ -13,6 +13,7 @@ import {
 } from '../animation/sequences'
 import { defaultAvatarEyes, type StudioAvatar } from './avatars'
 import type { Expression } from './geometry'
+import { defaultExpression } from './presets'
 
 /**
  * Reads a `.avatar.json` runtime definition back into studio state.
@@ -48,78 +49,152 @@ const createImportId = (slug: string) =>
 const relativeEyeValue = (value: number, neutral: number, fallback: number) =>
   value - neutral + fallback
 
+const defaultMouth = {
+  enabled: false,
+  shape: 'curve' as const,
+  curve: defaultAvatarEyes.mouthCurve,
+  width: defaultAvatarEyes.mouthWidth,
+  height: defaultAvatarEyes.mouthHeight,
+  x: defaultAvatarEyes.mouthX,
+  y: defaultAvatarEyes.mouthY,
+  angle: defaultAvatarEyes.mouthAngle,
+}
+
+const defaultNose = {
+  enabled: false,
+  shape: 'inverted-triangle' as const,
+  roundness: defaultAvatarEyes.noseRoundness,
+  width: defaultAvatarEyes.noseWidth,
+  height: defaultAvatarEyes.noseHeight,
+  x: defaultAvatarEyes.noseX,
+  y: defaultAvatarEyes.noseY,
+  angle: defaultAvatarEyes.noseAngle,
+}
+
 const toExpression = (
   importId: string,
   semanticKey: string,
   expression: AvatarExpressionDefinition,
   neutral: AvatarExpressionDefinition
-): Expression => ({
-  id: `expression-${importId}-${semanticKey}`,
-  semanticKey,
-  headX: expression.head.x,
-  headY: expression.head.y,
-  headZ: expression.head.z,
-  widthLeft: relativeEyeValue(
-    expression.eyes.left.width,
-    neutral.eyes.left.width,
-    defaultAvatarEyes.widthLeft
-  ),
-  widthRight: relativeEyeValue(
-    expression.eyes.right.width,
-    neutral.eyes.right.width,
-    defaultAvatarEyes.widthRight
-  ),
-  heightLeft: relativeEyeValue(
-    expression.eyes.left.height,
-    neutral.eyes.left.height,
-    defaultAvatarEyes.heightLeft
-  ),
-  heightRight: relativeEyeValue(
-    expression.eyes.right.height,
-    neutral.eyes.right.height,
-    defaultAvatarEyes.heightRight
-  ),
-  spacing: relativeEyeValue(
-    expression.eyes.spacing,
-    neutral.eyes.spacing,
-    defaultAvatarEyes.spacing
-  ),
-  positionXLeft: relativeEyeValue(
-    expression.eyes.left.x,
-    neutral.eyes.left.x,
-    defaultAvatarEyes.positionXLeft
-  ),
-  positionXRight: relativeEyeValue(
-    expression.eyes.right.x,
-    neutral.eyes.right.x,
-    defaultAvatarEyes.positionXRight
-  ),
-  positionYLeft: relativeEyeValue(
-    expression.eyes.left.y,
-    neutral.eyes.left.y,
-    defaultAvatarEyes.positionYLeft
-  ),
-  positionYRight: relativeEyeValue(
-    expression.eyes.right.y,
-    neutral.eyes.right.y,
-    defaultAvatarEyes.positionYRight
-  ),
-  leftAngle: relativeEyeValue(
-    expression.eyes.left.angle,
-    neutral.eyes.left.angle,
-    defaultAvatarEyes.leftAngle
-  ),
-  rightAngle: relativeEyeValue(
-    expression.eyes.right.angle,
-    neutral.eyes.right.angle,
-    defaultAvatarEyes.rightAngle
-  ),
-  perspective: expression.perspective,
-  eyeMotion: expression.motion.eyes,
-  bodyMotion: expression.motion.body,
-  ...(expression.colors?.body ? { bodyColor: expression.colors.body } : {}),
-  ...(expression.colors?.eyes ? { eyeColor: expression.colors.eyes } : {}),
-})
+): Expression => {
+  const neutralMouth = neutral.mouth ?? defaultMouth
+  const mouth = expression.mouth ?? neutralMouth
+  const mouthDefinesGeometry =
+    mouth.shape !== neutralMouth.shape ||
+    mouth.curve !== neutralMouth.curve ||
+    mouth.width !== neutralMouth.width ||
+    mouth.height !== neutralMouth.height ||
+    mouth.x !== neutralMouth.x ||
+    mouth.y !== neutralMouth.y ||
+    mouth.angle !== neutralMouth.angle
+  return {
+    id: `expression-${importId}-${semanticKey}`,
+    semanticKey,
+    headX: expression.head.x,
+    headY: expression.head.y,
+    headZ: expression.head.z,
+    positionX: relativeEyeValue(
+      expression.position?.x ?? 0,
+      neutral.position?.x ?? 0,
+      defaultAvatarEyes.positionX
+    ),
+    positionY: relativeEyeValue(
+      expression.position?.y ?? 0,
+      neutral.position?.y ?? 0,
+      defaultAvatarEyes.positionY
+    ),
+    positionZ: relativeEyeValue(
+      expression.position?.z ?? 0,
+      neutral.position?.z ?? 0,
+      defaultAvatarEyes.positionZ
+    ),
+    widthLeft: relativeEyeValue(
+      expression.eyes.left.width,
+      neutral.eyes.left.width,
+      defaultAvatarEyes.widthLeft
+    ),
+    widthRight: relativeEyeValue(
+      expression.eyes.right.width,
+      neutral.eyes.right.width,
+      defaultAvatarEyes.widthRight
+    ),
+    heightLeft: relativeEyeValue(
+      expression.eyes.left.height,
+      neutral.eyes.left.height,
+      defaultAvatarEyes.heightLeft
+    ),
+    heightRight: relativeEyeValue(
+      expression.eyes.right.height,
+      neutral.eyes.right.height,
+      defaultAvatarEyes.heightRight
+    ),
+    spacing: relativeEyeValue(
+      expression.eyes.spacing,
+      neutral.eyes.spacing,
+      defaultAvatarEyes.spacing
+    ),
+    positionXLeft: relativeEyeValue(
+      expression.eyes.left.x,
+      neutral.eyes.left.x,
+      defaultAvatarEyes.positionXLeft
+    ),
+    positionXRight: relativeEyeValue(
+      expression.eyes.right.x,
+      neutral.eyes.right.x,
+      defaultAvatarEyes.positionXRight
+    ),
+    positionYLeft: relativeEyeValue(
+      expression.eyes.left.y,
+      neutral.eyes.left.y,
+      defaultAvatarEyes.positionYLeft
+    ),
+    positionYRight: relativeEyeValue(
+      expression.eyes.right.y,
+      neutral.eyes.right.y,
+      defaultAvatarEyes.positionYRight
+    ),
+    leftAngle: relativeEyeValue(
+      expression.eyes.left.angle,
+      neutral.eyes.left.angle,
+      defaultAvatarEyes.leftAngle
+    ),
+    rightAngle: relativeEyeValue(
+      expression.eyes.right.angle,
+      neutral.eyes.right.angle,
+      defaultAvatarEyes.rightAngle
+    ),
+    ...((expression.eyes.shape ?? 'rounded') === (neutral.eyes.shape ?? 'rounded')
+      ? {}
+      : { eyeShape: expression.eyes.shape ?? 'rounded' }),
+    eyeRoundness: relativeEyeValue(
+      expression.eyes.roundness ?? 100,
+      neutral.eyes.roundness ?? 100,
+      defaultAvatarEyes.eyeRoundness
+    ),
+    ...(mouth.enabled === neutralMouth.enabled ? {} : { mouthEnabled: mouth.enabled }),
+    ...(mouthDefinesGeometry ? { mouthShape: mouth.shape } : {}),
+    mouthCurve: relativeEyeValue(mouth.curve, neutralMouth.curve, defaultAvatarEyes.mouthCurve),
+    mouthWidth: relativeEyeValue(mouth.width, neutralMouth.width, defaultAvatarEyes.mouthWidth),
+    mouthHeight: relativeEyeValue(mouth.height, neutralMouth.height, defaultAvatarEyes.mouthHeight),
+    mouthX: relativeEyeValue(mouth.x, neutralMouth.x, defaultAvatarEyes.mouthX),
+    mouthY: relativeEyeValue(mouth.y, neutralMouth.y, defaultAvatarEyes.mouthY),
+    mouthAngle: relativeEyeValue(mouth.angle, neutralMouth.angle, defaultAvatarEyes.mouthAngle),
+    noseEnabled: defaultExpression.noseEnabled,
+    noseShape: defaultExpression.noseShape,
+    noseRoundness: defaultExpression.noseRoundness,
+    noseWidth: defaultExpression.noseWidth,
+    noseHeight: defaultExpression.noseHeight,
+    noseX: defaultExpression.noseX,
+    noseY: defaultExpression.noseY,
+    noseAngle: defaultExpression.noseAngle,
+    perspective: expression.perspective,
+    blinking: expression.blinking ?? false,
+    eyeMotion: expression.motion.eyes,
+    bodyMotion: expression.motion.body,
+    ...(expression.colors?.body ? { bodyColor: expression.colors.body } : {}),
+    ...(expression.colors?.eyes ? { eyeColor: expression.colors.eyes } : {}),
+  }
+}
 
 const toSequence = (
   importId: string,
@@ -205,6 +280,8 @@ export const studioAvatarFromDefinition = (value: unknown): ImportedAvatarDefini
   const slug = slugify(definition.name ?? 'avatar')
   const importId = createImportId(slug)
   const neutral = definition.expressions.neutral
+  const neutralMouth = neutral.mouth ?? defaultMouth
+  const neutralNose = neutral.nose ?? defaultNose
   assertRepresentableNeutral(neutral)
   assertRepresentableEyeDimensions(definition)
 
@@ -233,6 +310,7 @@ export const studioAvatarFromDefinition = (value: unknown): ImportedAvatarDefini
       nodes: definition.body.nodes.map((node, index) => ({
         id: `shape-${importId}-${index}`,
         name: `${node.surface.type} ${index + 1}`,
+        ...(node.color ? { color: node.color } : {}),
         surface: node.surface,
         position: node.position,
         rotation: node.rotation,
@@ -240,6 +318,9 @@ export const studioAvatarFromDefinition = (value: unknown): ImportedAvatarDefini
     },
     colors: definition.colors,
     eyes: {
+      positionX: neutral.position?.x ?? 0,
+      positionY: neutral.position?.y ?? 0,
+      positionZ: neutral.position?.z ?? 0,
       widthLeft: neutral.eyes.left.width,
       widthRight: neutral.eyes.right.width,
       heightLeft: neutral.eyes.left.height,
@@ -251,8 +332,28 @@ export const studioAvatarFromDefinition = (value: unknown): ImportedAvatarDefini
       positionYRight: neutral.eyes.right.y,
       leftAngle: neutral.eyes.left.angle,
       rightAngle: neutral.eyes.right.angle,
+      eyeShape: neutral.eyes.shape ?? 'rounded',
+      eyeRoundness: neutral.eyes.roundness ?? 100,
+      mouthEnabled: neutralMouth.enabled,
+      mouthShape: neutralMouth.shape,
+      mouthCurve: neutralMouth.curve,
+      mouthWidth: neutralMouth.width,
+      mouthHeight: neutralMouth.height,
+      mouthX: neutralMouth.x,
+      mouthY: neutralMouth.y,
+      mouthAngle: neutralMouth.angle,
+      noseEnabled: neutralNose.enabled,
+      noseShape: neutralNose.shape,
+      noseRoundness: neutralNose.roundness ?? defaultAvatarEyes.noseRoundness,
+      noseWidth: neutralNose.width,
+      noseHeight: neutralNose.height,
+      noseX: neutralNose.x,
+      noseY: neutralNose.y,
+      noseAngle: neutralNose.angle,
     },
-    renderStyle: { type: 'vector' },
+    renderStyle: definition.style?.outline
+      ? { type: 'vector', outline: { ...definition.style.outline } }
+      : { type: 'vector' },
     behavior: { expressions, sequences },
   }
 

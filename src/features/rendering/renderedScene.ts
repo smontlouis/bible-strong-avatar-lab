@@ -1,17 +1,23 @@
 import { motionValue, type MotionValue } from 'motion'
 
 import type { AvatarColors } from '../avatar/avatars'
-import { MAX_BODY_NODES } from '../avatar/body'
+import { MAX_BODY_NODES, type BodyNode } from '../avatar/body'
 import type { AvatarGeometry } from '../avatar/geometry'
 
 export type RenderedScene = {
   headPath: MotionValue<string>
   backPaths: MotionValue<string>[]
   frontPaths: MotionValue<string>[]
+  backColors: MotionValue<string>[]
+  frontColors: MotionValue<string>[]
   backNodeIds: { current: (string | null)[] }
   frontNodeIds: { current: (string | null)[] }
   leftPath: MotionValue<string>
   rightPath: MotionValue<string>
+  nosePath: MotionValue<string>
+  mouthPath: MotionValue<string>
+  mouthStrokeWidth: MotionValue<number>
+  mouthFillOpacity: MotionValue<number>
   leftOpacity: MotionValue<number>
   rightOpacity: MotionValue<number>
   offsetX: MotionValue<number>
@@ -26,7 +32,14 @@ export type RenderedColors = {
 
 const bodyPathSlots = MAX_BODY_NODES + 2
 
-export const createRenderedScene = (geometry: AvatarGeometry): RenderedScene => ({
+const bodyNodeColor = (nodeId: string | null | undefined, nodes: BodyNode[], bodyColor: string) =>
+  nodes.find(node => node.id === nodeId)?.color ?? bodyColor
+
+export const createRenderedScene = (
+  geometry: AvatarGeometry,
+  bodyNodes: BodyNode[] = [],
+  bodyColor = '#5b7fe5'
+): RenderedScene => ({
   headPath: motionValue(geometry.headPath),
   backPaths: Array.from({ length: bodyPathSlots }, (_, index) =>
     motionValue(geometry.backPaths[index] ?? '')
@@ -34,10 +47,20 @@ export const createRenderedScene = (geometry: AvatarGeometry): RenderedScene => 
   frontPaths: Array.from({ length: bodyPathSlots }, (_, index) =>
     motionValue(geometry.frontPaths[index] ?? '')
   ),
+  backColors: Array.from({ length: bodyPathSlots }, (_, index) =>
+    motionValue(bodyNodeColor(geometry.backNodeIds[index], bodyNodes, bodyColor))
+  ),
+  frontColors: Array.from({ length: bodyPathSlots }, (_, index) =>
+    motionValue(bodyNodeColor(geometry.frontNodeIds[index], bodyNodes, bodyColor))
+  ),
   backNodeIds: { current: geometry.backNodeIds },
   frontNodeIds: { current: geometry.frontNodeIds },
   leftPath: motionValue(geometry.leftPath),
   rightPath: motionValue(geometry.rightPath),
+  nosePath: motionValue(geometry.nosePath),
+  mouthPath: motionValue(geometry.mouthPath),
+  mouthStrokeWidth: motionValue(geometry.mouthStrokeWidth),
+  mouthFillOpacity: motionValue(geometry.mouthStrokeWidth > 0 ? 0 : 1),
   leftOpacity: motionValue(geometry.leftVisible ? 1 : 0),
   rightOpacity: motionValue(geometry.rightVisible ? 1 : 0),
   offsetX: motionValue(0),
@@ -60,17 +83,40 @@ export const paintRenderedOffset = (scene: RenderedScene, offset: { x: number; y
   scene.offsetY.set(offset.y)
 }
 
-export const paintRenderedScene = (scene: RenderedScene, geometry: AvatarGeometry) => {
+export const paintRenderedScene = (
+  scene: RenderedScene,
+  geometry: AvatarGeometry,
+  bodyNodes: BodyNode[] = [],
+  bodyColor = '#5b7fe5'
+) => {
   scene.headPath.set(geometry.headPath)
   scene.backNodeIds.current = geometry.backNodeIds
   scene.frontNodeIds.current = geometry.frontNodeIds
+  paintRenderedBodyColors(scene, bodyNodes, bodyColor)
   scene.backPaths.forEach((path, index) => path.set(geometry.backPaths[index] ?? ''))
   scene.frontPaths.forEach((path, index) => path.set(geometry.frontPaths[index] ?? ''))
   scene.leftPath.set(geometry.leftPath)
   scene.rightPath.set(geometry.rightPath)
+  scene.nosePath.set(geometry.nosePath)
+  scene.mouthPath.set(geometry.mouthPath)
+  scene.mouthStrokeWidth.set(geometry.mouthStrokeWidth)
+  scene.mouthFillOpacity.set(geometry.mouthStrokeWidth > 0 ? 0 : 1)
   scene.leftOpacity.set(geometry.leftVisible ? 1 : 0)
   scene.rightOpacity.set(geometry.rightVisible ? 1 : 0)
   scene.wirePaths.forEach((path, index) => path.set(geometry.wirePaths[index] ?? ''))
+}
+
+export const paintRenderedBodyColors = (
+  scene: RenderedScene,
+  bodyNodes: BodyNode[],
+  bodyColor: string
+) => {
+  scene.backColors.forEach((color, index) =>
+    color.set(bodyNodeColor(scene.backNodeIds.current[index], bodyNodes, bodyColor))
+  )
+  scene.frontColors.forEach((color, index) =>
+    color.set(bodyNodeColor(scene.frontNodeIds.current[index], bodyNodes, bodyColor))
+  )
 }
 
 export const findBodyNodePath = (scene: RenderedScene, selectedBodyNodeId: 'primary' | string) => {

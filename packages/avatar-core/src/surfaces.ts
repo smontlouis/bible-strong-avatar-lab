@@ -1,7 +1,15 @@
 import type { Point3 } from './geometry'
 
 export type SurfaceType =
-  'sphere' | 'mickey' | 'cursor' | 'cube' | 'capsule' | 'cylinder' | 'cone' | 'diamond'
+  | 'sphere'
+  | 'mickey'
+  | 'cursor'
+  | 'cube'
+  | 'capsule'
+  | 'cylinder'
+  | 'cone'
+  | 'diamond'
+  | 'trapezoid'
 
 export type SurfaceConfig = {
   type: SurfaceType
@@ -12,6 +20,8 @@ export type SurfaceConfig = {
   morphRoundness?: number
   tipRoundness?: number
   baseRoundness?: number
+  topScale?: number
+  bottomScale?: number
 }
 
 export type SurfaceSample = {
@@ -23,7 +33,7 @@ export const surfacePresets: Record<SurfaceType, SurfaceConfig> = {
   sphere: { type: 'sphere', width: 240, height: 240, depth: 240, roundness: 1 },
   mickey: { type: 'mickey', width: 220, height: 210, depth: 145, roundness: 1 },
   cursor: { type: 'cursor', width: 175, height: 260, depth: 145, roundness: 0 },
-  cube: { type: 'cube', width: 245, height: 245, depth: 220, roundness: 0 },
+  cube: { type: 'cube', width: 220, height: 220, depth: 200, roundness: 0 },
   capsule: { type: 'capsule', width: 205, height: 270, depth: 205, roundness: 1 },
   cylinder: {
     type: 'cylinder',
@@ -40,10 +50,19 @@ export const surfacePresets: Record<SurfaceType, SurfaceConfig> = {
     depth: 225,
     roundness: 0,
     morphRoundness: 0,
-    tipRoundness: 0.55,
-    baseRoundness: 0.45,
+    tipRoundness: 0,
+    baseRoundness: 0,
   },
   diamond: { type: 'diamond', width: 235, height: 260, depth: 215, roundness: 0 },
+  trapezoid: {
+    type: 'trapezoid',
+    width: 210,
+    height: 205,
+    depth: 185,
+    roundness: 0,
+    topScale: 0.82,
+    bottomScale: 1.08,
+  },
 }
 
 export const surfaceLabels: Record<SurfaceType, string> = {
@@ -55,6 +74,7 @@ export const surfaceLabels: Record<SurfaceType, string> = {
   cylinder: 'Cylindre',
   cone: 'Cône',
   diamond: 'Diamant',
+  trapezoid: 'Trapèze',
 }
 
 const signedPower = (value: number, exponent: number) =>
@@ -283,6 +303,40 @@ const coneProfileAt = (config: SurfaceConfig, progress: number): RadialProfile =
 const morphedConeProfileAt = (config: SurfaceConfig, progress: number) =>
   morphProfileToEllipsoid(config, progress, coneProfileAt(config, progress))
 
+const interpolate = (from: number, to: number, progress: number) => from + (to - from) * progress
+
+const profiledShapeExponent = (config: SurfaceConfig) =>
+  interpolate(0.01, 0.84, Math.max(0, Math.min(5, config.roundness)) / 5)
+
+const profiledShapeParameters = (config: SurfaceConfig, vertical: number) => {
+  const progress = Math.max(0, Math.min(1, (vertical + 1) / 2))
+  return {
+    widthTaper: interpolate(
+      Math.max(0.05, Math.min(1.5, config.topScale ?? 0.82)),
+      Math.max(0.05, Math.min(1.5, config.bottomScale ?? 1.08)),
+      progress
+    ),
+    depthTaper: interpolate(0.92, 1.04, progress),
+  }
+}
+
+const profiledSurfacePointAt = (
+  config: SurfaceConfig,
+  longitude: number,
+  latitude: number
+): Point3 => {
+  const exponent = profiledShapeExponent(config)
+  const angular = config.roundness <= 0
+  const vertical = angular ? Math.sin(latitude) : signedPower(Math.sin(latitude), exponent)
+  const { widthTaper, depthTaper } = profiledShapeParameters(config, vertical)
+  const latitudeFactor = angular ? 1 : Math.max(Math.cos(latitude), 0) ** exponent
+  return [
+    (config.width / 2) * widthTaper * latitudeFactor * signedPower(Math.sin(longitude), exponent),
+    (config.height / 2) * vertical,
+    (config.depth / 2) * depthTaper * latitudeFactor * signedPower(Math.cos(longitude), exponent),
+  ]
+}
+
 export const cursorLayout = (config: SurfaceConfig) => {
   const coneHeight = config.height * 0.36
   const bodyHeight = config.height - coneHeight
@@ -335,6 +389,9 @@ export const surfacePointAt = (
     }
     case 'diamond':
       return diamond(config, longitude, latitude)
+    case 'trapezoid': {
+      return profiledSurfacePointAt(config, longitude, latitude)
+    }
     case 'capsule':
       return capsule(config, longitude, latitude)
     case 'cone': {
@@ -516,6 +573,51 @@ const radialProfileFrontSample = (
   }
 }
 
+const profiledFrontSample = (config: SurfaceConfig, x: number, y: number): SurfaceSample => {
+  const radiusX = config.width / 2 || 1
+  const radiusY = config.height / 2 || 1
+  const radiusZ = config.depth / 2 || 1
+  const pointAt = (sampleX: number, sampleY: number): Point3 => {
+    const normalizedY = Math.max(-0.995, Math.min(0.995, sampleY / radiusY))
+    const exponent = profiledShapeExponent(config)
+    const angular = config.roundness <= 0
+    const latitudeSine = angular ? normalizedY : signedPower(normalizedY, 1 / exponent)
+    const latitudeFactor = angular
+      ? 1
+      : Math.max(Math.sqrt(1 - latitudeSine * latitudeSine), 0) ** exponent
+    const { widthTaper, depthTaper } = profiledShapeParameters(config, normalizedY)
+    const availableX = radiusX * widthTaper * latitudeFactor
+    const surfaceX = Math.max(-availableX, Math.min(availableX, sampleX))
+    const longitudeSine = signedPower(
+      Math.max(-0.995, Math.min(0.995, surfaceX / Math.max(availableX, 0.001))),
+      1 / exponent
+    )
+    const longitudeFactor = Math.max(Math.sqrt(1 - longitudeSine * longitudeSine), 0) ** exponent
+    return [
+      surfaceX,
+      normalizedY * radiusY,
+      radiusZ * depthTaper * latitudeFactor * longitudeFactor,
+    ]
+  }
+  const point = pointAt(x, y)
+  const epsilonX = Math.max(0.02, config.width * 0.0005)
+  const epsilonY = Math.max(0.02, config.height * 0.0005)
+  const xBefore = pointAt(x - epsilonX, y)
+  const xAfter = pointAt(x + epsilonX, y)
+  const yBefore = pointAt(x, y - epsilonY)
+  const yAfter = pointAt(x, y + epsilonY)
+  const xDistance = xAfter[0] - xBefore[0] || epsilonX * 2
+  const yDistance = yAfter[1] - yBefore[1] || epsilonY * 2
+  return {
+    point,
+    normal: normalize([
+      -(xAfter[2] - xBefore[2]) / xDistance,
+      -(yAfter[2] - yBefore[2]) / yDistance,
+      1,
+    ]),
+  }
+}
+
 /** Project canonical face coordinates onto a primitive's front-facing sheet. */
 export const surfaceFrontSampleAt = (
   config: SurfaceConfig,
@@ -570,6 +672,9 @@ export const surfaceFrontSampleAt = (
 
     case 'diamond':
       return lpFrontSample(config, x, y, diamondExponent(config), diamondNormal)
+
+    case 'trapezoid':
+      return profiledFrontSample(config, x, y)
   }
 }
 

@@ -30,28 +30,67 @@ export type PixelRenderStyle = {
   type: 'pixel'
   resolution: number
 }
-export type AvatarRenderStyle = { type: 'vector' } | PixelRenderStyle
-export type AvatarEyeDefaults = Pick<
-  Expression,
-  | 'widthLeft'
-  | 'widthRight'
-  | 'heightLeft'
-  | 'heightRight'
-  | 'spacing'
-  | 'positionXLeft'
-  | 'positionXRight'
-  | 'positionYLeft'
-  | 'positionYRight'
-  | 'leftAngle'
-  | 'rightAngle'
+export type AvatarOutlineStyle = {
+  enabled: boolean
+  color: string
+  width: number
+  opacity: number
+}
+export type VectorRenderStyle = { type: 'vector'; outline?: AvatarOutlineStyle }
+export type AvatarRenderStyle = VectorRenderStyle | PixelRenderStyle
+export type AvatarEyeDefaults = Required<
+  Pick<
+    Expression,
+    | 'widthLeft'
+    | 'widthRight'
+    | 'heightLeft'
+    | 'heightRight'
+    | 'spacing'
+    | 'positionXLeft'
+    | 'positionXRight'
+    | 'positionYLeft'
+    | 'positionYRight'
+    | 'leftAngle'
+    | 'rightAngle'
+    | 'eyeShape'
+    | 'eyeRoundness'
+    | 'mouthEnabled'
+    | 'mouthShape'
+    | 'mouthCurve'
+    | 'mouthWidth'
+    | 'mouthHeight'
+    | 'mouthX'
+    | 'mouthY'
+    | 'mouthAngle'
+    | 'noseEnabled'
+    | 'noseShape'
+    | 'noseRoundness'
+    | 'noseWidth'
+    | 'noseHeight'
+    | 'noseX'
+    | 'noseY'
+    | 'noseAngle'
+    | 'positionX'
+    | 'positionY'
+    | 'positionZ'
+  >
 >
 export const defaultAvatarColors: AvatarColors = { body: '#5b7fe5', eyes: '#111316' }
 export const defaultAvatarRenderStyle: AvatarRenderStyle = { type: 'vector' }
+export const defaultAvatarOutlineStyle: AvatarOutlineStyle = {
+  enabled: false,
+  color: '#111316',
+  width: 6,
+  opacity: 1,
+}
 export const defaultPixelRenderStyle: PixelRenderStyle = {
   type: 'pixel',
   resolution: 64,
 }
 export const defaultAvatarEyes: AvatarEyeDefaults = {
+  positionX: defaultExpression.positionX,
+  positionY: defaultExpression.positionY,
+  positionZ: defaultExpression.positionZ,
   widthLeft: defaultExpression.widthLeft,
   widthRight: defaultExpression.widthRight,
   heightLeft: defaultExpression.heightLeft,
@@ -63,6 +102,24 @@ export const defaultAvatarEyes: AvatarEyeDefaults = {
   positionYRight: defaultExpression.positionYRight,
   leftAngle: defaultExpression.leftAngle,
   rightAngle: defaultExpression.rightAngle,
+  eyeShape: 'rounded',
+  eyeRoundness: defaultExpression.eyeRoundness,
+  mouthEnabled: false,
+  mouthShape: 'curve',
+  mouthCurve: defaultExpression.mouthCurve,
+  mouthWidth: defaultExpression.mouthWidth,
+  mouthHeight: defaultExpression.mouthHeight,
+  mouthX: defaultExpression.mouthX,
+  mouthY: defaultExpression.mouthY,
+  mouthAngle: defaultExpression.mouthAngle,
+  noseEnabled: defaultExpression.noseEnabled,
+  noseShape: defaultExpression.noseShape,
+  noseRoundness: defaultExpression.noseRoundness,
+  noseWidth: defaultExpression.noseWidth,
+  noseHeight: defaultExpression.noseHeight,
+  noseX: defaultExpression.noseX,
+  noseY: defaultExpression.noseY,
+  noseAngle: defaultExpression.noseAngle,
 }
 const hexColor = /^#[0-9a-f]{6}$/i
 const parseColors = (value: unknown): AvatarColors => {
@@ -87,7 +144,21 @@ const finiteBounded = (value: unknown, fallback: number, min: number, max: numbe
 export const parseAvatarRenderStyle = (value: unknown): AvatarRenderStyle => {
   const candidate = value as Partial<PixelRenderStyle> | null
   if (!PIXEL_RENDERING_ENABLED || candidate?.type !== 'pixel') {
-    return { ...defaultAvatarRenderStyle }
+    const vector = value as Partial<VectorRenderStyle> | null
+    const outline = vector?.outline
+    if (!outline || typeof outline !== 'object') return { ...defaultAvatarRenderStyle }
+    return {
+      type: 'vector',
+      outline: {
+        enabled: typeof outline.enabled === 'boolean' ? outline.enabled : false,
+        color:
+          typeof outline.color === 'string' && hexColor.test(outline.color)
+            ? outline.color
+            : defaultAvatarOutlineStyle.color,
+        width: finiteBounded(outline.width, defaultAvatarOutlineStyle.width, 0, 24),
+        opacity: finiteBounded(outline.opacity, defaultAvatarOutlineStyle.opacity, 0, 1),
+      },
+    }
   }
   return {
     type: 'pixel',
@@ -97,14 +168,68 @@ export const parseAvatarRenderStyle = (value: unknown): AvatarRenderStyle => {
   }
 }
 
-const eyeDefaultFields = Object.keys(defaultAvatarEyes) as (keyof AvatarEyeDefaults)[]
+const eyeNumericDefaultFields = [
+  'positionX',
+  'positionY',
+  'positionZ',
+  'widthLeft',
+  'widthRight',
+  'heightLeft',
+  'heightRight',
+  'spacing',
+  'positionXLeft',
+  'positionXRight',
+  'positionYLeft',
+  'positionYRight',
+  'leftAngle',
+  'rightAngle',
+  'eyeRoundness',
+  'noseWidth',
+  'noseRoundness',
+  'noseHeight',
+  'noseX',
+  'noseY',
+  'noseAngle',
+] as const
+export const mouthNumericDefaultFields = [
+  'mouthCurve',
+  'mouthWidth',
+  'mouthHeight',
+  'mouthX',
+  'mouthY',
+  'mouthAngle',
+] as const
 export const parseAvatarEyeDefaults = (value: unknown): AvatarEyeDefaults => {
   const candidate = value as Partial<AvatarEyeDefaults> | null
   const parsed = { ...defaultAvatarEyes }
-  eyeDefaultFields.forEach(field => {
+  eyeNumericDefaultFields.forEach(field => {
     const stored = candidate?.[field]
     if (typeof stored === 'number' && Number.isFinite(stored)) parsed[field] = stored
   })
+  mouthNumericDefaultFields.forEach(field => {
+    const stored = candidate?.[field]
+    if (typeof stored === 'number' && Number.isFinite(stored)) parsed[field] = stored
+  })
+  if (candidate?.eyeShape === 'rounded' || candidate?.eyeShape === 'ellipse') {
+    parsed.eyeShape = candidate.eyeShape
+  }
+  if (
+    candidate?.noseShape === 'ellipse' ||
+    candidate?.noseShape === 'inverted-triangle' ||
+    candidate?.noseShape === 'rounded'
+  ) {
+    parsed.noseShape = candidate.noseShape
+  }
+  if (
+    candidate?.mouthShape === 'curve' ||
+    candidate?.mouthShape === 'ellipse' ||
+    candidate?.mouthShape === 'rounded' ||
+    candidate?.mouthShape === 'rounded-triangle'
+  ) {
+    parsed.mouthShape = candidate.mouthShape
+  }
+  if (typeof candidate?.mouthEnabled === 'boolean') parsed.mouthEnabled = candidate.mouthEnabled
+  if (typeof candidate?.noseEnabled === 'boolean') parsed.noseEnabled = candidate.noseEnabled
   return parsed
 }
 
@@ -113,14 +238,70 @@ export const applyAvatarEyeDefaults = (
   eyes: AvatarEyeDefaults = defaultAvatarEyes
 ): Expression => {
   const result = { ...expression }
-  eyeDefaultFields.forEach(field => {
+  eyeNumericDefaultFields.forEach(field => {
     result[field] = expression[field] + eyes[field] - defaultAvatarEyes[field]
   })
+  mouthNumericDefaultFields.forEach(field => {
+    result[field] =
+      expression.mouthShape === undefined
+        ? eyes[field]
+        : expression[field] + eyes[field] - defaultAvatarEyes[field]
+  })
+  if (expression.eyeShape !== undefined || eyes.eyeShape !== defaultAvatarEyes.eyeShape) {
+    result.eyeShape = expression.eyeShape ?? eyes.eyeShape
+  }
+  if (
+    expression.mouthEnabled !== undefined ||
+    eyes.mouthEnabled !== defaultAvatarEyes.mouthEnabled
+  ) {
+    result.mouthEnabled = expression.mouthEnabled ?? eyes.mouthEnabled
+  }
+  if (expression.mouthShape !== undefined || eyes.mouthShape !== defaultAvatarEyes.mouthShape) {
+    result.mouthShape = expression.mouthShape ?? eyes.mouthShape
+  }
+  result.noseEnabled = eyes.noseEnabled
+  result.noseShape = eyes.noseShape
   result.widthLeft = Math.max(10, result.widthLeft)
   result.widthRight = Math.max(10, result.widthRight)
   result.heightLeft = Math.max(10, result.heightLeft)
   result.heightRight = Math.max(10, result.heightRight)
   return result
+}
+
+const materializeInheritedMouth = (expression: Expression, eyes: AvatarEyeDefaults): Expression => {
+  if (expression.mouthShape !== undefined) return expression
+  const result = { ...expression, mouthShape: eyes.mouthShape }
+  mouthNumericDefaultFields.forEach(field => {
+    result[field] = defaultAvatarEyes[field]
+  })
+  return result
+}
+
+export const prepareMouthTransition = (
+  from: Expression,
+  to: Expression,
+  eyes: AvatarEyeDefaults = defaultAvatarEyes
+): { from: Expression; to: Expression; changesShape: boolean } => {
+  const fromShape = from.mouthShape ?? eyes.mouthShape
+  const toShape = to.mouthShape ?? eyes.mouthShape
+  return {
+    from: materializeInheritedMouth(from, eyes),
+    to: materializeInheritedMouth(to, eyes),
+    changesShape: fromShape !== toShape,
+  }
+}
+
+export const overrideExpressionMouthNumeric = (
+  expression: Expression,
+  eyes: AvatarEyeDefaults,
+  field: (typeof mouthNumericDefaultFields)[number],
+  value: number
+): Expression => {
+  const result = materializeInheritedMouth(expression, eyes)
+  return {
+    ...result,
+    [field]: value - eyes[field] + defaultAvatarEyes[field],
+  }
 }
 
 export const createUnkeyedExpressionCopy = (source: Expression, id: string): Expression => ({
@@ -167,6 +348,27 @@ export const parseExpressions = (value: unknown): Expression[] => {
     parsed.bodyMotion = isBodyMotion(storedBodyMotion)
       ? storedBodyMotion
       : defaultExpression.bodyMotion
+    if (typeof candidate.blinking === 'boolean') parsed.blinking = candidate.blinking
+    if (candidate.eyeShape === 'rounded' || candidate.eyeShape === 'ellipse') {
+      parsed.eyeShape = candidate.eyeShape
+    }
+    if (typeof candidate.mouthEnabled === 'boolean') parsed.mouthEnabled = candidate.mouthEnabled
+    if (
+      candidate.mouthShape === 'curve' ||
+      candidate.mouthShape === 'ellipse' ||
+      candidate.mouthShape === 'rounded' ||
+      candidate.mouthShape === 'rounded-triangle'
+    ) {
+      parsed.mouthShape = candidate.mouthShape
+    }
+    if (typeof candidate.noseEnabled === 'boolean') parsed.noseEnabled = candidate.noseEnabled
+    if (
+      candidate.noseShape === 'ellipse' ||
+      candidate.noseShape === 'inverted-triangle' ||
+      candidate.noseShape === 'rounded'
+    ) {
+      parsed.noseShape = candidate.noseShape
+    }
     return parsed
   })
 }

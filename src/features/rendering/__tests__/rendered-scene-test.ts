@@ -6,6 +6,7 @@ import {
   createRenderedScene,
   findBodyNodePath,
   paintRenderedColors,
+  paintRenderedBodyColors,
   paintRenderedScene,
 } from '@/features/rendering/renderedScene'
 import { surfacePresets } from '@/features/avatar/surfaces'
@@ -46,6 +47,32 @@ describe('rendered avatar scene', () => {
     expect(colors.eyes).toBe(eyes)
     expect(colors.body.get()).toBe('#c53b47')
     expect(colors.eyes.get()).toBe('#ffffff')
+  })
+
+  it('keeps a node color attached when the node changes depth layer', () => {
+    const customNode = { ...createBodyNode('sphere', 0), color: '#ff2d86' }
+    const initial = renderAvatar(
+      poseFromExpression({ ...defaultExpression, headY: -35 }),
+      surfacePresets.sphere,
+      1,
+      { bodyNodes: [customNode] }
+    )
+    const scene = createRenderedScene(initial, [customNode], '#5b7fe5')
+    const rotated = renderAvatar(
+      poseFromExpression({ ...defaultExpression, headY: 35 }),
+      surfacePresets.sphere,
+      1,
+      { bodyNodes: [customNode] }
+    )
+
+    paintRenderedScene(scene, rotated, [customNode], '#5b7fe5')
+    paintRenderedBodyColors(scene, [customNode], '#335577')
+
+    const backIndex = scene.backNodeIds.current.indexOf(customNode.id)
+    const frontIndex = scene.frontNodeIds.current.indexOf(customNode.id)
+    expect(
+      backIndex >= 0 ? scene.backColors[backIndex].get() : scene.frontColors[frontIndex].get()
+    ).toBe('#ff2d86')
   })
 
   it('keeps Cloudee accessories behind the eyes at expression position 05', () => {
