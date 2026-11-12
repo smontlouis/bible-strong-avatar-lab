@@ -1,11 +1,17 @@
 import {
   expressionFromDefinition,
+  multiplyQuaternions,
   poseFromExpression,
+  quaternionFromEuler,
   renderAvatar,
   renderAvatarDefinition,
+  rotateWithQuaternion,
+  surfaceField,
+  surfacePresets,
   validateAvatarDefinition,
   type AvatarDefinition,
   type BodyNode,
+  type Quaternion,
 } from '../index'
 
 const expression = {
@@ -52,6 +58,53 @@ const box = (path: string) => {
   }
 }
 
+/** The loops of a clip path as polygons, its curves cut into short segments. */
+const polygons = (path: string) => {
+  const loops: [number, number][][] = []
+  let pen: [number, number] = [0, 0]
+  for (const [, command, values] of path.matchAll(/([MLC])([^MLCZ]*)/g)) {
+    const numbers = (values.match(/-?\d+\.?\d*/g) ?? []).map(Number)
+    if (command === 'M') loops.push([])
+    const loop = loops[loops.length - 1]
+    if (command === 'C') {
+      for (let step = 1; step <= 8; step += 1) {
+        const t = step / 8
+        const u = 1 - t
+        loop.push([
+          u * u * u * pen[0] +
+            3 * u * u * t * numbers[0] +
+            3 * u * t * t * numbers[2] +
+            t * t * t * numbers[4],
+          u * u * u * pen[1] +
+            3 * u * u * t * numbers[1] +
+            3 * u * t * t * numbers[3] +
+            t * t * t * numbers[5],
+        ])
+      }
+      pen = [numbers[4], numbers[5]]
+    } else {
+      pen = [numbers[0], numbers[1]]
+      loop.push(pen)
+    }
+  }
+  return loops
+}
+
+/** Whether a point is inside any of the loops, by the non-zero rule a clip path follows. */
+const inside = (loops: [number, number][][], x: number, y: number) => {
+  let winding = 0
+  for (const loop of loops) {
+    for (let index = 0; index < loop.length; index += 1) {
+      const from = loop[index]
+      const to = loop[(index + 1) % loop.length]
+      if (from[1] <= y === to[1] <= y) continue
+      const crossing = from[0] + ((y - from[1]) / (to[1] - from[1])) * (to[0] - from[0])
+      if (crossing > x) winding += to[1] > from[1] ? 1 : -1
+    }
+  }
+  return winding !== 0
+}
+
 describe('occlusion masks', () => {
   it('leaves a node of the body colour, or of none, to the plain rule', () => {
     for (const plain of [node([-100, 0, 20]), node([-100, 0, 20], bodyColor)]) {
@@ -95,42 +148,115 @@ describe('occlusion masks', () => {
     expect((clip.match(/C/g) ?? []).length).toBeGreaterThan(4)
   })
 
-  it('moves the mask smoothly through a whole turn of the head', () => {
-    let previous: ReturnType<typeof box> | undefined
-    let widest = 0
-    for (let yaw = -80; yaw <= 80; yaw += 0.5) {
-      const clip = render(node([-100, 0, 20], '#e5a15b'), yaw).frontClipPaths[0]
-      if (!clip) {
-        previous = undefined
-        continue
+  it.each([
+    ['sphere', 'sphere'],
+    ['sphere', 'cube'],
+    ['cube', 'cone'],
+    ['capsule', 'cylinder'],
+    ['cylinder', 'diamond'],
+    ['cone', 'capsule'],
+    ['diamond', 'trapezoid'],
+    ['trapezoid', 'sphere'],
+    ['cursor', 'cube'],
+    ['mickey', 'cylinder'],
+  ] as const)(
+    'agrees with every line of sight, for a %s head and a %s node',
+    (headType, nodeType) => {
+      const headSurface = surfacePresets[headType]
+      const preset = surfacePresets[nodeType]
+      const rotation: [number, number, number] = [20, 30, 15]
+      const bodyNode: BodyNode = {
+        id: 'hand',
+        name: 'Hand',
+        color: '#e5a15b',
+        surface: {
+          ...preset,
+          width: preset.width * 0.36,
+          height: preset.height * 0.36,
+          depth: preset.depth * 0.36,
+        },
+        position: [-headSurface.width * 0.44, headSurface.height * 0.1, headSurface.depth * 0.12],
+        rotation,
       }
-      const current = box(clip)
-      if (previous) {
-        for (const side of ['minX', 'maxX', 'minY', 'maxY'] as const) {
-          widest = Math.max(widest, Math.abs(current[side] - previous[side]))
+      const headField = surfaceField(headSurface)
+      const nodeField = surfaceField(bodyNode.surface)
+      const radians = (degrees: number) => (degrees * Math.PI) / 180
+      const inverse = ([w, x, y, z]: Quaternion): Quaternion => [w, -x, -y, -z]
+      let compared = 0
+      let different = 0
+      for (const [pitch, yaw] of [
+        [0, 0],
+        [8, -30],
+        [-12, 35],
+        [20, 70],
+      ]) {
+        const pose = poseFromExpression({
+          ...expressionFromDefinition('neutral', expression),
+          headX: pitch,
+          headY: yaw,
+        })
+        const geometry = renderAvatar(pose, headSurface, 1, {
+          bodyNodes: [bodyNode],
+          includeWire: false,
+          nodeOcclusion: 'mask',
+          bodyColor,
+        })
+        const front = geometry.frontNodeIds.indexOf('hand')
+        const clip = front < 0 ? null : geometry.frontClipPaths[front]
+        const loops = clip ? polygons(clip) : []
+        const nodeTurn = multiplyQuaternions(
+          pose.orientation,
+          quaternionFromEuler(radians(rotation[0]), radians(rotation[1]), radians(rotation[2]))
+        )
+        const center = rotateWithQuaternion(pose.orientation, bodyNode.position)
+        const toHead = inverse(pose.orientation)
+        const toNode = inverse(nodeTurn)
+        const eye = 620
+        const scale = eye / (eye - center[2])
+        for (
+          let screenY = center[1] * scale - 60;
+          screenY <= center[1] * scale + 60;
+          screenY += 4
+        ) {
+          for (
+            let screenX = center[0] * scale - 60;
+            screenX <= center[0] * scale + 60;
+            screenX += 4
+          ) {
+            // The first depth at which the line of sight is inside each solid.
+            let nodeAt: number | undefined
+            let headAt: number | undefined
+            for (let depth = 280; depth >= -280; depth -= 1) {
+              const ratio = (eye - depth) / eye
+              const point: [number, number, number] = [screenX * ratio, screenY * ratio, depth]
+              if (nodeAt === undefined) {
+                const inNode = rotateWithQuaternion(toNode, [
+                  point[0] - center[0],
+                  point[1] - center[1],
+                  point[2] - center[2],
+                ])
+                if (nodeField(inNode[0], inNode[1], inNode[2]) <= 0) nodeAt = depth
+              }
+              if (headAt === undefined) {
+                const inHead = rotateWithQuaternion(toHead, point)
+                if (headField(inHead[0], inHead[1], inHead[2]) <= 0) headAt = depth
+              }
+              if (nodeAt !== undefined && headAt !== undefined) break
+            }
+            // Only where both are met, and not within the grain of this march of the line itself.
+            if (nodeAt === undefined || headAt === undefined || Math.abs(nodeAt - headAt) < 3) {
+              continue
+            }
+            const drawnInFront = clip !== null && (clip === '' || inside(loops, screenX, screenY))
+            compared += 1
+            if (drawnInFront !== nodeAt > headAt) different += 1
+          }
         }
       }
-      previous = current
+      expect(compared).toBeGreaterThan(200)
+      expect(different / compared).toBeLessThan(0.01)
     }
-    // Half a degree of turn moves a point of the node by about one unit: no side of the mask
-    // may jump further than a few.
-    expect(widest).toBeLessThan(4)
-  })
-
-  it('keeps the plain rule where a surface is not an ellipsoid', () => {
-    const cone: BodyNode = {
-      ...node([-100, 0, 20], '#e5a15b'),
-      surface: { type: 'cone', width: 70, height: 70, depth: 70, roundness: 1 },
-    }
-    expect(render(cone)).toEqual(render(cone, 0, 'layer'))
-
-    const cube = { type: 'cube', width: 200, height: 200, depth: 200, roundness: 0.5 } as const
-    const options = { bodyNodes: [node([-100, 0, 20], '#e5a15b')], includeWire: false, bodyColor }
-    const pose = poseFromExpression(expressionFromDefinition('neutral', expression))
-    expect(renderAvatar(pose, cube, 1, { ...options, nodeOcclusion: 'mask' })).toEqual(
-      renderAvatar(pose, cube, 1, { ...options, nodeOcclusion: 'layer' })
-    )
-  })
+  )
 
   it('reaches a rendered definition, with the colour of each copy', () => {
     const source: AvatarDefinition = {

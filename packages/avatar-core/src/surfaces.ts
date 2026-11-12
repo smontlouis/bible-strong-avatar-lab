@@ -768,3 +768,213 @@ export const surfaceSampleAt = (
     normal: tangentNormalAt(config, longitude, latitude),
   }
 }
+
+// Fields. A field tells where a point is against a surface: zero on it, negative inside,
+// growing outward. Along any straight line it falls, then rises, as the distance to a convex
+// solid does: which side of the solid a point is on can then be read from the way the field
+// changes towards the viewer. Occlusion masks are built on these two readings.
+
+/** The length of a vector in the norm of a given power, without overflowing for large powers. */
+const powerNorm = (x: number, y: number, z: number, power: number) => {
+  const largest = Math.max(x, y, z)
+  if (largest <= 0) return 0
+  if (!Number.isFinite(power)) return largest
+  return (
+    largest *
+    ((x / largest) ** power + (y / largest) ** power + (z / largest) ** power) ** (1 / power)
+  )
+}
+
+const PROFILE_SCALE_STEPS = 48
+const PROFILE_SCALE_CACHE_LIMIT = 64
+const profileScaleCache = new Map<string, Float64Array>()
+// Past either end of a revolved profile its radius keeps falling, so that the field keeps
+// rising there, and the two flat ends close the solid.
+const PROFILE_END_SLOPE = 2
+
+/** The radius of a revolved profile at each height, tabulated once per surface. */
+const profileScales = (
+  config: SurfaceConfig,
+  profileAt: (config: SurfaceConfig, progress: number) => RadialProfile
+) => {
+  const key = [
+    config.type,
+    config.width,
+    config.height,
+    config.depth,
+    config.roundness,
+    config.morphRoundness,
+    config.tipRoundness,
+    config.baseRoundness,
+  ].join(':')
+  let scales = profileScaleCache.get(key)
+  if (!scales) {
+    scales = new Float64Array(PROFILE_SCALE_STEPS + 1)
+    for (let step = 0; step <= PROFILE_SCALE_STEPS; step += 1) {
+      scales[step] = radiusScaleAtVerticalProgress(config, step / PROFILE_SCALE_STEPS, profileAt)
+    }
+    if (profileScaleCache.size >= PROFILE_SCALE_CACHE_LIMIT) profileScaleCache.clear()
+    profileScaleCache.set(key, scales)
+  }
+  return scales
+}
+
+const revolvedField = (
+  config: SurfaceConfig,
+  centerY: number,
+  verticalDirection: -1 | 1,
+  scaleAt: (progress: number) => number
+) => {
+  const radiusX = config.width / 2 || 1
+  const radiusZ = config.depth / 2 || 1
+  const height = config.height || 1
+  return (x: number, y: number, z: number) => {
+    const progress = 0.5 + (verticalDirection * (y - centerY)) / height
+    const past = progress < 0 ? -progress : progress > 1 ? progress - 1 : 0
+    const scale = scaleAt(progress < 0 ? 0 : progress > 1 ? 1 : progress) - PROFILE_END_SLOPE * past
+    const scaledX = x / radiusX
+    const scaledZ = z / radiusZ
+    const radial = Math.sqrt(scaledX * scaledX + scaledZ * scaledZ) - scale
+    // Inside, the nearer of the two flat ends counts as much as the side does.
+    return Math.max(radial, PROFILE_END_SLOPE * Math.max(-progress, progress - 1))
+  }
+}
+
+const tabulatedScale = (scales: Float64Array) => (progress: number) => {
+  const position = progress * PROFILE_SCALE_STEPS
+  const index = Math.min(PROFILE_SCALE_STEPS - 1, Math.floor(position))
+  return scales[index] + (scales[index + 1] - scales[index]) * (position - index)
+}
+
+/**
+ * The field of a surface, in its own space: zero on the surface, negative inside, growing
+ * outward. Composite parts drawn apart from the surface, such as ears, are left out.
+ */
+export const surfaceField = (
+  config: SurfaceConfig
+): ((x: number, y: number, z: number) => number) => {
+  const radiusX = config.width / 2 || 1
+  const radiusY = config.height / 2 || 1
+  const radiusZ = config.depth / 2 || 1
+
+  switch (config.type) {
+    case 'sphere':
+    case 'mickey':
+      return (x, y, z) => {
+        const scaledX = x / radiusX
+        const scaledY = y / radiusY
+        const scaledZ = z / radiusZ
+        return Math.sqrt(scaledX * scaledX + scaledY * scaledY + scaledZ * scaledZ) - 1
+      }
+
+    case 'cube':
+    case 'diamond': {
+      const power = config.type === 'cube' ? cubeExponent(config) : diamondExponent(config)
+      return (x, y, z) =>
+        powerNorm(Math.abs(x) / radiusX, Math.abs(y) / radiusY, Math.abs(z) / radiusZ, power) - 1
+    }
+
+    case 'capsule': {
+      const capRadius = Math.min(radiusX, radiusY)
+      const straightHalf = Math.max(0, radiusY - capRadius)
+      return (x, y, z) => {
+        const scaledX = x / radiusX
+        const scaledY = Math.max(0, Math.abs(y) - straightHalf) / (capRadius || 1)
+        const scaledZ = z / radiusZ
+        return Math.sqrt(scaledX * scaledX + scaledY * scaledY + scaledZ * scaledZ) - 1
+      }
+    }
+
+    case 'cylinder': {
+      if (config.roundness <= 0 && (config.morphRoundness ?? 0) <= 0) {
+        return revolvedField(config, 0, 1, () => 1)
+      }
+      return revolvedField(
+        config,
+        0,
+        1,
+        tabulatedScale(profileScales(config, morphedCylinderProfileAt))
+      )
+    }
+
+    case 'cursor': {
+      const layout = cursorLayout(config)
+      const body = {
+        ...config,
+        width: layout.bodyWidth,
+        height: layout.bodyHeight,
+        depth: layout.bodyDepth,
+      }
+      return revolvedField(
+        body,
+        layout.bodyCenterY,
+        1,
+        body.roundness <= 0 ? () => 1 : tabulatedScale(profileScales(body, cylinderProfileAt))
+      )
+    }
+
+    case 'cone': {
+      const sharp =
+        (config.morphRoundness ?? 0) <= 0 &&
+        (config.tipRoundness ?? 0) <= 0 &&
+        (config.baseRoundness ?? 0) <= 0
+      return revolvedField(
+        config,
+        0,
+        -1,
+        sharp
+          ? progress => 1 - progress
+          : tabulatedScale(profileScales(config, morphedConeProfileAt))
+      )
+    }
+
+    case 'trapezoid': {
+      const power = config.roundness <= 0 ? Infinity : 2 / profiledShapeExponent(config)
+      return (x, y, z) => {
+        const vertical = y / radiusY
+        const { widthTaper, depthTaper } = profiledShapeParameters(config, vertical)
+        return (
+          powerNorm(
+            Math.abs(x) / (radiusX * widthTaper),
+            Math.abs(vertical),
+            Math.abs(z) / (radiusZ * depthTaper),
+            power
+          ) - 1
+        )
+      }
+    }
+  }
+}
+
+/**
+ * A point of a surface for tracing a region on it. It is `surfacePointAt`, but for the
+ * trapezoid, whose own points gather at its corners: this one spreads them over its faces.
+ */
+export const surfaceTracePointAt = (
+  config: SurfaceConfig,
+  longitude: number,
+  latitude: number
+): Point3 => {
+  const ring = Math.cos(latitude)
+  if (config.type === 'sphere' || config.type === 'mickey') {
+    return [
+      (config.width / 2) * ring * Math.sin(longitude),
+      (config.height / 2) * Math.sin(latitude),
+      (config.depth / 2) * ring * Math.cos(longitude),
+    ]
+  }
+  if (config.type !== 'trapezoid') return surfacePointAt(config, longitude, latitude)
+  const directionX = ring * Math.sin(longitude)
+  const directionY = Math.sin(latitude)
+  const directionZ = ring * Math.cos(longitude)
+  const power = config.roundness <= 0 ? Infinity : 2 / profiledShapeExponent(config)
+  const length =
+    powerNorm(Math.abs(directionX), Math.abs(directionY), Math.abs(directionZ), power) || 1
+  const vertical = directionY / length
+  const { widthTaper, depthTaper } = profiledShapeParameters(config, vertical)
+  return [
+    (config.width / 2) * widthTaper * (directionX / length),
+    (config.height / 2) * vertical,
+    (config.depth / 2) * depthTaper * (directionZ / length),
+  ]
+}

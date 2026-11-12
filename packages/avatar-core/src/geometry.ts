@@ -1,8 +1,10 @@
 import {
   cursorLayout,
+  surfaceField,
   surfaceFrontSampleAt,
   surfacePointAt,
   surfaceSampleAt,
+  surfaceTracePointAt,
   type SurfaceConfig,
 } from './surfaces'
 import type { BodyNode } from './body'
@@ -1555,22 +1557,22 @@ const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[]) => {
 }
 
 // Occlusion masks. Where a node of another colour sinks into the head, the two surfaces meet
-// along a curve. For two ellipsoids that curve is found on the node's own surface, where every
-// quantity is smooth: a point of the node is inside the head or not, turned to the viewer or
-// not, hidden behind the head or not. The part of the node that shows in front is traced on a
-// grid of the node's surface, each crossing placed exactly by bisection, then projected. The
-// line where the two solids meet is therefore a true curve, not one rebuilt from screen samples.
+// along a line. That line is found on the node's own surface: a point of it is turned to the
+// viewer or not, inside the head or not, behind the head or not, and each of the three is read
+// from the field of one of the two surfaces. The part of the node that shows in front is traced
+// on a grid of the node's surface, each crossing placed by bisection, then projected. The line
+// where the two solids meet is therefore a true curve, whatever the two shapes are.
 
 const MASK_ROWS = 14
 const MASK_COLUMNS = 28
 const MASK_BISECTIONS = 12
-// Where the region ends on the node's own outline, the node's path draws that outline exactly:
-// the region is pushed a little past it. Where the node goes behind the head, the region ends
-// on the head's outline: it stops a little outside, where the copy behind the head shows the
-// same colour, and follows the outline's arc between two such points.
+// The node's own outline is drawn exactly, by its path. Where the region ends on it, it only
+// has to reach it: it is pushed a little past.
 const PAST_NODE_OUTLINE = 3
-const PAST_HEAD_OUTLINE = 2
-const HEAD_OUTLINE_ARC_STEP = Math.PI / 24
+// How far a point is moved towards the viewer to read which way a field changes.
+const FIELD_STEP = 0.25
+// A turn of the meeting line sharper than this, about forty degrees, is drawn as a corner.
+const MASK_CORNER_COSINE = 0.77
 
 type Matrix3 = [Point3, Point3, Point3]
 
@@ -1581,16 +1583,14 @@ const rotationAxes = (orientation: Quaternion): Matrix3 => [
   rotateWithQuaternion(orientation, [0, 0, 1]),
 ]
 
-const isEllipsoid = (surface: SurfaceConfig) => surface.type === 'sphere'
-
 /** Why a point of the node does not show in front: its own back, inside the head, or behind it. */
 type MaskEdge = 'rim' | 'cut' | 'behind'
 
 /**
- * Where a coloured ellipsoid node is nearer than an ellipsoid head, as a clip for the copy drawn
- * in front. `whole` when all of the node that faces the viewer is, `none` when none of it is.
+ * Where a coloured node is nearer than the head, as a clip for the copy drawn in front. `whole`
+ * when all of the node that faces the viewer is, `none` when none of it is.
  */
-const ellipsoidFrontClip = (
+const nodeFrontClip = (
   pose: AvatarPose,
   head: SurfaceConfig,
   node: BodyNode
@@ -1600,7 +1600,7 @@ const ellipsoidFrontClip = (
   const eyeZ = orthographic ? 0 : FOCAL_LENGTH / perspective
   const headAxes = rotationAxes(pose.orientation)
   const headCenter = transformPosePoint(pose, [0, 0, 0])
-  const headRadii: Point3 = [head.width / 2, head.height / 2, head.depth / 2]
+  const headField = surfaceField(head)
   const local = nodePose(pose, node)
   const nodeAxes = rotationAxes(local.orientation)
   const nodeCenter: Point3 = [
@@ -1608,109 +1608,96 @@ const ellipsoidFrontClip = (
     local.expression.positionY,
     local.expression.positionZ,
   ]
-  const nodeRadii: Point3 = [
-    node.surface.width / 2,
-    node.surface.height / 2,
-    node.surface.depth / 2,
-  ]
+  const nodeField = surfaceField(node.surface)
 
-  // A point of the node's surface at a latitude and a longitude, in the camera's space, with
-  // what decides whether it shows in front.
+  // The grid has one row more at each end than the surface has latitudes. A surface that ends
+  // on a flat face, as a cylinder does, has no point of its own there: the added row is the
+  // centre of that face, and the rows between span it. On a surface that closes on a point the
+  // added row is that point again.
+  const latitudeAt = (row: number) => -Math.PI / 2 + (row / MASK_ROWS) * Math.PI
+  const longitudeAt = (column: number) => -Math.PI + (column / MASK_COLUMNS) * Math.PI * 2
+
+  // A point of the node's surface, in the camera's space, with what decides whether it shows
+  // in front.
   let x = 0
   let y = 0
   let z = 0
   let edge: MaskEdge = 'rim'
-  // Whether the line of sight through the point meets the head at all.
-  let overHead = false
-  const shows = (latitude: number, longitude: number) => {
-    const ring = Math.cos(latitude)
-    const unitX = ring * Math.cos(longitude)
-    const unitY = Math.sin(latitude)
-    const unitZ = ring * Math.sin(longitude)
-    const scaledX = unitX * nodeRadii[0]
-    const scaledY = unitY * nodeRadii[1]
-    const scaledZ = unitZ * nodeRadii[2]
-    x =
-      nodeCenter[0] + nodeAxes[0][0] * scaledX + nodeAxes[1][0] * scaledY + nodeAxes[2][0] * scaledZ
-    y =
-      nodeCenter[1] + nodeAxes[0][1] * scaledX + nodeAxes[1][1] * scaledY + nodeAxes[2][1] * scaledZ
-    z =
-      nodeCenter[2] + nodeAxes[0][2] * scaledX + nodeAxes[1][2] * scaledY + nodeAxes[2][2] * scaledZ
-    // Towards the viewer from this point.
-    const towardsX = orthographic ? 0 : -x
-    const towardsY = orthographic ? 0 : -y
-    const towardsZ = orthographic ? 1 : eyeZ - z
-    // The node's outward normal there.
-    const normalX = unitX / nodeRadii[0]
-    const normalY = unitY / nodeRadii[1]
-    const normalZ = unitZ / nodeRadii[2]
-    const facing =
-      (nodeAxes[0][0] * normalX + nodeAxes[1][0] * normalY + nodeAxes[2][0] * normalZ) * towardsX +
-      (nodeAxes[0][1] * normalX + nodeAxes[1][1] * normalY + nodeAxes[2][1] * normalZ) * towardsY +
-      (nodeAxes[0][2] * normalX + nodeAxes[1][2] * normalY + nodeAxes[2][2] * normalZ) * towardsZ
-    if (facing <= 0) {
+  const shows = (row: number, longitude: number) => {
+    const onSurface = row < 0 ? 0 : row > MASK_ROWS ? MASK_ROWS : row
+    const towardsAxis = row < 0 ? -row : row > MASK_ROWS ? row - MASK_ROWS : 0
+    const point = surfaceTracePointAt(node.surface, longitude, latitudeAt(onSurface))
+    const localX = point[0] * (1 - towardsAxis)
+    const localY = point[1]
+    const localZ = point[2] * (1 - towardsAxis)
+    x = nodeCenter[0] + nodeAxes[0][0] * localX + nodeAxes[1][0] * localY + nodeAxes[2][0] * localZ
+    y = nodeCenter[1] + nodeAxes[0][1] * localX + nodeAxes[1][1] * localY + nodeAxes[2][1] * localZ
+    z = nodeCenter[2] + nodeAxes[0][2] * localX + nodeAxes[1][2] * localY + nodeAxes[2][2] * localZ
+    // A short step towards the viewer from this point.
+    let stepX = orthographic ? 0 : -x
+    let stepY = orthographic ? 0 : -y
+    let stepZ = orthographic ? 1 : eyeZ - z
+    const scale = FIELD_STEP / (Math.sqrt(stepX * stepX + stepY * stepY + stepZ * stepZ) || 1)
+    stepX *= scale
+    stepY *= scale
+    stepZ *= scale
+    // The node hides its own back: there, the step goes into the node.
+    if (
+      nodeField(
+        localX + nodeAxes[0][0] * stepX + nodeAxes[0][1] * stepY + nodeAxes[0][2] * stepZ,
+        localY + nodeAxes[1][0] * stepX + nodeAxes[1][1] * stepY + nodeAxes[1][2] * stepZ,
+        localZ + nodeAxes[2][0] * stepX + nodeAxes[2][1] * stepY + nodeAxes[2][2] * stepZ
+      ) <= nodeField(localX, localY, localZ)
+    ) {
       edge = 'rim'
       return false
     }
-    // The same point and direction where the head is the unit sphere.
+    // The same point in the head's space.
     const offsetX = x - headCenter[0]
     const offsetY = y - headCenter[1]
     const offsetZ = z - headCenter[2]
-    const pointX =
-      (headAxes[0][0] * offsetX + headAxes[0][1] * offsetY + headAxes[0][2] * offsetZ) /
-      headRadii[0]
-    const pointY =
-      (headAxes[1][0] * offsetX + headAxes[1][1] * offsetY + headAxes[1][2] * offsetZ) /
-      headRadii[1]
-    const pointZ =
-      (headAxes[2][0] * offsetX + headAxes[2][1] * offsetY + headAxes[2][2] * offsetZ) /
-      headRadii[2]
-    const outside = pointX * pointX + pointY * pointY + pointZ * pointZ - 1
+    const headX = headAxes[0][0] * offsetX + headAxes[0][1] * offsetY + headAxes[0][2] * offsetZ
+    const headY = headAxes[1][0] * offsetX + headAxes[1][1] * offsetY + headAxes[1][2] * offsetZ
+    const headZ = headAxes[2][0] * offsetX + headAxes[2][1] * offsetY + headAxes[2][2] * offsetZ
+    const outside = headField(headX, headY, headZ)
     if (outside <= 0) {
       edge = 'cut'
       return false
     }
-    const rayX =
-      (headAxes[0][0] * towardsX + headAxes[0][1] * towardsY + headAxes[0][2] * towardsZ) /
-      headRadii[0]
-    const rayY =
-      (headAxes[1][0] * towardsX + headAxes[1][1] * towardsY + headAxes[1][2] * towardsZ) /
-      headRadii[1]
-    const rayZ =
-      (headAxes[2][0] * towardsX + headAxes[2][1] * towardsY + headAxes[2][2] * towardsZ) /
-      headRadii[2]
-    // Outside the head, the point is hidden if the way to the viewer goes through the head.
-    const approach = pointX * rayX + pointY * rayY + pointZ * rayZ
-    const length = rayX * rayX + rayY * rayY + rayZ * rayZ
-    overHead = approach * approach - length * outside > 0
-    if (overHead && approach < 0) {
+    // Outside the head, a point is behind it when the way to the viewer leads towards it. Off
+    // the head's outline this still splits the node in two, but there both copies show alike.
+    if (
+      headField(
+        headX + headAxes[0][0] * stepX + headAxes[0][1] * stepY + headAxes[0][2] * stepZ,
+        headY + headAxes[1][0] * stepX + headAxes[1][1] * stepY + headAxes[1][2] * stepZ,
+        headZ + headAxes[2][0] * stepX + headAxes[2][1] * stepY + headAxes[2][2] * stepZ
+      ) < outside
+    ) {
       edge = 'behind'
       return false
     }
     return true
   }
 
-  const latitudeAt = (row: number) => -Math.PI / 2 + (row / MASK_ROWS) * Math.PI
-  const longitudeAt = (column: number) => -Math.PI + (column / MASK_COLUMNS) * Math.PI * 2
-  const visible = new Uint8Array((MASK_ROWS + 1) * MASK_COLUMNS)
+  const GRID_ROWS = MASK_ROWS + 3
+  const cell = (row: number, column: number) => (row + 1) * MASK_COLUMNS + column
+  const visible = new Uint8Array(GRID_ROWS * MASK_COLUMNS)
   let shown = 0
-  let shownOverHead = 0
   let facingViewer = 0
-  for (let row = 0; row <= MASK_ROWS; row += 1) {
+  for (let row = -1; row <= MASK_ROWS + 1; row += 1) {
     for (let column = 0; column < MASK_COLUMNS; column += 1) {
-      const result = shows(latitudeAt(row), longitudeAt(column))
+      const result = shows(row, longitudeAt(column))
       if (result) {
-        visible[row * MASK_COLUMNS + column] = 1
+        visible[cell(row, column)] = 1
         shown += 1
-        if (overHead) shownOverHead += 1
         facingViewer += 1
       } else if (edge !== 'rim') {
         facingViewer += 1
       }
     }
   }
-  // Nothing of the node shows over the head: the copy behind the head is all there is to draw.
-  if (shownOverHead === 0) return { kind: 'none' }
+  // Nothing of the node is nearer than the head: the copy behind the head is all there is.
+  if (shown === 0) return { kind: 'none' }
   if (shown === facingViewer) return { kind: 'whole' }
 
   const project = (px: number, py: number, pz: number): [number, number] => {
@@ -1721,78 +1708,75 @@ const ellipsoidFrontClip = (
     return [px * scale, py * scale]
   }
   const nodeOnScreen = project(nodeCenter[0], nodeCenter[1], nodeCenter[2])
-  const headOnScreen = project(headCenter[0], headCenter[1], headCenter[2])
 
   // Edges of the grid are numbered: along a row first, then along a column.
-  const rowEdges = (MASK_ROWS + 1) * MASK_COLUMNS
+  const rowEdges = GRID_ROWS * MASK_COLUMNS
   const crossing = (edgeIndex: number): { point: [number, number]; edge: MaskEdge } => {
     let fromRow: number
     let fromColumn: number
     let toRow: number
     let toColumn: number
     if (edgeIndex < rowEdges) {
-      fromRow = Math.floor(edgeIndex / MASK_COLUMNS)
+      fromRow = Math.floor(edgeIndex / MASK_COLUMNS) - 1
       fromColumn = edgeIndex % MASK_COLUMNS
       toRow = fromRow
       toColumn = fromColumn + 1
     } else {
       const index = edgeIndex - rowEdges
-      fromRow = Math.floor(index / MASK_COLUMNS)
+      fromRow = Math.floor(index / MASK_COLUMNS) - 1
       fromColumn = index % MASK_COLUMNS
       toRow = fromRow + 1
       toColumn = fromColumn
     }
-    let latitudeIn = latitudeAt(fromRow)
+    let rowIn = fromRow
     let longitudeIn = longitudeAt(fromColumn)
-    let latitudeOut = latitudeAt(toRow)
+    let rowOut = toRow
     let longitudeOut = longitudeAt(toColumn)
-    if (!visible[fromRow * MASK_COLUMNS + fromColumn]) {
-      ;[latitudeIn, latitudeOut] = [latitudeOut, latitudeIn]
+    if (!visible[cell(fromRow, fromColumn)]) {
+      ;[rowIn, rowOut] = [rowOut, rowIn]
       ;[longitudeIn, longitudeOut] = [longitudeOut, longitudeIn]
     }
     // The last point that does not show names the reason, the last that shows gives the place.
-    shows(latitudeOut, longitudeOut)
+    shows(rowOut, longitudeOut)
     let reason = edge
     for (let step = 0; step < MASK_BISECTIONS; step += 1) {
-      const latitude = (latitudeIn + latitudeOut) / 2
+      const row = (rowIn + rowOut) / 2
       const longitude = (longitudeIn + longitudeOut) / 2
-      if (shows(latitude, longitude)) {
-        latitudeIn = latitude
+      if (shows(row, longitude)) {
+        rowIn = row
         longitudeIn = longitude
       } else {
-        latitudeOut = latitude
+        rowOut = row
         longitudeOut = longitude
         reason = edge
       }
     }
-    shows(latitudeIn, longitudeIn)
+    shows(rowIn, longitudeIn)
     const point = project(x, y, z)
-    if (reason !== 'cut') {
-      const from = reason === 'rim' ? nodeOnScreen : headOnScreen
-      const push = reason === 'rim' ? PAST_NODE_OUTLINE : PAST_HEAD_OUTLINE
-      const awayX = point[0] - from[0]
-      const awayY = point[1] - from[1]
+    if (reason === 'rim') {
+      const awayX = point[0] - nodeOnScreen[0]
+      const awayY = point[1] - nodeOnScreen[1]
       const distance = Math.hypot(awayX, awayY) || 1
-      point[0] += (awayX / distance) * push
-      point[1] += (awayY / distance) * push
+      point[0] += (awayX / distance) * PAST_NODE_OUTLINE
+      point[1] += (awayY / distance) * PAST_NODE_OUTLINE
     }
     return { point, edge: reason }
   }
 
   const next = new Map<number, number>()
-  for (let row = 0; row < MASK_ROWS; row += 1) {
+  for (let row = -1; row <= MASK_ROWS; row += 1) {
     for (let column = 0; column < MASK_COLUMNS; column += 1) {
       const nextColumn = (column + 1) % MASK_COLUMNS
-      const topLeft = visible[row * MASK_COLUMNS + column]
-      const topRight = visible[row * MASK_COLUMNS + nextColumn]
-      const bottomLeft = visible[(row + 1) * MASK_COLUMNS + column]
-      const bottomRight = visible[(row + 1) * MASK_COLUMNS + nextColumn]
+      const topLeft = visible[cell(row, column)]
+      const topRight = visible[cell(row, nextColumn)]
+      const bottomLeft = visible[cell(row + 1, column)]
+      const bottomRight = visible[cell(row + 1, nextColumn)]
       const mask = topLeft | (topRight << 1) | (bottomRight << 2) | (bottomLeft << 3)
       if (mask === 0 || mask === 15) continue
-      const top = row * MASK_COLUMNS + column
-      const bottom = (row + 1) * MASK_COLUMNS + column
-      const left = rowEdges + row * MASK_COLUMNS + column
-      const right = rowEdges + row * MASK_COLUMNS + nextColumn
+      const top = cell(row, column)
+      const bottom = cell(row + 1, column)
+      const left = rowEdges + cell(row, column)
+      const right = rowEdges + cell(row, nextColumn)
       // Segments run with the shown region on their left, so that loops chain end to end.
       const link = (from: number, to: number) => next.set(from, to)
       switch (mask) {
@@ -1857,42 +1841,35 @@ const ellipsoidFrontClip = (
     }
     if (loop.length < 3) continue
     const at = (index: number) => loop[(index + loop.length) % loop.length]
+    // Whether the line passes through a point of it without ending or turning sharply there.
+    const smooth = (index: number) => {
+      const previous = at(index - 1)
+      const current = at(index)
+      const following = at(index + 1)
+      if (previous.edge !== 'cut' || current.edge !== 'cut' || following.edge !== 'cut') {
+        return false
+      }
+      const inX = current.point[0] - previous.point[0]
+      const inY = current.point[1] - previous.point[1]
+      const outX = following.point[0] - current.point[0]
+      const outY = following.point[1] - current.point[1]
+      return (
+        inX * outX + inY * outY > MASK_CORNER_COSINE * Math.hypot(inX, inY) * Math.hypot(outX, outY)
+      )
+    }
     path += `M${number(loop[0].point[0])} ${number(loop[0].point[1])}`
     for (let index = 0; index < loop.length; index += 1) {
       const from = at(index)
       const to = at(index + 1)
-      if (from.edge === 'behind' && to.edge === 'behind') {
-        // Both ends are on the head's outline: go round it, not straight across the head.
-        const fromX = from.point[0] - headOnScreen[0]
-        const fromY = from.point[1] - headOnScreen[1]
-        const toX = to.point[0] - headOnScreen[0]
-        const toY = to.point[1] - headOnScreen[1]
-        const fromAngle = Math.atan2(fromY, fromX)
-        let turn = Math.atan2(toY, toX) - fromAngle
-        if (turn > Math.PI) turn -= Math.PI * 2
-        if (turn < -Math.PI) turn += Math.PI * 2
-        const fromDistance = Math.hypot(fromX, fromY)
-        const toDistance = Math.hypot(toX, toY)
-        const steps = Math.ceil(Math.abs(turn) / HEAD_OUTLINE_ARC_STEP)
-        for (let step = 1; step < steps; step += 1) {
-          const ratio = step / steps
-          const angle = fromAngle + turn * ratio
-          const distance = fromDistance + (toDistance - fromDistance) * ratio
-          path +=
-            `L${number(headOnScreen[0] + Math.cos(angle) * distance)} ` +
-            `${number(headOnScreen[1] + Math.sin(angle) * distance)}`
-        }
-        path += `L${number(to.point[0])} ${number(to.point[1])}`
-        continue
-      }
       if (from.edge !== 'cut' || to.edge !== 'cut') {
         path += `L${number(to.point[0])} ${number(to.point[1])}`
         continue
       }
       // Along the line where the solids meet, a curve through the exact points: each bend
-      // follows its neighbours on that line, and stops short where the line ends.
-      const before = at(index - 1).edge === 'cut' ? at(index - 1) : from
-      const after = at(index + 2).edge === 'cut' ? at(index + 2) : to
+      // follows its neighbours on that line. It stops short where the line ends, and where it
+      // turns sharply, as it does over an edge of either solid: a corner stays a corner.
+      const before = smooth(index) ? at(index - 1) : from
+      const after = smooth(index + 1) ? at(index + 2) : to
       path +=
         `C${number(from.point[0] + (to.point[0] - before.point[0]) / 6)} ` +
         `${number(from.point[1] + (to.point[1] - before.point[1]) / 6)} ` +
@@ -1912,24 +1889,19 @@ const maskedAccessoryLayers = (
   bodyColor: string | undefined
 ) => {
   // Two shapes of one colour merge into one flat area: which is in front cannot be seen. Only a
-  // node of another colour than the body is measured against the head, and only where both are
-  // ellipsoids, whose meeting line can be found exactly. Every other node keeps the plain rule,
-  // wholly behind or wholly in front, which costs nothing.
+  // node of another colour than the body is measured against the head. Every other node keeps
+  // the plain rule, wholly behind or wholly in front, which costs nothing.
   const layers = nodes
     .map(node => {
       const depth = rotateWithQuaternion(pose.orientation, node.position)[2]
       const path = accessoryPath(pose, node)
-      const measured =
-        node.color !== undefined &&
-        node.color !== bodyColor &&
-        isEllipsoid(surface) &&
-        isEllipsoid(node.surface)
+      const measured = node.color !== undefined && node.color !== bodyColor
       if (!measured) {
         const front =
           depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO
         return { id: node.id, path, depth, back: !front, front, clip: '' }
       }
-      const shown = ellipsoidFrontClip(pose, surface, node)
+      const shown = nodeFrontClip(pose, surface, node)
       // A node that shows whole in front needs no clip, and no copy behind the head either.
       if (shown.kind === 'whole') {
         return { id: node.id, path, depth, back: false, front: true, clip: '' }
