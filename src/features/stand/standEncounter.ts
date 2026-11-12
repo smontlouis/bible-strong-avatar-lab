@@ -1,7 +1,7 @@
 import { clamp } from '@/features/avatar/geometry'
 import type { ObservedHand, Visitor } from './standDirector'
 
-export type StandAction = 'wave' | 'smile' | 'thumbs-up' | 'tilt'
+export type StandAction = 'wave' | 'smile' | 'thumbs-up' | 'victory' | 'tilt' | 'thumbs-down'
 export type StandCue =
   | 'petted'
   | 'idle'
@@ -12,17 +12,32 @@ export type StandCue =
   | 'hello'
   | 'smile-reply'
   | 'thumbs-up-reply'
+  | 'victory-reply'
   | 'tilt-reply'
+  | 'thumbs-down-reply'
   | 'connection'
   | 'free-play'
+  | 'farewell'
 
 const replies: Record<StandAction, StandCue> = {
   wave: 'hello',
   smile: 'smile-reply',
   'thumbs-up': 'thumbs-up-reply',
+  victory: 'victory-reply',
   tilt: 'tilt-reply',
+  'thumbs-down': 'thumbs-down-reply',
 }
-const activities: StandCue[] = ['smile', 'thumbs-up', 'tilt', 'free-play', 'connection']
+// The collection shown to visitors. Secret gestures are never suggested.
+export const collectionActions: StandAction[] = [
+  'wave',
+  'smile',
+  'thumbs-up',
+  'victory',
+  'tilt',
+  'thumbs-down',
+]
+export const secretActions: ReadonlySet<StandAction> = new Set(['thumbs-down'])
+const activities: StandCue[] = ['smile', 'thumbs-up', 'victory', 'tilt', 'free-play', 'connection']
 export const REPLY_MS = 2200
 
 export function visitorSignals(visitor: Visitor) {
@@ -80,10 +95,33 @@ function createHeldSignal(holdMs: number) {
   }
 }
 
+/** A classifier label held by one hand; switching hands restarts the hold. */
+function createHandSignal(gesture: string, holdMs: number) {
+  const held = createHeldSignal(holdMs)
+  let side: string | null = null
+  return {
+    reset() {
+      held.reset()
+      side = null
+    },
+    observe(hands: ObservedHand[], at: number) {
+      const hand = hands.find(
+        candidate => candidate.gesture === gesture && (candidate.confidence ?? 0) >= 0.65
+      )
+      if (hand && side !== hand.side) held.reset()
+      if (hand) side = hand.side
+      return held.observe(Boolean(hand), !hand, at)
+    },
+    progress: held.progress,
+  }
+}
+
 /** Short, forgiving invitations. No identity, emotion inference or visitor history. */
 export function createStandEncounter() {
   const smile = createHeldSignal(600)
-  const thumb = createHeldSignal(500)
+  const thumb = createHandSignal('Thumb_Up', 500)
+  const victory = createHandSignal('Victory', 500)
+  const thumbDown = createHandSignal('Thumb_Down', 500)
   const tilt = createHeldSignal(650)
   let metAt = 0
   let lastAt = -Infinity
@@ -91,13 +129,13 @@ export function createStandEncounter() {
   let reactionAt = -Infinity
   let waveAt = -Infinity
   let nextActivity = 0
-  let thumbSide: string | null = null
   const discoveries = new Set<StandAction>()
   const resetSignals = () => {
     smile.reset()
     thumb.reset()
+    victory.reset()
+    thumbDown.reset()
     tilt.reset()
-    thumbSide = null
   }
   return {
     reset(at: number) {
@@ -114,13 +152,10 @@ export function createStandEncounter() {
       if (at - lastAt > 350) resetSignals()
       lastAt = at
       const signal = visitorSignals(visitor)
-      const raisedThumb = hands.find(
-        hand => hand.gesture === 'Thumb_Up' && (hand.confidence ?? 0) >= 0.65
-      )
-      if (raisedThumb && thumbSide !== raisedThumb.side) thumb.reset()
-      if (raisedThumb) thumbSide = raisedThumb.side
       const smiled = smile.observe(signal.smile >= 0.5, signal.smile < 0.25, at)
-      const approved = thumb.observe(Boolean(raisedThumb), !raisedThumb, at)
+      const approved = thumb.observe(hands, at)
+      const cheered = victory.observe(hands, at)
+      const booed = thumbDown.observe(hands, at)
       const tilted = tilt.observe(Math.abs(signal.tilt) >= 12, Math.abs(signal.tilt) < 6, at)
       // Read all detectors even during a reply: a held pose cannot queue rewards.
       const action: StandAction | null =
@@ -128,17 +163,22 @@ export function createStandEncounter() {
           ? 'wave'
           : approved
             ? 'thumbs-up'
-            : smiled
-              ? 'smile'
-              : tilted
-                ? 'tilt'
-                : null
+            : cheered
+              ? 'victory'
+              : booed
+                ? 'thumbs-down'
+                : smiled
+                  ? 'smile'
+                  : tilted
+                    ? 'tilt'
+                    : null
       if (!action || at - reactionAt < REPLY_MS) return
       reaction = action
       reactionAt = at
       if (action === 'wave') waveAt = at
       discoveries.add(action)
-      nextActivity = action === 'wave' ? 0 : action === 'smile' ? 1 : action === 'thumbs-up' ? 2 : 3
+      // Suggest the activity after the one just done (a secret restarts the list).
+      nextActivity = action === 'wave' ? 0 : (activities.indexOf(action) + 1) % activities.length
     },
     sample(at: number, present: boolean, visible: boolean, distance: number, radius: number) {
       const friendly = discoveries.size > 0
@@ -171,9 +211,11 @@ export function createStandEncounter() {
           ? smile.progress(at)
           : cue === 'thumbs-up'
             ? thumb.progress(at)
-            : cue === 'tilt'
-              ? tilt.progress(at)
-              : 0
+            : cue === 'victory'
+              ? victory.progress(at)
+              : cue === 'tilt'
+                ? tilt.progress(at)
+                : 0
       return {
         cue,
         friendly: present && friendly,
@@ -181,6 +223,7 @@ export function createStandEncounter() {
         reactionElapsed: replying ? at - reactionAt : 0,
         greetingCooldownMs: Math.max(0, 4500 - (at - waveAt)),
         discoveries: present ? discoveries.size : 0,
+        discovered: present ? [...discoveries] : [],
         progress,
       }
     },

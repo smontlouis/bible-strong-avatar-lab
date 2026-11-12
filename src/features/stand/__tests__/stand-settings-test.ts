@@ -20,9 +20,19 @@ describe('stand settings persistence', () => {
       invitations: false,
       resources: false,
       landmarks: false,
+      companions: false,
+      companionIds: ['freddy', 'nova'],
+      configured: true,
     }
     saveStandSettings(settings)
     expect(readStandSettings()).toEqual(settings)
+  })
+  it('keeps at most three chosen companions and ignores invalid ids', () => {
+    localStorage.setItem(
+      STAND_SETTINGS_KEY,
+      JSON.stringify({ companionIds: ['a', 4, 'b', 'c', 'd'], companions: 'yes' })
+    )
+    expect(readStandSettings()).toMatchObject({ companions: true, companionIds: ['a', 'b', 'c'] })
   })
   it('defaults when storage is missing or invalid', () => {
     expect(readStandSettings()).toEqual(defaultStandSettings)

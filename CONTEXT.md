@@ -78,6 +78,10 @@ portable backup mechanism. There is no remote backend in this repository.
 Accepted architecture decisions live under `docs/adr/`.
 
 Stand preferences are persisted separately under `avatar-stand-settings` (camera device ID,
-mirroring, welcome distance, invitations, resources, diagnostic landmarks). They are not part of
-Studio JSON exports. `/stand` opens the stand with the persisted active Studio avatar; camera
-startup still requires the start button. Gaze calibration is session-local.
+mirroring, welcome distance, invitations, resources, diagnostic landmarks, companion characters
+and their avatar IDs). They are not part of Studio JSON exports. `/stand` opens the stand with the
+persisted active Studio avatar; other library avatars can join as companions for additional
+visitors. The first camera start requires the start button; afterwards, opening `/stand`
+directly starts the camera by itself when the browser has already granted camera access (the
+settings panel appears only if that fails). `/stand?simulate` replaces the camera with a
+keyboard-driven synthetic visitor. Gaze calibration is session-local.

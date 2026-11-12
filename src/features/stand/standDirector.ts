@@ -45,14 +45,23 @@ const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
 export function createWaveDetector() {
   let samples: { x: number; at: number }[] = []
   let side = ''
+  let swing = 0
+  let observedAt = -Infinity
   return {
     reset() {
       samples = []
       side = ''
+      swing = 0
+    },
+    /** Visible wave progress: a first swing, then each reversal, until the greeting fires. */
+    progress(at: number) {
+      return at - observedAt < 300 ? swing : 0
     },
     observe(hand: ObservedHand | undefined, at: number, amplitude: number) {
+      observedAt = at
       if (!hand?.open) {
         samples = []
+        swing = 0
         return false
       }
       const last = samples.at(-1)
@@ -83,8 +92,10 @@ export function createWaveDetector() {
       }
       if (reversals >= 2 && at - samples[0].at >= 450) {
         samples = []
+        swing = 0
         return true
       }
+      swing = Math.min(0.9, (reversals * 2 + (direction ? 1 : 0)) / 5)
       return false
     },
   }
@@ -103,6 +114,8 @@ export function createStandDirector() {
   let navigating = false
   let touch = { strength: 0, x: 0, y: 0 }
   let petFriend = false
+  // Whether the last attended visitor became a friend, for a goodbye wave.
+  let befriended = false
   const wave = createWaveDetector()
   const encounter = createStandEncounter()
 
@@ -175,6 +188,7 @@ export function createStandDirector() {
           encounter.reset(at)
           visitorId++
           petFriend = false
+          befriended = false
           touch = { strength: 0, x: 0, y: 0 }
         }
       }
@@ -220,12 +234,19 @@ export function createStandDirector() {
       const present = target !== null && at - seenAt < 1400
       const interaction = encounterAt(at, settings.proximity)
       const friendly = interaction.friendly || (present && petFriend)
+      if (present && friendly) befriended = true
       const navigation = navigating && at - handAt < 350
       const pet = present && at - handAt < 350 ? touch.strength : 0
+      // A friend who walks away receives the same wave as a greeting.
+      const lostFor = at - seenAt - 1400
+      const farewell = !present && befriended && lostFor >= 0 && lostFor < 2600
       const greeting =
-        !navigation && interaction.reaction === 'wave' && interaction.reactionElapsed < 1900
+        farewell ||
+        (!navigation && interaction.reaction === 'wave' && interaction.reactionElapsed < 1900)
       const mood: StandMood = !present
-        ? 'idle'
+        ? farewell
+          ? 'greeting'
+          : 'idle'
         : greeting
           ? 'greeting'
           : friendly
@@ -239,17 +260,32 @@ export function createStandDirector() {
         0,
         1
       )
+      // How far a distant visitor still has to come before the welcome distance.
+      const approach = present ? clamp((settings.proximity + 1.2 - visitorDistance) / 1.2, 0, 1) : 0
+      const idlePhase = at % 21000
+      const idle = !present && !farewell
+      // Attract loop: look around, hop, peek at passers-by, doze off.
+      const hop =
+        idle && idlePhase > 5200 && idlePhase < 6400
+          ? Math.sin(((idlePhase - 5200) / 1200) * Math.PI)
+          : 0
+      const peek =
+        idle && idlePhase > 8600 && idlePhase < 11600
+          ? Math.sin(((idlePhase - 8600) / 3000) * Math.PI) * (Math.floor(at / 21000) % 2 ? 1 : -1)
+          : 0
+      const sleepy =
+        idle && idlePhase > 14000 ? Math.sin(((idlePhase - 14000) / 7000) * Math.PI) : 0
       const gaze = present
         ? solveStandGaze(target!, settings.mirror, gazeCalibration)
         : {
             headX: -Math.sin(at / 3200) * 2,
-            headY: Math.sin(at / 2400) * 6,
-            eyeX: Math.sin(at / 2400) * 2,
+            headY: Math.sin(at / 2400) * 6 + peek * 14,
+            eyeX: Math.sin(at / 2400) * 2 + peek * 5,
             eyeY: Math.sin(at / 3200) * 0.7,
           }
       const suspicion = present && !friendly ? (mood === 'wary' ? 0.8 : 0.35) + near * 0.2 : 0
       const energy = settings.reducedMotion ? 0 : 1
-      const greetingTime = greeting ? interaction.reactionElapsed : 0
+      const greetingTime = farewell ? lostFor : greeting ? interaction.reactionElapsed : 0
       const hello = greeting ? Math.sin((greetingTime / 1900) * Math.PI) : 0
       const playfulTime = (at - metAt) % 8500
       const play =
@@ -264,6 +300,14 @@ export function createStandDirector() {
         present && at - seenAt < 350 ? visitorSignals(target!) : { smile: 0, jaw: 0, tilt: 0 }
       const smileReply = interaction.reaction === 'smile' ? reply : 0
       const approval = interaction.reaction === 'thumbs-up' ? reply : 0
+      const cheer = interaction.reaction === 'victory' ? reply : 0
+      // Thumbs-down: a short, theatrical sulk, then forgiveness with a smile.
+      const sulkTime = interaction.reaction === 'thumbs-down' ? interaction.reactionElapsed : -1
+      const sulk =
+        sulkTime >= 0 && !navigation
+          ? clamp(sulkTime / 250, 0, 1) * clamp((1500 - sulkTime) / 400, 0, 1)
+          : 0
+      const forgive = sulkTime >= 0 ? clamp((sulkTime - 1300) / 300, 0, 1) * reply : 0
       const arrival = present && at - metAt < 750 ? Math.sin(((at - metAt) / 750) * Math.PI) : 0
       const invitePhase = (at - metAt) % 9000
       const invite =
@@ -276,23 +320,31 @@ export function createStandDirector() {
       const bounce =
         hello * Math.abs(Math.sin(greetingTime / 130)) +
         play * 0.3 +
+        hop * 1.5 +
+        cheer * Math.abs(Math.sin(interaction.reactionElapsed / 170)) * 1.2 +
         approval * Math.abs(Math.sin(interaction.reactionElapsed / 230)) * 0.8
       const blinkPhase = at % 4300
       const blink = blinkPhase < 150 ? 1 - Math.sin((blinkPhase / 150) * Math.PI) * 0.94 : 1
-      const idlePhase = at % 21000
-      const sleepy =
-        !present && idlePhase > 14000 ? Math.sin(((idlePhase - 14000) / 7000) * Math.PI) : 0
-      const happyEyes = Math.max(smileReply * 0.7, friendly ? signals.smile * 0.4 : 0, pet * 0.85)
+      const happyEyes = Math.max(
+        smileReply * 0.7,
+        cheer * 0.75,
+        forgive * 0.6,
+        friendly ? signals.smile * 0.4 : 0,
+        pet * 0.85
+      )
       const wink = approval > 0.7 ? 0.85 : 0
+      const surprise = arrival * 0.28 + hop * 0.22 + Math.abs(peek) * 0.12
       const expression: Expression = {
         ...base,
-        headX: base.headX + gaze.headX - pet * 4,
+        headX: base.headX + gaze.headX - pet * 4 - sulk * 9,
         headY: base.headY + gaze.headY,
         headZ:
           base.headZ +
           suspicion * 9 +
           (hello * Math.sin(greetingTime / 140) * 12 +
             play * 8 +
+            cheer * Math.sin(interaction.reactionElapsed / 120) * 9 +
+            sulk * -6 +
             invite * -8 +
             demonstrateTilt +
             mimicTilt +
@@ -307,27 +359,35 @@ export function createStandDirector() {
             (1 -
               suspicion * 0.4 +
               hello * 0.18 +
-              arrival * 0.28 -
+              surprise -
               happyEyes -
               sleepy * 0.82 -
-              wink),
+              wink -
+              sulk * 0.3),
           3,
           100
         ),
         heightRight: clamp(
           base.heightRight *
-            (1 - suspicion * 0.15 + hello * 0.18 + arrival * 0.28 - happyEyes - sleepy * 0.82),
+            (1 -
+              suspicion * 0.15 +
+              hello * 0.18 +
+              surprise -
+              happyEyes -
+              sleepy * 0.82 -
+              sulk * 0.3),
           3,
           100
         ),
-        leftAngle: base.leftAngle + suspicion * 13 - happyEyes * 18,
-        rightAngle: base.rightAngle - suspicion * 5 + happyEyes * 18,
-        mouthCurve: friendly ? 65 : base.mouthCurve,
+        leftAngle: base.leftAngle + suspicion * 13 - happyEyes * 18 + sulk * 16,
+        rightAngle: base.rightAngle - suspicion * 5 + happyEyes * 18 - sulk * 16,
+        mouthCurve: sulk > 0.4 ? -45 : friendly || farewell ? 65 : base.mouthCurve,
       }
       return {
         mood,
-        cue:
-          pet > 0
+        cue: farewell
+          ? ('farewell' as const)
+          : pet > 0
             ? ('petted' as const)
             : petFriend && !interaction.friendly && present
               ? ('free-play' as const)
@@ -336,9 +396,37 @@ export function createStandDirector() {
         blink,
         x: pet * touch.x * 6 * energy,
         y:
-          (Math.sin(at / 1200) * 2 + Math.sin(at / 3100) - bounce * 13 - arrival * 7 + sleepy * 8) *
+          (Math.sin(at / 1200) * 2 +
+            Math.sin(at / 3100) -
+            bounce * 13 -
+            arrival * 7 +
+            sleepy * 8 +
+            sulk * 10) *
           energy,
-        scale: 1 + near * 0.14 + (hello * 0.04 - arrival * 0.035 + invite * 0.025) * energy,
+        scale:
+          1 +
+          near * 0.14 +
+          (hello * 0.04 -
+            arrival * 0.035 +
+            invite * 0.025 +
+            hop * 0.03 +
+            cheer * 0.05 -
+            sulk * 0.05) *
+            energy,
+        // Presentation data for the stand interface; none of it is persisted.
+        present,
+        friendly,
+        visitorId,
+        discovered: interaction.discovered,
+        near,
+        sleepy,
+        progress: !present
+          ? 0
+          : interaction.cue === 'wave'
+            ? wave.progress(at)
+            : interaction.cue === 'closer'
+              ? approach
+              : interaction.progress,
       }
     },
   }

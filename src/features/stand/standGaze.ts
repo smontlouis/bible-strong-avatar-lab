@@ -30,15 +30,23 @@ export function estimateVisitorPosition(face: FaceProjection) {
   }
 }
 
+// Assumed physical width of the stand display, used to aim characters that stand
+// away from the screen centre. An installation default, not a measurement.
+export const ASSUMED_SCREEN_WIDTH_M = 1.2
+
+/** `screenOffset` is where the character stands, in metres right of the screen centre. */
 export function solveStandGaze(
   face: FaceProjection,
   mirror: boolean,
-  calibration?: GazeCalibration
+  calibration?: GazeCalibration,
+  screenOffset = 0
 ) {
   const position = estimateVisitorPosition(face)
   const depth = position.z + virtualDepth
   const yaw = clamp(
-    degrees(Math.atan2((position.x - (calibration?.x ?? 0)) * (mirror ? -1 : 1), depth)),
+    degrees(
+      Math.atan2((position.x - (calibration?.x ?? 0)) * (mirror ? -1 : 1) - screenOffset, depth)
+    ),
     -14,
     14
   )

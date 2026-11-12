@@ -87,9 +87,45 @@ describe('stand attention and personality', () => {
     waveAt(director, 100)
     director.observe({ timestamp: 800, faces: [], hands: [] })
     expect(sample(director, 1000).mood).toBe('greeting')
-    expect(sample(director, 2400).mood).toBe('idle')
-    director.observe({ timestamp: 2500, faces: [visitor], hands: [] })
-    expect(sample(director, 2500).mood).toBe('wary')
+    // The friend walked away: a goodbye wave, then the attract loop.
+    expect(sample(director, 2400).cue).toBe('farewell')
+    expect(sample(director, 2400).mood).toBe('greeting')
+    expect(sample(director, 4700).mood).toBe('idle')
+    expect(sample(director, 4700).cue).toBe('idle')
+    director.observe({ timestamp: 4800, faces: [visitor], hands: [] })
+    expect(sample(director, 4800).mood).toBe('wary')
+  })
+
+  it('does not wave goodbye to a visitor who never broke the ice', () => {
+    const director = createStandDirector()
+    director.observe({ timestamp: 100, faces: [visitor], hands: [] })
+    sample(director, 100)
+    expect(sample(director, 2000).cue).toBe('idle')
+    expect(sample(director, 2000).mood).toBe('idle')
+  })
+
+  it('shows wave progress before the greeting fires', () => {
+    const director = createStandDirector()
+    for (let at = 100; at <= 2600; at += 250)
+      director.observe({ timestamp: at, faces: [visitor], hands: [] })
+    ;[0.57, 0.64, 0.7, 0.63].forEach((x, index) => {
+      director.observe({ timestamp: 2700 + index * 100, faces: [visitor], hands: [hand(x)] })
+    })
+    const frame = sample(director, 3000)
+    expect(frame.cue).toBe('wave')
+    expect(frame.progress).toBeGreaterThan(0.3)
+    expect(frame.progress).toBeLessThan(1)
+    expect(sample(director, 3600).progress).toBe(0)
+  })
+
+  it('exposes the discovered gestures and presence for the stand interface', () => {
+    const director = createStandDirector()
+    waveAt(director, 100)
+    const frame = sample(director, 800)
+    expect(frame.present).toBe(true)
+    expect(frame.friendly).toBe(true)
+    expect(frame.discovered).toEqual(['wave'])
+    expect(frame.visitorId).toBe(1)
   })
 
   it('ignores a wave beside another visitor', () => {

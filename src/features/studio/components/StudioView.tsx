@@ -11,7 +11,10 @@ const StandMode = lazy(() => import('@/features/stand/StandMode'))
 
 export function StudioView(controller: StudioController) {
   const [standOpen, setStandOpen] = useState(() => /^\/stand\/?$/.test(window.location.pathname))
+  // Only a page opened directly at /stand may start the camera by itself.
+  const [standAutoStart, setStandAutoStart] = useState(standOpen)
   const navigateStand = (open: boolean) => {
+    if (!open) setStandAutoStart(false)
     window.history.pushState(
       null,
       '',
@@ -45,7 +48,9 @@ export function StudioView(controller: StudioController) {
         <Suspense fallback={<p role="status">{controller.t('Préparation…')}</p>}>
           <StandMode
             avatar={controller.activeAvatar}
+            avatars={controller.avatars}
             reducedMotion={Boolean(controller.reduceMotion)}
+            autoStart={standAutoStart}
             onExit={() => navigateStand(false)}
           />
         </Suspense>

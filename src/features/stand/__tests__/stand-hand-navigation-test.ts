@@ -76,9 +76,10 @@ describe('visitor hand navigation', () => {
     expect(moved.rotation?.point[0]).toBeGreaterThan(moved.rotation!.start[0])
     expect(moved.activate).toBeNull()
     expect(moved.scrollDelta).toBe(0)
-    expect(h.tick(palm).rotation).toBeNull()
+    // Releases once the hand is clearly open, or lost, beyond the grace periods.
+    expect(h.run(palm, 4).at(-1)?.rotation).toBeNull()
     h.run(closed, 6)
-    expect(h.tick(null).rotation).toBeNull()
+    expect(h.run(null, 6).at(-1)?.rotation).toBeNull()
   })
   it('gives cards priority over avatar rotation and never grabs by crossing with a held fist', () => {
     const h = harness()
@@ -97,7 +98,9 @@ describe('visitor hand navigation', () => {
     h.input.visitor = null
     const frames = h.run({ ...closed, x: 0.55 }, 50)
     expect(frames.every(frame => frame.mode === 'rotating')).toBe(true)
-    expect(h.tick(null).mode).toBe('hidden')
+    // A single missed detection keeps the grip; a real loss ends it.
+    expect(h.tick(null).mode).toBe('rotating')
+    expect(h.run(null, 6).at(-1)?.mode).toBe('hidden')
     h.run(null, 20)
     expect(h.run(palm, 20).every(frame => frame.mode === 'hidden')).toBe(true)
   })
@@ -242,11 +245,51 @@ describe('visitor hand navigation', () => {
     h.run(closed, 6)
     const drag = Array.from({ length: 6 }, (_, i) => h.tick({ ...closed, y: 0.5 - i * 0.015 }))
     expect(drag.some(frame => frame.mode === 'grabbing' && frame.scrollDelta > 0)).toBe(true)
-    expect(h.tick(palm).scrollDelta).toBe(0)
+    // Opening the hand pauses at once, then lets go.
+    const opened = h.run(palm, 5)
+    expect(opened.every(frame => frame.scrollDelta === 0)).toBe(true)
+    expect(opened.at(-1)?.mode).not.toBe('grabbing')
     h.run(closed, 6)
-    expect(h.tick(null).scrollDelta).toBe(0)
+    expect(h.run(null, 8).every(frame => frame.scrollDelta === 0)).toBe(true)
     h.input.scrollBounds = { ...whole, x: 0, width: 100 }
+    h.run(palm, 5)
     expect(h.run(closed, 6).every(frame => frame.scrollDelta === 0)).toBe(true)
+  })
+  it('keeps scrolling while the classifier doubts a moving fist', () => {
+    const h = harness()
+    h.input.scrollBounds = whole
+    h.input.context = 'lexicon'
+    h.run(palm, 20)
+    h.run(closed, 6)
+    const doubt = { ...closed, gesture: 'None', confidence: 0.3 }
+    const drag = Array.from({ length: 12 }, (_, i) =>
+      h.tick({ ...(i % 3 === 1 ? doubt : closed), y: 0.5 - i * 0.012 })
+    )
+    expect(drag.every(frame => frame.mode === 'grabbing')).toBe(true)
+    expect(drag.filter((_, i) => i % 3 === 1).some(frame => frame.scrollDelta > 0)).toBe(true)
+    // Doubt that lasts ends the grip.
+    expect(h.run(doubt, 10).at(-1)?.mode).not.toBe('grabbing')
+  })
+  it('resumes the same drag when the hand closes again within the grace period', () => {
+    const h = harness()
+    h.input.scrollBounds = whole
+    h.input.context = 'lexicon'
+    h.run(palm, 20)
+    h.run(closed, 6)
+    expect(h.tick(palm).mode).toBe('grabbing')
+    const resumed = Array.from({ length: 5 }, (_, i) => h.tick({ ...closed, y: 0.5 - i * 0.015 }))
+    expect(resumed.every(frame => frame.mode === 'grabbing')).toBe(true)
+    expect(resumed.some(frame => frame.scrollDelta > 0)).toBe(true)
+  })
+  it('keeps a grip when handedness flips on the fist, and accepts a less certain fist', () => {
+    const h = harness()
+    h.input.scrollBounds = whole
+    h.input.context = 'lexicon'
+    h.run(palm, 20)
+    h.run({ ...closed, confidence: 0.55 }, 6)
+    const flipped = h.run({ ...closed, side: 'Left', y: 0.49 }, 6)
+    expect(flipped.every(frame => frame.mode === 'grabbing')).toBe(true)
+    expect(flipped.at(-1)?.sign).toEqual({ gesture: 'Closed_Fist', confidence: 0.95 })
   })
 })
 

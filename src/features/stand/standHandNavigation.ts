@@ -18,6 +18,10 @@ export type HandFrame = {
   activate: string | null
   scrollDelta: number
   pet: { strength: number; x: number; y: number }
+  // The tracked hand's classifier label and score, for diagnostics.
+  sign: { gesture: string; confidence: number } | null
+  // The control the cursor is snapped to; the drawn cursor glides onto it.
+  snap: HandRect | null
 }
 type Input = {
   at: number
@@ -37,11 +41,47 @@ const inside = (point: Landmark, rect: HandRect) =>
   point.y >= rect.y &&
   point.y <= rect.y + rect.height
 const gap = (a: Landmark, b: Landmark) => Math.hypot(a.x - b.x, a.y - b.y)
+const distanceTo = (point: Landmark, rect: HandRect) =>
+  Math.hypot(
+    Math.max(rect.x - point.x, 0, point.x - rect.x - rect.width),
+    Math.max(rect.y - point.y, 0, point.y - rect.y - rect.height)
+  )
+// Controls pull the hand cursor from a distance, which absorbs tracking jitter at 2–3 m.
+export const snapRadius = (viewport: { width: number; height: number }) =>
+  Math.min(90, viewport.height * 0.07)
+
+/**
+ * The nearest control within the snap radius. The hovered one holds on up to 1.5×
+ * the radius, and a neighbour takes over only when clearly closer. Inside the
+ * reader text, only a direct hit counts: a fist there scrolls.
+ */
+export function snapTarget(
+  point: Landmark,
+  targets: HandTarget[],
+  hovered: string | null,
+  radius: number,
+  inText: boolean
+): HandTarget | undefined {
+  if (inText) return targets.find(target => inside(point, target))
+  const ranked = targets
+    .filter(target => distanceTo(point, target) <= radius * (target.id === hovered ? 1.5 : 1))
+    .sort((a, b) => distanceTo(point, a) - distanceTo(point, b))
+  const current = ranked.find(target => target.id === hovered)
+  const best = ranked[0]
+  return current && distanceTo(point, best) + radius * 0.25 >= distanceTo(point, current)
+    ? current
+    : best
+}
 const open = (hand: ObservedHand) => hand.open && (hand.confidence ?? 1) >= 0.55
 // Landmark detection is independent of the gesture classifier: a relaxed hand
 // often has a valid position but no Open_Palm label.
 const pointing = (hand: ObservedHand) => open(hand) || !hand.gesture || hand.gesture === 'None'
-const fist = (hand: ObservedHand) => hand.gesture === 'Closed_Fist' && (hand.confidence ?? 0) >= 0.6
+const fist = (hand: ObservedHand) => hand.gesture === 'Closed_Fist' && (hand.confidence ?? 0) >= 0.5
+// The classifier often doubts a moving fist for a frame or two. A held grip ends
+// only on a clearly open hand, on doubt that lasts, or when the hand is lost.
+export const GRIP_RELEASE_OPEN_MS = 150
+export const GRIP_RELEASE_DOUBT_MS = 400
+export const GRIP_GAP_MS = 250
 export const HAND_POINTER_GAIN = 1.4
 
 // Comfort-sized camera-space rectangle follows the visitor at acquisition, then
@@ -61,6 +101,23 @@ export function projectHand(
   return {
     x: clamp(x, 0, 1) * (viewport.width - inset * 2) + inset,
     y: clamp(y, 0, 1) * (viewport.height - inset * 2) + inset,
+  }
+}
+
+/** Inverse of `projectHand`, used by the stand simulator to place a synthetic hand. */
+export function unprojectHand(
+  point: Landmark,
+  origin: Visitor,
+  mirror: boolean,
+  viewport: Input['viewport']
+) {
+  const span = clamp(origin.width * 5, 0.42, 0.72)
+  const inset = Math.min(36, viewport.width * 0.08, viewport.height * 0.08)
+  const x = clamp((point.x - inset) / (viewport.width - inset * 2), 0, 1)
+  const y = clamp((point.y - inset) / (viewport.height - inset * 2), 0, 1)
+  return {
+    x: origin.x + (((x - 0.5) * span) / HAND_POINTER_GAIN) * (mirror ? -1 : 1),
+    y: origin.y + span * 0.245 + ((y - 0.5) * span * 1.05) / HAND_POINTER_GAIN,
   }
 }
 
@@ -102,10 +159,14 @@ export function createHandNavigation() {
     canDrag: boolean
     at: number
     observedAt: number
+    // A fist seen in a later observation too: a single frame never acts.
+    confirmed: boolean
     consumed: boolean
     avatar: HandRect | null
     start: Landmark
   } | null = null
+  let loosenedAt: number | null = null
+  let held: HandFrame | null = null
   let strokes: { at: number; distance: number }[] = [],
     lastPetPoint: Landmark | null = null,
     petSince = 0
@@ -115,6 +176,8 @@ export function createHandNavigation() {
     openedAt = null
     gripArmed = false
     grip = null
+    loosenedAt = null
+    held = null
     strokes = []
     lastPetPoint = null
   }
@@ -140,7 +203,14 @@ export function createHandNavigation() {
         activate: null,
         scrollDelta: 0,
         pet: { strength: 0, x: 0, y: 0 },
+        sign: null,
+        snap: null,
       }
+      // While gripping, a brief detection gap keeps the grip where it was.
+      const bridge = () =>
+        grip && held && at - lastHandAt < GRIP_GAP_MS
+          ? { ...held, activate: null, scrollDelta: 0 }
+          : result
       const dt = clamp(at - previousAt, 0, 100)
       previousAt = at
       const layoutKey = `${viewport.width}:${viewport.height}`
@@ -183,11 +253,18 @@ export function createHandNavigation() {
         )
         const hand = active
           ? nearby
-              .filter(hand => hand.side === active!.side && gap(hand, active!) < 0.2)
+              .filter(hand =>
+                hand.side === active!.side
+                  ? gap(hand, active!) < 0.2
+                  : // Handedness often flips on a fist: same place, same hand.
+                    (grip !== null || fist(hand)) && gap(hand, active!) < 0.06
+              )
               .sort((a, b) => gap(a, active!) - gap(b, active!))[0]
           : nearby.filter(pointing).sort((a, b) => gap(a, visitor!) - gap(b, visitor!))[0]
         if (!hand) {
           candidateSide = ''
+          const bridged = bridge()
+          if (bridged !== result) return bridged
           resetActions()
           if (at - lastHandAt > 700) resetHand()
           return result
@@ -206,7 +283,8 @@ export function createHandNavigation() {
         active = hand
       }
       // Missing hand in a fresh frame must remain hidden on subsequent render ticks.
-      if (!active || !origin || !observation.hands.includes(active)) return result
+      if (!active || !origin) return result
+      if (!observation.hands.includes(active)) return bridge()
       const projected = projectHand(active, origin, mirror, viewport)
       point = {
         x: point.x + (projected.x - point.x) * (1 - Math.exp(-dt / 65)),
@@ -214,16 +292,25 @@ export function createHandNavigation() {
       }
       result.point = point
       result.mode = 'moving'
+      result.sign = { gesture: active.gesture ?? 'None', confidence: active.confidence ?? 0 }
       if (at < blockUntil) return result
-      const target = input.targets.find(target => inside(point, target))
-      if (fist(active)) {
+      const target = snapTarget(
+        point,
+        input.targets,
+        hover,
+        snapRadius(viewport),
+        Boolean(input.scrollBounds && inside(point, input.scrollBounds))
+      )
+      const holdGrip = (closed: boolean, target: HandTarget | undefined): HandFrame => {
         result.mode = 'closed'
-        openedAt = null
         lastPetPoint = null
         strokes = []
+        // Opening during the grace period already counts towards the next click.
+        if (closed || !pointing(active!)) openedAt = null
+        else openedAt ??= at
         // A closure chooses one action. A click cannot turn into a drag, and a
         // held drag cannot click a button it happens to cross.
-        if (!grip && gripArmed) {
+        if (closed && !grip && gripArmed) {
           grip = {
             target: target?.id ?? null,
             avatar:
@@ -234,11 +321,13 @@ export function createHandNavigation() {
             canDrag: Boolean(input.scrollBounds && inside(point, input.scrollBounds)),
             at,
             observedAt: observation.timestamp,
+            confirmed: false,
             consumed: false,
           }
         }
         gripArmed = false
         if (!grip) return result
+        if (closed && observation.timestamp > grip.observedAt) grip.confirmed = true
         if (grip.target) {
           if (target?.id !== grip.target) {
             grip.consumed = true
@@ -247,14 +336,15 @@ export function createHandNavigation() {
           }
           hover = grip.target
           result.hover = grip.target
-          if (!grip.consumed && at - grip.at >= 120 && observation.timestamp > grip.observedAt) {
+          result.snap = target
+          if (closed && grip.confirmed && !grip.consumed && at - grip.at >= 120) {
             result.activate = grip.target
             grip.consumed = true
           }
           return result
         }
         hover = null
-        if (grip.avatar && at - grip.at >= 120 && observation.timestamp > grip.observedAt) {
+        if (grip.avatar && grip.confirmed && at - grip.at >= 120) {
           const bounds = grip.avatar
           const project = (p: Landmark): readonly [number, number] => [
             ((p.x - bounds.x) / bounds.width - 0.5) * 300,
@@ -264,15 +354,34 @@ export function createHandNavigation() {
           result.rotation = { at: grip.at, start: project(grip.start), point: project(point) }
           return result
         }
-        if (grip.canDrag && input.scrollBounds && at - grip.at >= 180) {
+        if (grip.canDrag && grip.confirmed && input.scrollBounds && at - grip.at >= 180) {
           result.mode = 'grabbing'
+          // A clearly open hand pauses the drag until it closes again or lets go.
+          if (!closed && open(active!)) {
+            dragY = null
+            return result
+          }
           if (dragY !== null) result.scrollDelta = clamp((dragY - point.y) * 1.5, -100, 100)
           dragY = point.y
         }
         return result
       }
+      const closed = fist(active)
+      if (closed) loosenedAt = null
+      else if (grip) loosenedAt ??= at
+      const holding =
+        closed ||
+        (grip !== null &&
+          loosenedAt !== null &&
+          at - loosenedAt < (open(active) ? GRIP_RELEASE_OPEN_MS : GRIP_RELEASE_DOUBT_MS))
+      if (holding) {
+        held = holdGrip(closed, target)
+        return held
+      }
       dragY = null
       grip = null
+      loosenedAt = null
+      held = null
       if (!pointing(active)) {
         resetActions()
         return result
@@ -284,6 +393,7 @@ export function createHandNavigation() {
         lastPetPoint = null
         hover = target.id
         result.hover = target.id
+        result.snap = target
         result.mode = 'selecting'
         return result
       }

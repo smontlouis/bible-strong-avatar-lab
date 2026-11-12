@@ -10,9 +10,9 @@ import type {
   StandObservation,
 } from './standDirector'
 import type { CameraStatus } from './standCamera'
-import type { StandCue } from './standEncounter'
+import { collectionActions, type StandCue } from './standEncounter'
 import { invitationCopy } from './standCopy'
-import type { HandMode } from './standHandNavigation'
+import type { HandFrame, HandMode } from './standHandNavigation'
 
 type Props = {
   video: RefObject<HTMLVideoElement | null>
@@ -28,6 +28,7 @@ type Props = {
   compact?: boolean
   sourceVideo?: RefObject<HTMLVideoElement | null>
   handMode: HandMode
+  handSign?: RefObject<HandFrame['sign']>
 }
 const signals = [
   ['eyeBlinkLeft', 'Œil gauche fermé'],
@@ -58,6 +59,7 @@ export function StandDiagnostics(props: Props) {
     attention: ReturnType<ReturnType<typeof createStandDirector>['inspect']>
     fps: number | null
     camera: string
+    sign: HandFrame['sign']
   } | null>(null)
   const read = useEffectEvent(() => ({ ...props, overlay }))
 
@@ -176,6 +178,7 @@ export function StandDiagnostics(props: Props) {
           attention,
           fps: observation ? fps : null,
           camera: camera?.getVideoTracks()[0]?.label ?? '',
+          sign: current.handSign?.current ?? null,
         })
       }
     }
@@ -213,7 +216,9 @@ export function StandDiagnostics(props: Props) {
         </div>
         <div>
           <span>{t('Interactions découvertes')}</span>
-          <strong>{target ? attention?.discoveries : '—'} / 4</strong>
+          <strong>
+            {target ? attention?.discoveries : '—'} / {collectionActions.length}
+          </strong>
         </div>
         <div>
           <span>{t('Inclinaison du visage')}</span>
@@ -234,6 +239,12 @@ export function StandDiagnostics(props: Props) {
               }[props.handMode]
             )}
           </strong>
+          {snapshot?.sign && props.handMode !== 'hidden' && (
+            <small>
+              {t(gestures[snapshot.sign.gesture] ?? 'Geste non reconnu')} ·{' '}
+              {Math.round(snapshot.sign.confidence * 100)} %
+            </small>
+          )}
         </div>
         <div>
           <span>{t('Geste en cours de validation')}</span>

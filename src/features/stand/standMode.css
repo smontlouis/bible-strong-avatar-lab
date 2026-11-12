@@ -144,7 +144,7 @@
 .stand-proximity > span {
   font-size: 12px;
 }
-.stand-proximity > div:last-child {
+.stand-proximity > div:last-of-type {
   display: flex;
   justify-content: space-between;
   color: #64707e;
@@ -430,7 +430,7 @@
 }
 .stand-calibration {
   grid-column: 2;
-  grid-row: 1 / 3;
+  grid-row: 1 / 5;
 }
 .stand-panel .stand-start {
   width: auto;
@@ -505,75 +505,6 @@
   }
 }
 
-/* A quiet stage with a large, readable invitation for people standing 1–2 m away. */
-.stand-presenting .stand-scene {
-  height: 77dvh;
-  min-height: 0;
-}
-.stand-presenting .stand-avatar {
-  width: min(92vw, 88dvh);
-  height: min(92vw, 88dvh);
-}
-.stand-invitation {
-  position: absolute;
-  left: 24px;
-  right: 24px;
-  bottom: max(4dvh, 20px);
-  text-align: center;
-  color: #f5f3ed;
-  pointer-events: none;
-}
-.stand-invitation-name {
-  margin-bottom: 14px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #b9f87a;
-}
-.stand-invitation-message {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  animation: stand-invitation-arrive 450ms ease-out both;
-}
-.stand-invitation-title {
-  margin: 0;
-  font-size: clamp(28px, 3.5vw, 60px);
-  font-weight: 650;
-  line-height: 1.15;
-  letter-spacing: -0.035em;
-  text-wrap: balance;
-}
-.stand-invitation-hint {
-  margin: 12px 0 0;
-  color: #aebac9;
-  font-size: clamp(16px, 1.6vw, 26px);
-  line-height: 1.4;
-  text-wrap: balance;
-}
-.stand-invitation-icon {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: clamp(54px, 5vw, 84px);
-  aspect-ratio: 1;
-  border: 1px solid #b9f87a40;
-  border-radius: 24px;
-  color: #b9f87a;
-  transform: rotate(-7deg);
-}
-.stand-invitation-icon svg {
-  width: 52%;
-  height: 52%;
-  stroke-width: 1.7;
-}
-.stand-invitation[data-reply='true'] .stand-invitation-icon {
-  background: #b9f87a;
-  color: #182619;
-  transform: rotate(7deg);
-}
 .stand-encounter-diagnostics {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr;
@@ -589,7 +520,8 @@
   align-content: start;
   font-size: 12px;
 }
-.stand-encounter-diagnostics span {
+.stand-encounter-diagnostics span,
+.stand-encounter-diagnostics small {
   color: #596866;
   font-size: 10px;
 }
@@ -605,61 +537,12 @@
   flex: 1;
   min-width: 40px;
 }
-@keyframes stand-invitation-arrive {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 @media (max-width: 760px) {
-  .stand-presenting .stand-scene {
-    height: 68dvh;
-  }
-  .stand-invitation {
-    left: 18px;
-    right: 18px;
-    bottom: 6dvh;
-  }
-  .stand-invitation-message {
-    gap: 14px;
-  }
-  .stand-invitation-icon {
-    width: 44px;
-    border-radius: 14px;
-  }
   .stand-encounter-diagnostics {
     grid-template-columns: 1fr 1fr;
   }
   .stand-encounter-diagnostics > div:first-child {
     grid-column: 1 / -1;
-  }
-}
-@media (max-height: 520px) and (min-width: 761px) {
-  .stand-invitation-name {
-    display: none;
-  }
-  .stand-invitation-title {
-    font-size: 28px;
-  }
-  .stand-invitation-hint {
-    font-size: 16px;
-    margin-top: 6px;
-  }
-  .stand-invitation-icon {
-    width: 44px;
-    border-radius: 14px;
-  }
-}
-.stand-mode[data-reduced-motion='true'] .stand-invitation-message {
-  animation: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .stand-invitation-message {
-    animation: none;
   }
 }
 
@@ -714,6 +597,25 @@
   background: transparent;
   padding: 0;
 }
-.stand-debug-preview .stand-encounter-diagnostics span {
+.stand-debug-preview .stand-encounter-diagnostics span,
+.stand-debug-preview .stand-encounter-diagnostics small {
   color: #cbd5e1;
+}
+
+.stand-companion-picker {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+}
+.stand-companion-picker > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.stand-companion-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #0003;
 }

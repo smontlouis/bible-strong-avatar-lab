@@ -1,14 +1,25 @@
 import { motion, useMotionValue } from 'motion/react'
 import { useEffect, useEffectEvent, useState, type RefObject } from 'react'
+import { useStudioLanguage } from '@/i18n'
 import type { createStandDirector, StandObservation } from './standDirector'
+import type { createParticleField } from './standParticles'
+import { fistPath, openHandPath } from './StandPictogram'
 import {
   createHandNavigation,
+  type HandFrame,
   type HandMode,
   type HandRect,
   type HandTarget,
 } from './standHandNavigation'
 
 export type HandStatus = { mode: HandMode; hover: string | null }
+
+// A short hint that travels with the cursor, where the visitor is already looking.
+const cursorHints: Partial<Record<HandMode, string>> = {
+  selecting: 'Ferme le poing',
+  closed: 'Rouvre la main',
+  grabbing: 'Glisse pour défiler',
+}
 
 export function StandHands({
   root,
@@ -19,6 +30,9 @@ export function StandHands({
   enabled,
   onAction,
   onStatus,
+  particles,
+  reducedMotion,
+  sign,
 }: {
   root: RefObject<HTMLElement | null>
   observation: RefObject<StandObservation | null>
@@ -28,18 +42,35 @@ export function StandHands({
   enabled: boolean
   onAction: (action: string) => void
   onStatus: (status: HandStatus) => void
+  particles: ReturnType<typeof createParticleField>
+  reducedMotion: boolean
+  // Written every frame for the diagnostics; never React state.
+  sign?: RefObject<HandFrame['sign']>
 }) {
+  const { t } = useStudioLanguage()
   const x = useMotionValue(0),
     y = useMotionValue(0),
     opacity = useMotionValue(0)
-  const [mode, setMode] = useState<HandMode>('hidden')
-  const current = useEffectEvent(() => ({ mirror, reader, enabled, onAction, onStatus }))
+  const [cursor, setCursor] = useState<HandStatus>({ mode: 'hidden', hover: null })
+  const current = useEffectEvent(() => ({
+    mirror,
+    reader,
+    enabled,
+    onAction,
+    onStatus,
+    reducedMotion,
+  }))
   useEffect(() => {
     const navigation = createHandNavigation()
     let frame = 0,
       measuredAt = -Infinity,
       absentAt: number | null = null,
       lastVisitor = 0
+    let heartAt = -Infinity
+    // The drawn cursor glides onto a snapped control and back to the hand.
+    let pull = 0,
+      pullCenter = { x: 0, y: 0 },
+      previousAt = performance.now()
     let hadVisitor = false,
       previousMode: HandMode = 'hidden',
       previousHover: string | null = null
@@ -111,8 +142,22 @@ export function StandHands({
         context,
       })
       if (next.mode !== 'hidden') absentAt = null
-      x.set(next.point.x)
-      y.set(next.point.y)
+      if (sign) sign.current = next.sign
+      const dt = Math.min(100, Math.max(0, at - previousAt))
+      previousAt = at
+      if (next.snap)
+        pullCenter = {
+          x: next.snap.x + next.snap.width / 2,
+          y: next.snap.y + next.snap.height / 2,
+        }
+      pull += ((next.snap ? 1 : 0) - pull) * (1 - Math.exp(-dt / 45))
+      // Most of the way to the centre, so the hand still visibly moves the cursor.
+      const shown = {
+        x: next.point.x + (pullCenter.x - next.point.x) * pull * 0.85,
+        y: next.point.y + (pullCenter.y - next.point.y) * pull * 0.85,
+      }
+      x.set(shown.x)
+      y.set(shown.y)
       opacity.set(next.mode === 'hidden' || !props.enabled ? 0 : 1)
       director.setHandRotation(props.enabled ? next.rotation : null)
       director.setHandInteraction(
@@ -133,10 +178,17 @@ export function StandHands({
       if (next.mode !== previousMode || next.hover !== previousHover) {
         previousMode = next.mode
         previousHover = next.hover
-        setMode(next.mode)
+        setCursor({ mode: next.mode, hover: next.hover })
         props.onStatus({ mode: next.mode, hover: next.hover })
       }
       if (next.scrollDelta && scroller) scroller.scrollTop += next.scrollDelta
+      if (props.enabled && !props.reducedMotion) {
+        if (next.mode === 'petting' && at - heartAt > 170) {
+          heartAt = at
+          particles.burst('heart', next.point.x + (Math.random() - 0.5) * 40, next.point.y - 34)
+        }
+        if (next.activate) particles.burst('click', shown.x, shown.y)
+      }
       if (next.activate) props.onAction(next.activate)
     }
     frame = requestAnimationFrame(tick)
@@ -146,7 +198,10 @@ export function StandHands({
       director.setHandInteraction(performance.now(), false)
       current().onStatus({ mode: 'hidden', hover: null })
     }
-  }, [director, observation, root, x, y, opacity])
+  }, [director, observation, root, x, y, opacity, particles, sign])
+  const mode = cursor.mode
+  // A fist over a control is a click in progress, not a stray grip.
+  const hint = mode === 'closed' && cursor.hover ? undefined : cursorHints[mode]
   return (
     <motion.div
       className="stand-hand-cursor"
@@ -156,23 +211,16 @@ export function StandHands({
     >
       <svg viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="44" className="stand-hand-ring" />
-        {mode === 'grabbing' || mode === 'rotating' || mode === 'closed' ? (
-          <path
-            className="stand-hand-shape"
-            d="M31 52V40q0-9 8-9 6 0 7 6v-3q0-9 8-8 7 0 7 9 2-7 8-5 7 1 7 9v18q0 19-21 20-18 0-23-14l-7-10q-4-7 2-10 5-2 9 6l5 6"
-          />
-        ) : (
-          <path
-            className="stand-hand-shape"
-            d="M36 54 27 43q-5-6-10-2-4 4 1 10l14 22q6 10 22 10 21 0 23-21l3-23q1-7-5-7-6-1-7 6l-2 13 1-30q0-7-6-7-6 0-6 7l-1 28-3-34q-1-7-7-6-6 1-5 8l3 33-7-24q-2-7-8-5-6 2-4 9z"
-          />
-        )}
+        <path
+          className="stand-hand-shape"
+          d={
+            mode === 'grabbing' || mode === 'rotating' || mode === 'closed'
+              ? fistPath
+              : openHandPath
+          }
+        />
       </svg>
-      {mode === 'petting' && (
-        <span className="stand-pet-hearts">
-          ♥ <i>♥</i> ♥
-        </span>
-      )}
+      {hint && <span className="stand-hand-hint">{t(hint)}</span>}
     </motion.div>
   )
 }

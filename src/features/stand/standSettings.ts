@@ -1,18 +1,33 @@
 export const STAND_SETTINGS_KEY = 'avatar-stand-settings'
-export const defaultStandSettings = {
+export type StandSettings = {
+  cameraId: string
+  mirror: boolean
+  proximity: number
+  invitations: boolean
+  resources: boolean
+  landmarks: boolean
+  // Other characters join for additional visitors. An empty list means "the first ones".
+  companions: boolean
+  companionIds: string[]
+  // Set once the camera has run from the start button: `/stand` then starts by itself.
+  configured: boolean
+}
+export const defaultStandSettings: StandSettings = {
   cameraId: '',
   mirror: true,
   proximity: 2.2,
   invitations: true,
   resources: true,
   landmarks: true,
+  companions: true,
+  companionIds: [],
+  configured: false,
 }
-export type StandSettings = typeof defaultStandSettings
 
 export function readStandSettings(): StandSettings {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(STAND_SETTINGS_KEY) ?? 'null')
-    if (!value || typeof value !== 'object') return { ...defaultStandSettings }
+    if (!value || typeof value !== 'object') return { ...defaultStandSettings, companionIds: [] }
     const stored = value as Record<string, unknown>
     return {
       cameraId: typeof stored.cameraId === 'string' ? stored.cameraId : '',
@@ -24,9 +39,14 @@ export function readStandSettings(): StandSettings {
       invitations: typeof stored.invitations === 'boolean' ? stored.invitations : true,
       resources: typeof stored.resources === 'boolean' ? stored.resources : true,
       landmarks: typeof stored.landmarks === 'boolean' ? stored.landmarks : true,
+      companions: typeof stored.companions === 'boolean' ? stored.companions : true,
+      companionIds: Array.isArray(stored.companionIds)
+        ? stored.companionIds.filter((id): id is string => typeof id === 'string').slice(0, 3)
+        : [],
+      configured: stored.configured === true,
     }
   } catch {
-    return { ...defaultStandSettings }
+    return { ...defaultStandSettings, companionIds: [] }
   }
 }
 
