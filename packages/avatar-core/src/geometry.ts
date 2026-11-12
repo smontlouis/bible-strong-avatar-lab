@@ -87,6 +87,8 @@ export type AvatarGeometry = {
   frontPaths: string[]
   backNodeIds: (string | null)[]
   frontNodeIds: (string | null)[]
+  /** One clip per front path, in the same order. Empty when the path is drawn whole. */
+  frontClipPaths: string[]
   headPath: string
   leftPath: string
   rightPath: string
@@ -101,6 +103,15 @@ export type AvatarGeometry = {
 export type RenderAvatarOptions = {
   includeWire?: boolean
   bodyNodes?: BodyNode[]
+  /**
+   * How a body node meets the head. `layer`, the default, draws each node wholly behind or wholly
+   * in front of it. `mask` draws every node behind the head, and draws again in front the part
+   * of a node that is nearer than the head's surface. A renderer clips a front path that has a
+   * `frontClipPaths` entry by that entry and by the head path.
+   */
+  nodeOcclusion?: 'layer' | 'mask'
+  /** The body's colour, for `mask`: a node of that colour, or of none, is not measured. */
+  bodyColor?: string
   eyeOffset?: Readonly<{ x: number; y: number }>
 }
 
@@ -1539,6 +1550,386 @@ const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[]) => {
     frontPaths: layers.filter(layer => layer.front).map(layer => layer.path),
     backNodeIds: layers.filter(layer => !layer.front).map(layer => layer.id),
     frontNodeIds: layers.filter(layer => layer.front).map(layer => layer.id),
+    frontClipPaths: layers.filter(layer => layer.front).map(() => ''),
+  }
+}
+
+// Occlusion masks. A node and the head are both convex, so along one line of sight each has one
+// front surface. Where the two overlap on screen, the node is visible only where its front
+// surface is the nearer one. Both depths are sampled on a coarse lattice fixed in screen space,
+// and the border of the visible region is traced between the samples: the node keeps its exact
+// outline, only the line where it sinks into the head comes from the lattice.
+
+const OCCLUSION_CELL = 4
+const OCCLUSION_MARGIN_CELLS = 2
+const HEAD_DEPTH_ROWS = 17
+const HEAD_DEPTH_COLUMNS = 33
+const NODE_DEPTH_ROWS = 9
+const NODE_DEPTH_COLUMNS = 17
+const depthSamplesCache = new Map<string, Point3[]>()
+
+const depthSamples = (surface: SurfaceConfig, rows: number, columns: number) => {
+  const key = `${surfaceCacheKey(surface)}:${rows}x${columns}`
+  let samples = depthSamplesCache.get(key)
+  if (!samples) {
+    samples = []
+    for (let row = 0; row < rows; row += 1) {
+      const latitude = -Math.PI / 2 + (row / (rows - 1)) * Math.PI
+      for (let column = 0; column < columns; column += 1) {
+        const longitude = -Math.PI + (column / (columns - 1)) * Math.PI * 2
+        samples.push(surfacePointAt(surface, longitude, latitude))
+      }
+    }
+    cacheSurfaceValue(depthSamplesCache, key, samples)
+  }
+  return samples
+}
+
+type DepthSurface = {
+  points: Point3[]
+  rows: number
+  columns: number
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+}
+
+const depthSurface = (points: Point3[], rows: number, columns: number): DepthSurface => {
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (const point of points) {
+    if (point[0] < minX) minX = point[0]
+    if (point[0] > maxX) maxX = point[0]
+    if (point[1] < minY) minY = point[1]
+    if (point[1] > maxY) maxY = point[1]
+  }
+  return { points, rows, columns, minX, maxX, minY, maxY }
+}
+
+const headDepthSurface = (pose: AvatarPose, surface: SurfaceConfig) =>
+  depthSurface(
+    depthSamples(surface, HEAD_DEPTH_ROWS, HEAD_DEPTH_COLUMNS).map(point =>
+      projectPosePoint(pose, point)
+    ),
+    HEAD_DEPTH_ROWS,
+    HEAD_DEPTH_COLUMNS
+  )
+
+const nodeDepthSurface = (pose: AvatarPose, node: BodyNode) => {
+  const localOrientation = quaternionFromEuler(
+    radians(node.rotation[0]),
+    radians(node.rotation[1]),
+    radians(node.rotation[2])
+  )
+  return depthSurface(
+    depthSamples(node.surface, NODE_DEPTH_ROWS, NODE_DEPTH_COLUMNS).map(point => {
+      const rotated = rotateWithQuaternion(localOrientation, point)
+      return projectPosePoint(pose, [
+        rotated[0] + node.position[0],
+        rotated[1] + node.position[1],
+        rotated[2] + node.position[2],
+      ])
+    }),
+    NODE_DEPTH_ROWS,
+    NODE_DEPTH_COLUMNS
+  )
+}
+
+/** The nearest depth of a surface at every point of the lattice it covers; NaN elsewhere. */
+const sampleFrontDepth = (
+  surface: DepthSurface,
+  originX: number,
+  originY: number,
+  columns: number,
+  rows: number
+) => {
+  const depths = new Float64Array(columns * rows).fill(Number.NaN)
+  const { points } = surface
+  const triangle = (a: Point3, b: Point3, c: Point3) => {
+    const area = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    if (Math.abs(area) < 1e-9) return
+    const firstColumn = Math.max(
+      0,
+      Math.ceil((Math.min(a[0], b[0], c[0]) - originX) / OCCLUSION_CELL)
+    )
+    const lastColumn = Math.min(
+      columns - 1,
+      Math.floor((Math.max(a[0], b[0], c[0]) - originX) / OCCLUSION_CELL)
+    )
+    if (firstColumn > lastColumn) return
+    const firstRow = Math.max(0, Math.ceil((Math.min(a[1], b[1], c[1]) - originY) / OCCLUSION_CELL))
+    const lastRow = Math.min(
+      rows - 1,
+      Math.floor((Math.max(a[1], b[1], c[1]) - originY) / OCCLUSION_CELL)
+    )
+    for (let row = firstRow; row <= lastRow; row += 1) {
+      const y = originY + row * OCCLUSION_CELL
+      for (let column = firstColumn; column <= lastColumn; column += 1) {
+        const x = originX + column * OCCLUSION_CELL
+        const weightA = ((b[0] - x) * (c[1] - y) - (b[1] - y) * (c[0] - x)) / area
+        const weightB = ((c[0] - x) * (a[1] - y) - (c[1] - y) * (a[0] - x)) / area
+        const weightC = 1 - weightA - weightB
+        if (weightA < -1e-6 || weightB < -1e-6 || weightC < -1e-6) continue
+        const depth = a[2] * weightA + b[2] * weightB + c[2] * weightC
+        const index = row * columns + column
+        // The back of the surface covers the same points: the nearer depth is its front.
+        if (!(depths[index] >= depth)) depths[index] = depth
+      }
+    }
+  }
+  for (let row = 0; row < surface.rows - 1; row += 1) {
+    for (let column = 0; column < surface.columns - 1; column += 1) {
+      const index = row * surface.columns + column
+      const a = points[index]
+      const b = points[index + 1]
+      const c = points[index + surface.columns]
+      const d = points[index + surface.columns + 1]
+      if (
+        Math.max(a[0], b[0], c[0], d[0]) < originX ||
+        Math.max(a[1], b[1], c[1], d[1]) < originY ||
+        Math.min(a[0], b[0], c[0], d[0]) > originX + (columns - 1) * OCCLUSION_CELL ||
+        Math.min(a[1], b[1], c[1], d[1]) > originY + (rows - 1) * OCCLUSION_CELL
+      ) {
+        continue
+      }
+      triangle(a, b, c)
+      triangle(b, d, c)
+    }
+  }
+  return depths
+}
+
+/** A copy of `depths` where each point one step off the surface takes the farthest depth next to it. */
+const depthPastOutline = (depths: Float64Array, columns: number, rows: number) => {
+  const past = new Float64Array(depths)
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const index = row * columns + column
+      if (!Number.isNaN(depths[index])) continue
+      let farthest = Number.NaN
+      for (let rowStep = -1; rowStep <= 1; rowStep += 1) {
+        const nextRow = row + rowStep
+        if (nextRow < 0 || nextRow >= rows) continue
+        for (let step = -1; step <= 1; step += 1) {
+          const nextColumn = column + step
+          if (nextColumn < 0 || nextColumn >= columns) continue
+          const around = depths[nextRow * columns + nextColumn]
+          if (!(around >= farthest)) farthest = Number.isNaN(around) ? farthest : around
+        }
+      }
+      past[index] = farthest
+    }
+  }
+  return past
+}
+
+/** Closed paths around the lattice region where `values` is positive. */
+const positiveRegionPath = (
+  values: Float64Array,
+  originX: number,
+  originY: number,
+  columns: number,
+  rows: number
+) => {
+  // Each crossing sits on a lattice edge. Edges are numbered: horizontal ones first.
+  const horizontalEdges = (columns - 1) * rows
+  const crossing = (edge: number): [number, number] => {
+    if (edge < horizontalEdges) {
+      const row = Math.floor(edge / (columns - 1))
+      const column = edge % (columns - 1)
+      const from = values[row * columns + column]
+      const to = values[row * columns + column + 1]
+      return [
+        originX + (column + from / (from - to)) * OCCLUSION_CELL,
+        originY + row * OCCLUSION_CELL,
+      ]
+    }
+    const vertical = edge - horizontalEdges
+    const row = Math.floor(vertical / columns)
+    const column = vertical % columns
+    const from = values[row * columns + column]
+    const to = values[(row + 1) * columns + column]
+    return [
+      originX + column * OCCLUSION_CELL,
+      originY + (row + from / (from - to)) * OCCLUSION_CELL,
+    ]
+  }
+  const next = new Map<number, number>()
+  for (let row = 0; row < rows - 1; row += 1) {
+    for (let column = 0; column < columns - 1; column += 1) {
+      const topLeft = values[row * columns + column] > 0 ? 1 : 0
+      const topRight = values[row * columns + column + 1] > 0 ? 1 : 0
+      const bottomLeft = values[(row + 1) * columns + column] > 0 ? 1 : 0
+      const bottomRight = values[(row + 1) * columns + column + 1] > 0 ? 1 : 0
+      const mask = topLeft | (topRight << 1) | (bottomRight << 2) | (bottomLeft << 3)
+      if (mask === 0 || mask === 15) continue
+      const top = row * (columns - 1) + column
+      const bottom = (row + 1) * (columns - 1) + column
+      const left = horizontalEdges + row * columns + column
+      const right = horizontalEdges + row * columns + column + 1
+      // Segments run with the positive region on their left, so that loops chain end to end.
+      const link = (from: number, to: number) => next.set(from, to)
+      switch (mask) {
+        case 1:
+          link(top, left)
+          break
+        case 2:
+          link(right, top)
+          break
+        case 3:
+          link(right, left)
+          break
+        case 4:
+          link(bottom, right)
+          break
+        case 5:
+          link(top, left)
+          link(bottom, right)
+          break
+        case 6:
+          link(bottom, top)
+          break
+        case 7:
+          link(bottom, left)
+          break
+        case 8:
+          link(left, bottom)
+          break
+        case 9:
+          link(top, bottom)
+          break
+        case 10:
+          link(right, top)
+          link(left, bottom)
+          break
+        case 11:
+          link(right, bottom)
+          break
+        case 12:
+          link(left, right)
+          break
+        case 13:
+          link(top, right)
+          break
+        default:
+          link(left, top)
+      }
+    }
+  }
+  let result = ''
+  while (next.size > 0) {
+    const start = next.keys().next().value as number
+    const loop: [number, number][] = []
+    let edge: number | undefined = start
+    while (edge !== undefined && next.has(edge)) {
+      loop.push(crossing(edge))
+      const following: number = next.get(edge)!
+      next.delete(edge)
+      edge = following
+    }
+    if (loop.length < 3) continue
+    // Through the middle of each side, bending at each crossing: no corner of the lattice shows.
+    const middle = (index: number) => {
+      const from = loop[index % loop.length]
+      const to = loop[(index + 1) % loop.length]
+      return `${((from[0] + to[0]) / 2).toFixed(2)} ${((from[1] + to[1]) / 2).toFixed(2)}`
+    }
+    result += `M${middle(loop.length - 1)}`
+    for (let index = 0; index < loop.length; index += 1) {
+      result += `Q${loop[index][0].toFixed(2)} ${loop[index][1].toFixed(2)} ${middle(index)}`
+    }
+    result += 'Z'
+  }
+  return result
+}
+
+/** Where a node is nearer than the head: the clip of the copy drawn in front. Empty if nowhere. */
+const nodeFrontClipPath = (head: DepthSurface, node: DepthSurface) => {
+  const minX = Math.max(head.minX, node.minX)
+  const maxX = Math.min(head.maxX, node.maxX)
+  const minY = Math.max(head.minY, node.minY)
+  const maxY = Math.min(head.maxY, node.maxY)
+  if (minX >= maxX || minY >= maxY) return ''
+  // The lattice is fixed in screen space: a border does not shimmer as the node moves over it.
+  const firstColumn = Math.floor(minX / OCCLUSION_CELL) - OCCLUSION_MARGIN_CELLS
+  const firstRow = Math.floor(minY / OCCLUSION_CELL) - OCCLUSION_MARGIN_CELLS
+  const columns = Math.ceil(maxX / OCCLUSION_CELL) + OCCLUSION_MARGIN_CELLS - firstColumn + 1
+  const rows = Math.ceil(maxY / OCCLUSION_CELL) + OCCLUSION_MARGIN_CELLS - firstRow + 1
+  const originX = firstColumn * OCCLUSION_CELL
+  const originY = firstRow * OCCLUSION_CELL
+  const headDepth = sampleFrontDepth(head, originX, originY, columns, rows)
+  const nodeDepth = sampleFrontDepth(node, originX, originY, columns, rows)
+  // At its outline a surface turns away and its depth falls steeply. One lattice step past each
+  // outline, the surface is given the depth it has at the outline: the difference of the two
+  // depths then stays a continuous field across both outlines, and the line where the node
+  // sinks into the head is traced as one smooth curve, even where it runs along an outline.
+  const headPast = depthPastOutline(headDepth, columns, rows)
+  const nodePast = depthPastOutline(nodeDepth, columns, rows)
+  // Further out there is nothing to measure. Past the head the copy in front may show, as the
+  // head's exact outline clips it; past the node it has nothing to show.
+  const PAST_HEAD = 1e-3
+  const PAST_NODE = -0.05
+  const shown = new Float64Array(columns * rows)
+  let visible = false
+  for (let index = 0; index < shown.length; index += 1) {
+    const onNode = !Number.isNaN(nodeDepth[index])
+    if (Number.isNaN(nodePast[index])) {
+      shown[index] = PAST_NODE
+    } else if (Number.isNaN(headPast[index])) {
+      shown[index] = onNode ? PAST_HEAD : PAST_NODE
+    } else {
+      shown[index] = nodePast[index] - headPast[index]
+      if (onNode && !Number.isNaN(headDepth[index]) && shown[index] > 0) visible = true
+    }
+  }
+  if (!visible) return ''
+  // The lattice stops where the two outlines stop meeting: close the region on its last ring.
+  for (let column = 0; column < columns; column += 1) {
+    shown[column] = -1
+    shown[(rows - 1) * columns + column] = -1
+  }
+  for (let row = 0; row < rows; row += 1) {
+    shown[row * columns] = -1
+    shown[row * columns + columns - 1] = -1
+  }
+  return positiveRegionPath(shown, originX, originY, columns, rows)
+}
+
+const maskedAccessoryLayers = (
+  pose: AvatarPose,
+  surface: SurfaceConfig,
+  nodes: BodyNode[],
+  bodyColor: string | undefined
+) => {
+  // Two shapes of one colour merge into one flat area: which is in front cannot be seen. Only a
+  // node of another colour than the body is measured against the head; the others keep the
+  // plain rule, wholly behind or wholly in front, which costs nothing.
+  let head: DepthSurface | undefined
+  const layers = nodes
+    .map(node => {
+      const depth = rotateWithQuaternion(pose.orientation, node.position)[2]
+      const path = accessoryPath(pose, node)
+      if (node.color === undefined || node.color === bodyColor) {
+        const front =
+          depth > accessoryCameraDepthRadius(pose, node) * ACCESSORY_FRONT_CROSSING_RATIO
+        return { id: node.id, path, depth, back: !front, front, clip: '' }
+      }
+      head ??= headDepthSurface(pose, surface)
+      const clip = nodeFrontClipPath(head, nodeDepthSurface(pose, node))
+      return { id: node.id, path, depth, back: true, front: clip !== '', clip }
+    })
+    .sort((left, right) => left.depth - right.depth)
+  const back = layers.filter(layer => layer.back)
+  const front = layers.filter(layer => layer.front)
+  return {
+    backPaths: back.map(layer => layer.path),
+    frontPaths: front.map(layer => layer.path),
+    backNodeIds: back.map(layer => layer.id),
+    frontNodeIds: front.map(layer => layer.id),
+    frontClipPaths: front.map(layer => layer.clip),
   }
 }
 
@@ -1554,13 +1945,17 @@ export const renderAvatar = (
   const right = rightSamples.map(sample => sample.point)
   const nose = nosePoints(pose, surface)
   const mouth = mouthPoints(pose, surface)
-  const accessories = accessoryLayers(pose, options.bodyNodes ?? [])
+  const accessories =
+    options.nodeOcclusion === 'mask'
+      ? maskedAccessoryLayers(pose, surface, options.bodyNodes ?? [], options.bodyColor)
+      : accessoryLayers(pose, options.bodyNodes ?? [])
   const compositePaths = compositeBackPaths(pose, surface)
   return {
     backPaths: [...compositePaths, ...accessories.backPaths],
     frontPaths: accessories.frontPaths,
     backNodeIds: [...compositePaths.map(() => null), ...accessories.backNodeIds],
     frontNodeIds: accessories.frontNodeIds,
+    frontClipPaths: accessories.frontClipPaths,
     headPath: headPath(pose, surface),
     leftPath: path(left),
     rightPath: path(right),

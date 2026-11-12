@@ -449,6 +449,8 @@ export function useStudioController() {
       includeWire: showWireRef.current || highlightRef.current === 'head',
       bodyNodes: bodyNodesRef.current,
       eyeOffset,
+      nodeOcclusion: 'mask',
+      bodyColor: renderedColors.body.get(),
     })
     paintRenderedScene(renderedScene, geometry, bodyNodesRef.current, renderedColors.body.get())
     paintRenderedOffset(

@@ -74,10 +74,19 @@ export const serializeAvatarSnapshot = (
     const value = item.get()
     return value ? [{ value, nodeId: scene.backNodeIds.current[index] }] : []
   })
+  // A front path with a clip is the part of a coloured node that is nearer than the head.
   const frontPaths = scene.frontPaths.flatMap((item, index) => {
     const value = item.get()
-    return value ? [{ value, nodeId: scene.frontNodeIds.current[index] }] : []
+    const clip = scene.frontClipPaths[index]?.get() ?? ''
+    return value ? [{ value, nodeId: scene.frontNodeIds.current[index], clip, index }] : []
   })
+  const frontClips = frontPaths
+    .filter(item => item.clip)
+    .map(
+      item =>
+        `<clipPath id="snapshot-front-clip-${item.index}" clip-path="url(#snapshot-head-clip)"><path d="${escapeXml(item.clip)}"/></clipPath>`
+    )
+    .join('')
   const nodeColor = (nodeId: string | null | undefined) =>
     bodyNodes.find(node => node.id === nodeId)?.color ?? colors.body
   const offsetX = scene.offsetX.get()
@@ -99,12 +108,16 @@ export const serializeAvatarSnapshot = (
     ...backPaths.map(item => path(item.value, nodeColor(item.nodeId))),
     path(headPath, colors.body),
     `<g clip-path="url(#snapshot-head-clip)">${path(scene.leftPath.get(), colors.eyes, scene.leftOpacity.get())}${path(scene.rightPath.get(), colors.eyes, scene.rightOpacity.get())}${path(scene.nosePath.get(), colors.eyes)}${mouthPath(scene.mouthPath.get(), colors.eyes, scene.mouthStrokeWidth.get())}</g>`,
-    ...frontPaths.map(item => path(item.value, nodeColor(item.nodeId))),
+    ...frontPaths.map(item =>
+      item.clip
+        ? `<g clip-path="url(#snapshot-front-clip-${item.index})">${path(item.value, nodeColor(item.nodeId))}</g>`
+        : path(item.value, nodeColor(item.nodeId))
+    ),
   ].join('')
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-150 -150 300 300" width="${options.size}" height="${options.size}" role="img" aria-label="${escapeXml(name)}">
-  <defs>${gradientMarkup(options)}<clipPath id="snapshot-frame-clip"><rect x="-150" y="-150" width="300" height="300" rx="${snapshotCornerRadius(composition.cornerRadius)}"/></clipPath><clipPath id="snapshot-head-clip"><path d="${escapeXml(headPath)}"/></clipPath></defs>
+  <defs>${gradientMarkup(options)}<clipPath id="snapshot-frame-clip"><rect x="-150" y="-150" width="300" height="300" rx="${snapshotCornerRadius(composition.cornerRadius)}"/></clipPath><clipPath id="snapshot-head-clip"><path d="${escapeXml(headPath)}"/></clipPath>${frontClips}</defs>
   <g clip-path="url(#snapshot-frame-clip)">
     ${backgroundMarkup(options)}
     <g transform="translate(${composition.x} ${composition.y}) scale(${composition.scale})"><g transform="translate(${offsetX} ${offsetY})">${body}</g></g>

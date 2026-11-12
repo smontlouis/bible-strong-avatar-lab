@@ -216,6 +216,7 @@ export function Avatar({
   const frontOutlineRefs = useRef<(SVGPathElement | null)[]>([])
   const backPathRefs = useRef<(SVGPathElement | null)[]>([])
   const frontPathRefs = useRef<(SVGPathElement | null)[]>([])
+  const frontClipRefs = useRef<(SVGPathElement | null)[]>([])
   const defaultPlaybackStarted = useRef(false)
   const completedAnimation = useRef<AnimationKey | undefined>(undefined)
   const playbackRef = useRef<CorePlaybackState | null>(null)
@@ -261,6 +262,12 @@ export function Avatar({
     frontPathRefs.current.forEach((element, index) => {
       element?.setAttribute('d', frameScene.geometry.frontPaths[index] ?? '')
       element?.setAttribute('fill', frameScene.bodyColors.front[index] ?? frameScene.colors.body)
+      // A node of another colour than the body shows in front only where it is nearer than
+      // the head: its copy in front is clipped to that region, inside the head's outline.
+      const clip = frameScene.geometry.frontClipPaths[index] ?? ''
+      frontClipRefs.current[index]?.setAttribute('d', clip)
+      if (clip) element?.setAttribute('clip-path', `url(#${clipId}-front-${index})`)
+      else element?.removeAttribute('clip-path')
     })
   }
 
@@ -557,6 +564,20 @@ export function Avatar({
     >
       <svg className="bs-avatar__svg" viewBox="-150 -150 300 300" aria-hidden="true">
         <defs>
+          {Array.from({ length: bodyPathSlots }, (_, index) => (
+            <clipPath
+              id={`${clipId}-front-${index}`}
+              clipPath={`url(#${clipId})`}
+              key={`front-clip-${index}`}
+            >
+              <path
+                ref={element => {
+                  frontClipRefs.current[index] = element
+                }}
+                d={scene.geometry.frontClipPaths[index] ?? ''}
+              />
+            </clipPath>
+          ))}
           <clipPath id={clipId}>
             <path ref={clipPathRef} d={scene.geometry.headPath} />
           </clipPath>
@@ -625,6 +646,9 @@ export function Avatar({
               frontPathRefs.current[index] = element
             }}
             d={scene.geometry.frontPaths[index] ?? ''}
+            clipPath={
+              scene.geometry.frontClipPaths[index] ? `url(#${clipId}-front-${index})` : undefined
+            }
             fill={scene.bodyColors.front[index] ?? scene.colors.body}
             key={`front-${index}`}
           />

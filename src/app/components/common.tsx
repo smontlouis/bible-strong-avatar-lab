@@ -1,5 +1,11 @@
 import { Pause, Play, Square } from 'lucide-react'
-import { motion, useMotionValue, useMotionValueEvent, useTransform } from 'motion/react'
+import {
+  motion,
+  useMotionValue,
+  useMotionValueEvent,
+  useTransform,
+  type MotionValue,
+} from 'motion/react'
 import { useEffect, useEffectEvent, useId, useRef } from 'react'
 
 import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -40,6 +46,22 @@ export function ControlSection({
       <div className="control-section-content">{children}</div>
     </section>
   )
+}
+
+/** A front body path, clipped by its own region when it is the nearer part of a coloured node. */
+function FrontBodyPath({
+  path,
+  clip,
+  clipId,
+  fill,
+}: {
+  path: MotionValue<string>
+  clip: MotionValue<string>
+  clipId: string
+  fill: MotionValue<string>
+}) {
+  const clipPath = useTransform(clip, value => (value ? `url(#${clipId})` : 'none'))
+  return <motion.path d={path} fill={fill} style={{ clipPath }} />
 }
 
 export function SnapshotPreview({
@@ -262,6 +284,15 @@ export function SnapshotPreview({
             <clipPath id={clipId}>
               <motion.path d={scene.headPath} />
             </clipPath>
+            {scene.frontClipPaths.map((clipValue, index) => (
+              <clipPath
+                id={`${clipId}-front-${index}`}
+                clipPath={`url(#${clipId})`}
+                key={`front-clip-${index}`}
+              >
+                <motion.path d={clipValue} />
+              </clipPath>
+            ))}
             <linearGradient id={linearId} x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stopColor={colorFrom} />
               <stop offset="1" stopColor={colorTo} />
@@ -311,8 +342,10 @@ export function SnapshotPreview({
                   />
                 </g>
                 {scene.frontPaths.map((pathValue, index) => (
-                  <motion.path
-                    d={pathValue}
+                  <FrontBodyPath
+                    path={pathValue}
+                    clip={scene.frontClipPaths[index]}
+                    clipId={`${clipId}-front-${index}`}
                     fill={scene.frontColors[index]}
                     key={`front-${index}`}
                   />
