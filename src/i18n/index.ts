@@ -224,8 +224,8 @@ const english: Record<string, string> = {
   'Navigateur sans bundler': 'Browser without a bundler',
   'Utilise une URL ESM via un CDN ou une import map, puis charge la définition avec fetch.':
     'Use an ESM URL through a CDN or import map, then load the definition with fetch.',
-  'Les packages sont encore privés. Cette commande fonctionnera après leur publication ; utilise le workspace ou les tarballs pour les tests locaux.':
-    'The packages are still private. This command will work after publication; use the workspace or tarballs for local testing.',
+  'Les packages sont publiés sur npm sous licence MIT. Le README de chaque package, présent dans node_modules, contient la référence complète.':
+    'The packages are published on npm under the MIT license. The README of each package, present in node_modules, holds the complete reference.',
   'API recommandée : créer un avatar concret': 'Recommended API: create a concrete avatar',
   'createAvatar valide le JSON et retourne un composant dédié dont les clés d’animations sont typées.':
     'createAvatar validates the JSON and returns a dedicated component with typed animation keys.',

@@ -188,8 +188,8 @@ export const chinese: Record<string, string> = {
   'Navigateur sans bundler': '不使用打包工具的浏览器',
   'Utilise une URL ESM via un CDN ou une import map, puis charge la définition avec fetch.':
     '通过 CDN 或 import map 使用 ESM URL，然后通过 fetch 加载定义。',
-  'Les packages sont encore privés. Cette commande fonctionnera après leur publication ; utilise le workspace ou les tarballs pour les tests locaux.':
-    '这些包目前仍为私有。发布后此命令才可使用；本地测试请使用 workspace 或 tarball。',
+  'Les packages sont publiés sur npm sous licence MIT. Le README de chaque package, présent dans node_modules, contient la référence complète.':
+    '这些包已在 npm 上发布，采用 MIT 许可证。每个包的 README（位于 node_modules 中）包含完整参考。',
   'API recommandée : créer un avatar concret': '推荐 API：创建具体头像',
   'createAvatar valide le JSON et retourne un composant dédié dont les clés d’animations sont typées.':
     'createAvatar 会验证 JSON，并返回一个动画键经过类型约束的专用组件。',

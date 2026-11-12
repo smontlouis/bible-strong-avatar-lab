@@ -50,16 +50,28 @@ This copy-on-write model lets multiple avatars share the defaults without accide
 The selected avatar and animations are stored in one portable `.avatar.json` definition. React and
 JavaScript use this exact same file, so visual behavior does not diverge between renderers.
 
-### React / TypeScript
+### Runtime packages
 
-Install `@bible-strong/avatar-react`, import the JSON and pass it to `createAvatar`. The React
-package depends on `@bible-strong/avatar-core` for validation, playback and geometry.
+Four MIT-licensed npm packages render the definition. Choose by target:
 
-### JavaScript / ESM
+| Target                       | Package                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------- |
+| React DOM, React Native Web  | [`@bible-strong/avatar-react`](./packages/avatar-react/README.md)               |
+| React Native (iOS, Android)  | [`@bible-strong/avatar-react-native`](./packages/avatar-react-native/README.md) |
+| Browser without React        | [`@bible-strong/avatar-web`](./packages/avatar-web/README.md)                   |
+| Your own renderer, or a test | [`@bible-strong/avatar-core`](./packages/avatar-core/README.md)                 |
 
-Install `@bible-strong/avatar-web` for a DOM renderer without React. The integration ZIP contains
-the same `.avatar.json`, a lightweight ESM wrapper and usage instructions; it does not copy the
-rendering engine into every avatar export. `avatar-web` also depends on `avatar-core`.
+The three renderers depend on `avatar-core` for validation, playback and geometry, and share one
+API: `createAvatar` for a definition known at build time, the same props or options, the same
+controller (`play`, `pause`, `stop`, `setExpression`, `getState`) and the same typed errors.
+
+Each package README is written to be followed step by step, by a person or by a coding agent:
+setup, a minimal example, every prop, every error with its fix, and a checklist to verify the
+integration. It ships in the npm tarball, so it is readable in `node_modules`. The Studio's
+**Export** tab copies the same instructions for React and JavaScript.
+
+The integration ZIP of the JavaScript export contains the `.avatar.json`, a lightweight ESM wrapper
+and usage instructions; it does not copy the rendering engine into every avatar export.
 
 ### Photo Mode
 
@@ -173,14 +185,21 @@ For the domain vocabulary, invariants, and architecture boundaries, read [CONTEX
 
 ## License
 
-Bible Strong Avatar Lab is licensed under the [GNU Affero General Public License v3.0](./LICENSE).
+The repository holds two things under two licenses.
 
-You may use, study, modify, and redistribute the project. If you distribute the application or a modified version, you must notably:
+| What                                                              | License                               |
+| ----------------------------------------------------------------- | ------------------------------------- |
+| The runtime packages under `packages/` (`@bible-strong/avatar-*`) | [MIT](./packages/avatar-core/LICENSE) |
+| The Studio: everything else in this repository                    | [GNU AGPL v3.0](./LICENSE)            |
 
-- make the corresponding source code available;
-- preserve the copyright and license notices;
-- distribute derivative work under the GNU AGPL v3.0;
-- make the corresponding source available when a modified version is offered to users over a network, including as a hosted web service;
-- document significant changes made to the project.
+The packages are what you install to show an avatar in your own product. Use them in any project,
+open or closed, commercial or not; keep the copyright notice.
 
-See the `LICENSE` file for the complete and legally authoritative terms.
+The Studio is the editor served at avatars.bible-strong.app. You may use, study, modify and
+redistribute it. If you distribute it or offer a modified version to users over a network, you must
+make the corresponding source available under the same license and keep the notices.
+
+What you create with the Studio is yours: an exported `.avatar.json`, the snapshots and the files
+of an integration ZIP carry no license obligation from this project.
+
+See each `LICENSE` file for the complete and legally authoritative terms.
