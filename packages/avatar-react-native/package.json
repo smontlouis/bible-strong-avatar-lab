@@ -1,6 +1,6 @@
 {
   "name": "@bible-strong/avatar-react-native",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "React Native renderer for Bible Strong procedural avatars, sampled on the UI thread.",
   "keywords": [
     "avatar",
