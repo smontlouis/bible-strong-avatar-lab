@@ -122,8 +122,6 @@ describe('@bible-strong/avatar-react', () => {
     const clipped = svg?.querySelector(':scope > path[clip-path]')
 
     expect(clip?.querySelector('path')?.getAttribute('d')).toMatch(/^M.*Z$/)
-    // The clip itself is held inside the head's outline.
-    expect(clip?.getAttribute('clip-path')).toMatch(/^url\(#.*-head\)$/)
     expect(clipped?.getAttribute('clip-path')).toBe(`url(#${clip?.id})`)
     expect(clipped?.getAttribute('fill')).toBe('#e5a15b')
 

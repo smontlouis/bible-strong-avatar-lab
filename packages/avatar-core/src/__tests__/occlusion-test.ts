@@ -83,24 +83,53 @@ describe('occlusion masks', () => {
     expect(geometry.frontPaths).toEqual([])
   })
 
-  it('shows the whole of a coloured node that stands in front of the head', () => {
+  it('draws a coloured node that stands in front of the head once, whole', () => {
     const geometry = render(node([0, 0, 140], '#e5a15b'))
-    const shown = box(geometry.frontClipPaths[0])
-    const outline = box(geometry.frontPaths[0].replaceAll(/A[^LMZ]*/g, ''))
-    // The clip reaches at least as far as the node's own outline on every side.
-    expect(shown.minX).toBeLessThanOrEqual(outline.minX + 1)
-    expect(shown.maxX).toBeGreaterThanOrEqual(outline.maxX - 1)
-    expect(shown.minY).toBeLessThan(-30)
-    expect(shown.maxY).toBeGreaterThan(30)
+    expect(geometry.backNodeIds).toEqual([])
+    expect(geometry.frontNodeIds).toEqual(['hand'])
+    expect(geometry.frontClipPaths).toEqual([''])
   })
 
-  it('moves the mask a little when the pose moves a little', () => {
-    const before = box(render(node([-100, 0, 20], '#e5a15b'), 10).frontClipPaths[0])
-    const after = box(render(node([-100, 0, 20], '#e5a15b'), 10.5).frontClipPaths[0])
-    // Half a degree of turn: the mask may not jump by more than one lattice step.
-    for (const side of ['minX', 'maxX', 'minY', 'maxY'] as const) {
-      expect(Math.abs(after[side] - before[side])).toBeLessThan(4)
+  it('traces the line where the two solids meet as curves, not as a polygon', () => {
+    const clip = render(node([-100, 0, 20], '#e5a15b')).frontClipPaths[0]
+    expect((clip.match(/C/g) ?? []).length).toBeGreaterThan(4)
+  })
+
+  it('moves the mask smoothly through a whole turn of the head', () => {
+    let previous: ReturnType<typeof box> | undefined
+    let widest = 0
+    for (let yaw = -80; yaw <= 80; yaw += 0.5) {
+      const clip = render(node([-100, 0, 20], '#e5a15b'), yaw).frontClipPaths[0]
+      if (!clip) {
+        previous = undefined
+        continue
+      }
+      const current = box(clip)
+      if (previous) {
+        for (const side of ['minX', 'maxX', 'minY', 'maxY'] as const) {
+          widest = Math.max(widest, Math.abs(current[side] - previous[side]))
+        }
+      }
+      previous = current
     }
+    // Half a degree of turn moves a point of the node by about one unit: no side of the mask
+    // may jump further than a few.
+    expect(widest).toBeLessThan(4)
+  })
+
+  it('keeps the plain rule where a surface is not an ellipsoid', () => {
+    const cone: BodyNode = {
+      ...node([-100, 0, 20], '#e5a15b'),
+      surface: { type: 'cone', width: 70, height: 70, depth: 70, roundness: 1 },
+    }
+    expect(render(cone)).toEqual(render(cone, 0, 'layer'))
+
+    const cube = { type: 'cube', width: 200, height: 200, depth: 200, roundness: 0.5 } as const
+    const options = { bodyNodes: [node([-100, 0, 20], '#e5a15b')], includeWire: false, bodyColor }
+    const pose = poseFromExpression(expressionFromDefinition('neutral', expression))
+    expect(renderAvatar(pose, cube, 1, { ...options, nodeOcclusion: 'mask' })).toEqual(
+      renderAvatar(pose, cube, 1, { ...options, nodeOcclusion: 'layer' })
+    )
   })
 
   it('reaches a rendered definition, with the colour of each copy', () => {
