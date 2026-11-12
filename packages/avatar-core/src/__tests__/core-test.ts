@@ -258,6 +258,37 @@ describe('@bible-strong/avatar-core', () => {
     expect(scene.colors).toEqual(definition.colors)
   })
 
+  it('gives a body node the exact outline its surface would have as a head, in its place', () => {
+    const neutral = expressionFromDefinition('neutral', definition.expressions.neutral)
+    const facing = { ...neutral, headX: 0, headY: 0, headZ: 0 }
+    const surface = { type: 'sphere', width: 60, height: 44, depth: 30, roundness: 1 } as const
+    const node = {
+      id: 'ear',
+      name: 'Ear',
+      surface,
+      position: [-80, -60, -10] as [number, number, number],
+      rotation: [0, 0, 0] as [number, number, number],
+    }
+    const withNode = renderAvatar(poseFromExpression(facing), definition.body.primary, 1, {
+      bodyNodes: [node],
+    })
+    const alone = renderAvatar(
+      poseFromExpression({ ...facing, positionX: -80, positionY: -60, positionZ: -10 }),
+      surface,
+      1
+    )
+    const outline = [...withNode.backPaths, ...withNode.frontPaths][0]
+
+    expect(outline).toBe(alone.headPath)
+    // An ellipse drawn as arcs, not a polygon wrapped around sampled points.
+    expect(outline).toContain('A')
+
+    const turned = renderAvatar(poseFromExpression(facing), definition.body.primary, 1, {
+      bodyNodes: [{ ...node, rotation: [0, 0, 40] }],
+    })
+    expect([...turned.backPaths, ...turned.frontPaths][0]).not.toBe(outline)
+  })
+
   it('keeps custom body-node colors while inherited nodes follow the expression body color', () => {
     const coloredNodes: AvatarDefinition = {
       ...definition,
