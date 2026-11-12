@@ -81,10 +81,14 @@ export const renderAvatarExpression = (
   blink = 1
 ): AvatarScene => {
   const body = bodyFromDefinition(definition.body)
+  const bodyColor = colors.body ?? expression.bodyColor ?? definition.colors.body
+  // A node of another colour than the body sinks into the head where the head is nearer. A
+  // node of the body's colour is not measured: it costs what it always did.
   const geometry = renderAvatar(poseFromExpression(expression), body.primary, blink, {
     bodyNodes: body.nodes,
+    nodeOcclusion: 'mask',
+    bodyColor,
   })
-  const bodyColor = colors.body ?? expression.bodyColor ?? definition.colors.body
   const nodeColors = new Map(body.nodes.map(node => [node.id, node.color ?? bodyColor]))
   return {
     geometry,

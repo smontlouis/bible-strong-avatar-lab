@@ -175,6 +175,7 @@ type AvatarScene = {
     mouthPath: string
     mouthStrokeWidth: number // above 0: stroke the mouth; 0: fill it
     frontPaths: string[] // body nodes in front of the head
+    frontClipPaths: string[] // one clip per front path, or an empty string
   }
   colors: { body: string; eyes: string }
   bodyColors: { back: string[]; front: string[] } // one colour per body path
@@ -185,10 +186,24 @@ type AvatarScene = {
 finished avatar does not need.
 
 Draw in this order: `backPaths`, `headPath`, then eyes, nose and mouth clipped to `headPath`, then
-`frontPaths`. A body node moves between `backPaths` and `frontPaths` as the head turns, so a
+`frontPaths`. When `frontClipPaths[i]` is not empty, clip `frontPaths[i]` by it and by `headPath`:
+that path is the part of a coloured node that is nearer than the head's surface (see below). A body node moves between `backPaths` and `frontPaths` as the head turns, so a
 renderer keeps `definition.body.nodes.length + 2` slots on each side and reads an empty string for
 an unused slot. When `definition.style.outline.enabled` is true, stroke the body and head paths
 underneath with its colour, width and opacity.
+
+### Coloured nodes and the head
+
+Two shapes of one colour merge into one flat area, so which is in front cannot be seen: a node
+without a colour of its own is drawn wholly behind or wholly in front of the head, by the depth of
+its centre. A node whose `color` differs from the body's is measured instead. It is always in
+`backPaths`, and it is in `frontPaths` too, with a clip, wherever its surface is nearer than the
+head's: it sinks into the head along a line, as two solids would.
+
+The line is traced on a lattice of 4 units in the 300-unit view, so it is less exact than an
+outline; outlines themselves stay exact. Measuring costs about as much again as drawing the node,
+and nothing for a node of the body's colour. Two nodes are not measured against each other: they
+are sorted whole, by depth.
 
 ## Entry points
 
