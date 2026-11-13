@@ -1,64 +1,80 @@
 import {
-  advanceAvatarPlayback,
-  createAvatarPlaybackState,
-  pauseAvatarPlayback,
-  nextAvatarFrameAt,
-  playAvatarAnimation,
-  renderAvatarSample,
-  resumeAvatarPlayback,
-  sampleAvatarFrame,
-  type AnimationKey,
-  type AvatarDefinition,
-  type AvatarPlaybackState,
-  type AvatarRuntimeEnvironment,
-  type AvatarScene,
-  type ExpressionKey,
+  advanceEngine,
+  clips,
+  createAvatarEngine,
+  engineFrame,
+  pauseEngine,
+  playEngineClip,
+  pokeEngine,
+  renderCharacterFrame,
+  resumeEngine,
+  setEngineCompact,
+  setEngineEmphasis,
+  setEngineFace,
+  setEngineState,
+  type AvatarCharacter,
+  type AvatarEngine,
+  type CharacterScene,
+  type GestureName,
 } from '@bible-strong/avatar-core'
 
-// Every function of this file runs on the UI thread, inside the frame callback of `Avatar`.
-// Each one carries the `worklet` directive, and reaches the core through Bundle Mode's import
-// forwarding. None of them touches React or React Native, so they are tested in plain Node.
+// Every function of this file but `createAvatarRun` runs on the UI thread, inside the frame
+// callback of `Avatar`. Each carries the `worklet` directive and reaches the core through
+// Bundle Mode's import forwarding. None touches React or React Native, so they are tested in
+// plain Node.
 
-const EXPRESSION_TRANSITION_MS = 420
-
-type AvatarSample = ReturnType<typeof sampleAvatarFrame>
+/** A spinner draws at most this many marks at once, two patterns crossing included. */
+export const MARK_SLOTS = 12
+// How long the avatar is run to find a pose to hold for someone who asked for less motion.
+const SETTLE_STEPS = 60
+const SETTLE_STEP_SECONDS = 0.1
+// Below this the eyelids are open: a pose the avatar can hold.
+const OPEN_LIDS = 0.05
 
 /** What React asks of the avatar. `seq` grows by one with each command of a component. */
 export type AvatarCommand = { seq: number } & (
-  | { type: 'play'; animation: AnimationKey }
-  | { type: 'expression'; expression: ExpressionKey }
+  | { type: 'state'; state: string }
+  | { type: 'clip'; clip: string }
+  | { type: 'face'; face: string | null }
+  | { type: 'emphasis'; emphasis: boolean }
+  | { type: 'compact'; compact: boolean }
   | { type: 'pause' }
-  | { type: 'stop' }
-  // Sample again after a settled pose, without changing the target.
+  | { type: 'resume' }
+  | { type: 'poke'; gesture: GestureName; turns: number }
+  // Draw again, for a setting that changed outside the engine.
   | { type: 'wake' }
 )
 
-/** The playback of one avatar, owned by the UI thread. */
-export type AvatarEngine = {
-  playback: AvatarPlaybackState
-  /** The last sampled frame: a new target starts its transition from it. */
-  sample: AvatarSample | null
+/** One avatar as the UI thread runs it: the engine, and when it was last drawn and asked. */
+export type AvatarRun = {
+  engine: AvatarEngine
+  paused: boolean
+  /** When the last frame was drawn, or 0 for none since the avatar last stood still. */
   renderedAt: number
-  /** When the current target started, for `settleAfterMs`. */
-  targetStartedAt: number
-  /** The picture stays the same until this time: no frame is sampled before it. */
-  nextFrameAt: number
+  /** When the last command came, for `settleAfterMs`. */
+  commandAt: number
   /** Nothing moves until the next command: the frame callback can stop. */
   idle: boolean
   /** `seq` of the last command applied. */
   processed: number
 }
 
-/** The paths and colours of one frame, as the SVG elements read them. */
+export type RunSettings = {
+  reduceMotion: boolean
+  /** Hold the pose this long after the last command, eyes open. 0 keeps the avatar moving. */
+  settleAfterMs: number
+}
+
+/** One mark of a spinner. A filled mark has no stroke; a line has no fill. */
+export type PaintedMark = { d: string; opacity: number; strokeWidth: number }
+
+/** The paths, colours and placement of one frame, as the SVG elements read them. */
 export type PaintedFrame = {
   head: string
   left: string
   right: string
-  leftVisible: boolean
-  rightVisible: boolean
   nose: string
   mouth: string
-  mouthStrokeWidth: number
   back: string[]
   front: string[]
   /** One clip per front path; empty when the path is drawn whole. */
@@ -67,36 +83,72 @@ export type PaintedFrame = {
   frontColors: string[]
   body: string
   eyes: string
+  /** How the body is moved, as SVG writes `matrix(a b c d e f)`. */
+  matrix: number[]
+  bodyOpacity: number
+  /** How much of the body's parts and face shows: 0 once the body is a spinner's disc. */
+  fading: number
+  disc: string
+  discOpacity: number
+  marks: PaintedMark[]
 }
 
-export const createAvatarEngine = (expression: ExpressionKey): AvatarEngine => ({
-  playback: { ...createAvatarPlaybackState(), activeExpression: expression },
-  sample: null,
-  renderedAt: 0,
-  targetStartedAt: 0,
-  nextFrameAt: 0,
-  idle: false,
-  processed: 0,
-})
+export type AvatarStart = {
+  seed: number
+  compact: boolean
+  emphasis: boolean
+  state?: string
+  clip?: string
+  face?: string
+  paused: boolean
+}
 
-export const paintAvatarScene = (scene: AvatarScene): PaintedFrame => {
+/** Start an avatar's run: the engine in the state, or on the clip, it is first given. */
+export const createAvatarRun = (start: AvatarStart): AvatarRun => {
+  const engine = createAvatarEngine({ seed: start.seed, compact: start.compact })
+  setEngineEmphasis(engine, start.emphasis)
+  if (start.state === undefined && start.clip !== undefined && clips[start.clip]) {
+    playEngineClip(engine, clips[start.clip])
+  } else {
+    setEngineState(engine, start.state ?? 'idle')
+  }
+  if (start.face !== undefined) setEngineFace(engine, start.face)
+  if (start.paused) pauseEngine(engine)
+  return { engine, paused: start.paused, renderedAt: 0, commandAt: 0, idle: false, processed: 0 }
+}
+
+export const paintCharacterScene = (scene: CharacterScene): PaintedFrame => {
   'worklet'
+  const { geometry, colors, bodyColors, transform, spinner } = scene
+  const round = spinner?.round ?? 0
+  const marks: PaintedMark[] = []
+  for (let index = 0; index < MARK_SLOTS; index += 1) {
+    const mark = spinner?.marks[index]
+    marks.push(
+      mark
+        ? { d: mark.d, opacity: mark.opacity, strokeWidth: mark.strokeWidth ?? 0 }
+        : { d: '', opacity: 0, strokeWidth: 0 }
+    )
+  }
   return {
-    head: scene.geometry.headPath,
-    left: scene.geometry.leftPath,
-    right: scene.geometry.rightPath,
-    leftVisible: scene.geometry.leftVisible,
-    rightVisible: scene.geometry.rightVisible,
-    nose: scene.geometry.nosePath,
-    mouth: scene.geometry.mouthPath,
-    mouthStrokeWidth: scene.geometry.mouthStrokeWidth,
-    back: scene.geometry.backPaths,
-    front: scene.geometry.frontPaths,
-    frontClips: scene.geometry.frontClipPaths,
-    backColors: scene.bodyColors.back,
-    frontColors: scene.bodyColors.front,
-    body: scene.colors.body,
-    eyes: scene.colors.eyes,
+    head: round >= 0.999 ? '' : geometry.headPath,
+    left: geometry.leftVisible ? geometry.leftPath : '',
+    right: geometry.rightVisible ? geometry.rightPath : '',
+    nose: geometry.nosePath,
+    mouth: geometry.mouthPath,
+    back: geometry.backPaths,
+    front: geometry.frontPaths,
+    frontClips: geometry.frontClipPaths,
+    backColors: bodyColors.back,
+    frontColors: bodyColors.front,
+    body: colors.body,
+    eyes: colors.eyes,
+    matrix: [...transform],
+    bodyOpacity: spinner?.opacity ?? 1,
+    fading: 1 - round,
+    disc: spinner && round > 0 ? spinner.disc : '',
+    discOpacity: round,
+    marks,
   }
 }
 
@@ -115,96 +167,77 @@ export const greyOf = (color: string) => {
   return `rgb(${level}, ${level}, ${level})`
 }
 
-export const applyAvatarCommand = (
-  definition: Readonly<AvatarDefinition>,
-  engine: Readonly<AvatarEngine>,
-  command: AvatarCommand,
-  now: number,
-  environment: AvatarRuntimeEnvironment
-): AvatarEngine => {
+/** Apply a command to the run, in place. */
+export const applyAvatarCommand = (run: AvatarRun, command: AvatarCommand, now: number) => {
   'worklet'
-  const next = { ...engine, idle: false, renderedAt: 0, nextFrameAt: 0, processed: command.seq }
-  const current = engine.playback
-  if (command.type === 'wake') return next
-  if (command.type === 'pause') {
-    return current.status === 'playing'
-      ? { ...next, playback: pauseAvatarPlayback(current, now) }
-      : next
+  const engine = run.engine
+  // An avatar that stood still starts again from where it was, without a jump in time.
+  if (run.idle) run.renderedAt = 0
+  run.idle = false
+  run.commandAt = now
+  run.processed = command.seq
+  switch (command.type) {
+    case 'state':
+      setEngineState(engine, command.state)
+      break
+    case 'clip':
+      if (clips[command.clip]) playEngineClip(engine, clips[command.clip])
+      break
+    case 'face':
+      setEngineFace(engine, command.face)
+      break
+    case 'emphasis':
+      setEngineEmphasis(engine, command.emphasis)
+      break
+    case 'compact':
+      setEngineCompact(engine, command.compact)
+      break
+    case 'pause':
+      run.paused = true
+      pauseEngine(engine)
+      break
+    case 'resume':
+      run.paused = false
+      resumeEngine(engine)
+      break
+    case 'poke':
+      pokeEngine(engine, command.gesture, command.turns)
+      break
+    case 'wake':
+      break
   }
-  if (command.type === 'stop') {
-    return { ...next, playback: createAvatarPlaybackState(), targetStartedAt: now }
-  }
-  if (
-    command.type === 'play' &&
-    current.status === 'paused' &&
-    current.activeAnimation === command.animation &&
-    current.pausedAt !== undefined
-  ) {
-    return { ...next, playback: resumeAvatarPlayback(current, now) }
-  }
-  const sample = engine.sample ?? sampleAvatarFrame(definition, current, now, environment)
-  const from = { expression: sample.expression, colors: sample.colors }
-  if (command.type === 'play') {
-    const started = playAvatarAnimation(definition, command.animation, now, from)
-    return started.ok ? { ...next, playback: started.value, targetStartedAt: now } : next
-  }
-  if (!definition.expressions[command.expression]) return next
-  const playback: AvatarPlaybackState = {
-    ...createAvatarPlaybackState(),
-    activeExpression: command.expression,
-  }
-  if (current.activeExpression !== command.expression) {
-    playback.status = 'playing'
-    playback.directTransition = {
-      from,
-      startedAt: now,
-      durationMs: EXPRESSION_TRANSITION_MS,
-      transition: 'smooth',
-    }
-  }
-  return { ...next, playback, targetStartedAt: now }
+  // A paused avatar keeps what it is asked for until it goes on.
+  if (run.paused) pauseEngine(engine)
 }
 
 /**
- * Advance the playback to `now` and draw its frame. The caller need not call it again before
- * `engine.nextFrameAt`: a pose held between two blinks is the same picture.
+ * Advance the run to `now` and draw its frame, in place. It says when the avatar can stand
+ * still: paused, settled for someone who asked for less motion, or held after
+ * `settleAfterMs`.
  */
-export const stepAvatarEngine = (
-  definition: Readonly<AvatarDefinition>,
-  engine: Readonly<AvatarEngine>,
+export const stepAvatarRun = (
+  character: Readonly<AvatarCharacter>,
+  run: AvatarRun,
   now: number,
-  environment: AvatarRuntimeEnvironment,
-  settleAfterMs: number
-): { engine: AvatarEngine; frame: PaintedFrame; ended?: AnimationKey } => {
+  settings: RunSettings
+): PaintedFrame => {
   'worklet'
-  const before = engine.playback
-  const playback = advanceAvatarPlayback(definition, before, now, environment)
-  const sample = sampleAvatarFrame(definition, playback, now, environment)
-  const scene = renderAvatarSample(definition, sample, environment)
-  // Between two blinks, once the pose is reached: a frame the avatar can hold.
-  const resting =
-    playback.directTransition === undefined &&
-    (playback.activeAnimation === undefined || playback.phase === 'hold') &&
-    sample.blink === 1
-  const settled = settleAfterMs > 0 && now - engine.targetStartedAt >= settleAfterMs && resting
-  const changesAt = nextAvatarFrameAt(definition, playback, now, environment)
-  // A held pose is not sampled again, so the moment to settle has to be a frame of its own.
-  const settlesAt = settleAfterMs > 0 ? engine.targetStartedAt + settleAfterMs : Infinity
-  const nextFrameAt = settlesAt > now ? Math.min(changesAt, settlesAt) : changesAt
-  const ended =
-    before.status === 'playing' && playback.status === 'stopped'
-      ? before.activeAnimation
-      : undefined
-  return {
-    engine: {
-      ...engine,
-      playback,
-      sample,
-      renderedAt: now,
-      nextFrameAt,
-      idle: settled || nextFrameAt === Infinity,
-    },
-    frame: paintAvatarScene(scene),
-    ...(ended ? { ended } : {}),
+  const engine = run.engine
+  // The first frame is when the avatar was first asked for something.
+  if (run.commandAt === 0) run.commandAt = now
+  if (settings.reduceMotion && !run.paused) {
+    for (let step = 0; step < SETTLE_STEPS; step += 1) advanceEngine(engine, SETTLE_STEP_SECONDS)
+  } else if (!run.paused) {
+    // A frame that comes late does not throw the avatar: the engine caps its own step.
+    advanceEngine(engine, run.renderedAt === 0 ? 0 : (now - run.renderedAt) / 1000)
   }
+  run.renderedAt = now
+  const frame = engineFrame(engine)
+  const held =
+    settings.settleAfterMs > 0 &&
+    now - run.commandAt >= settings.settleAfterMs &&
+    frame.lids < OPEN_LIDS &&
+    engine.gestures.length === 0
+  run.idle = run.paused || settings.reduceMotion || held
+  return paintCharacterScene(renderCharacterFrame(character, frame))
 }

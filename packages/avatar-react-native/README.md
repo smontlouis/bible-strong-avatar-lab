@@ -1,8 +1,7 @@
 # @bible-strong/avatar-react-native
 
-React Native renderer for a Bible Strong `AvatarDefinition` (an `.avatar.json` file exported by
-[Avatar Lab](https://avatars.bible-strong.app)). It draws with `react-native-svg` and samples every
-frame on the UI thread with Reanimated, so an animated avatar costs the JS thread nothing.
+React Native renderer for a Bible Strong avatar. It draws with `react-native-svg`, and the avatar's
+engine runs on the UI thread with Reanimated: an animated avatar costs the JS thread nothing.
 
 MIT licensed. iOS and Android only.
 
@@ -15,8 +14,11 @@ MIT licensed. iOS and Android only.
 | Browser without React        | `@bible-strong/avatar-web`          |
 | Your own renderer, or a test | `@bible-strong/avatar-core`         |
 
-All four read the same `.avatar.json`. In an app that ships both native and web, put the native
-renderer in `MyAvatar.tsx` and the web one in `MyAvatar.web.tsx`: this package throws on the web.
+All four read the same file: the character exported by
+[Avatar Lab](https://avatars.bible-strong.app), or an `.avatar.json` of the first version, of
+which only the character is kept (body, colours, outline, nose, mouth, perspective). In an app
+that ships both native and web, put the native renderer in `MyAvatar.tsx` and the web one in
+`MyAvatar.web.tsx`: this package throws on the web.
 
 ## Setup
 
@@ -71,152 +73,100 @@ Under Jest the Bundle Mode check is skipped, so a test can render the component.
 
 ```tsx
 import { createAvatar } from '@bible-strong/avatar-react-native'
-import avatarJson from './strobi.avatar.json'
+import strobi from './strobi.avatar.json'
 
-// Validates the JSON once. `animation` and `expression` are typed with its keys.
-const StrobiAvatar = createAvatar(avatarJson)
+// Checks the file once.
+const Strobi = createAvatar(strobi)
 
 export function Assistant({ thinking }: { thinking: boolean }) {
-  return <StrobiAvatar animation={thinking ? 'thinking' : 'idle'} size={96} />
+  return <Strobi state={thinking ? 'thinking' : 'idle'} size={96} />
 }
 ```
 
-`resolveJsonModule` must be on in `tsconfig.json` for the keys to be typed.
+For a character already checked (`readCharacter` of `@bible-strong/avatar-core`), render `Avatar`
+with `character`. Keep the same object at every render: another object is another avatar, which
+starts afresh.
 
-For a definition loaded at run time, use `Avatar` and validate first:
+## What an avatar does
 
-```tsx
-import { parseAvatarDefinition } from '@bible-strong/avatar-core'
-import { Avatar } from '@bible-strong/avatar-react-native'
-
-const parsed = parseAvatarDefinition(jsonText)
-if (!parsed.ok) throw new Error(parsed.errors[0].message)
-
-<Avatar definition={parsed.value} defaultAnimation="idle" />
-```
-
-Keep the validated object and pass the same reference at every render. A new reference is a new
-avatar: its playback starts again.
+Every character plays the same catalogue, exported by `@bible-strong/avatar-core`: states
+(`stateNames`, `stateGroups`), clips (`clipNames`), faces (`faceNames`) and the gestures `nod`,
+`bounce` and `spin`. The README of `@bible-strong/avatar-web` lists the states by group.
 
 ## Props
 
-### Target
+| Prop                 | Type                   | Default       | Behavior                                                           |
+| -------------------- | ---------------------- | ------------- | ------------------------------------------------------------------ |
+| `character`          | `AvatarCharacter`      | required      | Absent from a component made by `createAvatar`.                    |
+| `state`              | `string`               | `idle`        | What the avatar is in. Changing it goes there from where it is.    |
+| `clip`               | `string`               | —             | A clip to play alone, round and round. A state wins over it.       |
+| `face`               | `string`               | —             | A face to hold whatever the avatar does.                           |
+| `paused`             | `boolean`              | `false`       | Stops the avatar where it is: nothing is computed meanwhile.       |
+| `emphasis`           | `boolean`              | `false`       | A state without a face of its own shows surprise.                  |
+| `seed`               | `number`               | from the name | Two avatars with the same seed draw the same clips.                |
+| `size`               | `number`               | `240`         | Width and height, in density-independent pixels.                   |
+| `style`              | `StyleProp<ViewStyle>` | —             | Style of the wrapping `View`. `width` and `height` come from size. |
+| `accessibilityLabel` | `string`               | `Avatar`      | The avatar is exposed as one image with this name.                 |
+| `muted`              | `boolean`              | `false`       | Fades every colour to its grey in 300 ms.                          |
+| `settleAfterMs`      | `number`               | `0`           | Holds the pose this long after the last change, eyes open.         |
+| `frameRate`          | `30 \| 60`             | `30`          | Frames computed per second on the UI thread.                       |
+| `onStateChange`      | function               | —             | Receives the new state, or `null` while a clip plays alone.        |
+| `ref`                | `Ref<AvatarHandle>`    | —             | `poke(gesture, turns?)` lays a gesture over what plays.            |
 
-| Prop                | Type                    | Default  | Behavior                                                                     |
-| ------------------- | ----------------------- | -------- | ---------------------------------------------------------------------------- |
-| `definition`        | `AvatarDefinition`      | required | The validated definition. Absent from a component made by `createAvatar`.    |
-| `animation`         | `AnimationKey`          | —        | Controlled timeline. Changing it plays the new one from the frame on screen. |
-| `expression`        | `ExpressionKey`         | —        | Controlled single expression, reached with a 420 ms transition.              |
-| `defaultAnimation`  | `AnimationKey`          | —        | Uncontrolled initial timeline, read on mount.                                |
-| `defaultExpression` | `ExpressionKey`         | —        | Uncontrolled initial expression, read on mount.                              |
-| `autoplay`          | `boolean`               | `true`   | Starts `defaultAnimation` on mount.                                          |
-| `ref`               | `Ref<AvatarController>` | —        | The imperative API below.                                                    |
+An unknown state or clip changes nothing. Under 48 points an avatar is compact: a state with a
+shorter list of clips uses it. `onStateChange` runs on the JS thread, a frame or so after the UI
+thread changed state. The avatar does not receive touches: wrap it in a `Pressable`.
 
-`animation` with `expression`, or `defaultAnimation` with `defaultExpression`, throws: choose one.
+The body may move past its box while a clip plays (a jump, a stretch). The SVG is drawn half as
+large again as the box, centred on it, so that nothing is cut: leave some room around the avatar.
 
-### Presentation
+## When it stops computing
 
-| Prop                 | Type                   | Default             | Behavior                                                                              |
-| -------------------- | ---------------------- | ------------------- | ------------------------------------------------------------------------------------- |
-| `size`               | `number`               | `240`               | Width and height, in density-independent pixels.                                      |
-| `style`              | `StyleProp<ViewStyle>` | —                   | Style of the wrapping `View`. `width` and `height` come from `size`.                  |
-| `accessibilityLabel` | `string`               | `Procedural avatar` | The avatar is exposed as one image with this name.                                    |
-| `muted`              | `boolean`              | `false`             | Fades every colour to its grey in 300 ms.                                             |
-| `settleAfterMs`      | `number`               | `0`                 | Stops sampling this long after a target starts, at the next held pose with eyes open. |
-| `frameRate`          | `30 \| 60`             | `30`                | Frames sampled per second. 30 halves the work and stays fluid at small sizes.         |
-
-The avatar does not receive touches. Wrap it in a `Pressable` to make it a button.
-
-### Callbacks
-
-| Prop                 | Receives                                                               |
-| -------------------- | ---------------------------------------------------------------------- |
-| `onAnimationEnd`     | The key of a `once` animation when it completes.                       |
-| `onExpressionChange` | The key of the displayed expression, on mount and whenever it changes. |
-| `onError`            | An `AvatarRuntimeError` for an unknown key passed through props.       |
-
-Callbacks run on the JS thread, one frame or so after the UI thread reached the state. Without
-`onError`, the error is written with `console.error`.
-
-## Imperative API
-
-```tsx
-const avatar = useRef<AvatarController>(null)
-
-<StrobiAvatar ref={avatar} defaultAnimation="idle" />
-<Button title="Celebrate" onPress={() => avatar.current?.play('celebrate')} />
-```
-
-| Method                      | Returns               | Behavior                                                      |
-| --------------------------- | --------------------- | ------------------------------------------------------------- |
-| `play(animation)`           | `AvatarCommandResult` | Starts an animation, or resumes it when it is the paused one. |
-| `setExpression(expression)` | `AvatarCommandResult` | Shows one expression.                                         |
-| `pause()`                   | `void`                | Freezes the exact frame.                                      |
-| `stop()`                    | `void`                | Returns an uncontrolled avatar to `neutral`.                  |
-| `getState()`                | `AvatarPlaybackState` | `{ activeAnimation?, activeExpression, status }`.             |
-
-`play` and `setExpression` return `{ ok: true }` or `{ ok: false, error }`.
-
-| `error.code`          | Cause                                                           | Fix                          |
-| --------------------- | --------------------------------------------------------------- | ---------------------------- |
-| `unknown_animation`   | The key is not in `definition.animations`.                      | Use a key of the JSON.       |
-| `unknown_expression`  | The key is not in `definition.expressions`.                     | Use a key of the JSON.       |
-| `controlled_by_props` | `animation` or `expression` is set: the parent owns the target. | Change the prop, or drop it. |
-
-`getState()` answers at once with the target of the last command, then follows what the UI thread
-reports. `status` is `playing`, `paused` or `stopped`.
-
-## When it stops sampling
-
-A pose held between two blinks is sampled once: nothing is computed on the UI thread until the
-next blink or step. For an avatar whose expressions have no ambient motion, that is about four
-frames in five.
-
-Beyond that, the frame callback stops by itself, and starts again on the next command or prop
-change:
+The avatar always moves: `idle` plays its clips round and round. The frame callback stops, and
+starts again on the next prop change or `poke`:
 
 - while the app is not active;
-- on a paused avatar;
-- on an expression with no blink and no ambient motion;
-- on any expression, when the device asks for reduced motion;
-- once `settleAfterMs` has elapsed and the pose is held.
+- while the avatar is paused;
+- when the device asks for reduced motion: the avatar holds one settled picture;
+- once `settleAfterMs` has passed since the last change, at a moment the eyes are open.
 
-Give `settleAfterMs` to any avatar that decorates a row, a card or a list: it plays its entrance,
+Give `settleAfterMs` to any avatar that decorates a row, a card or a list: it moves for a moment,
 then costs nothing. A muted avatar keeps moving unless you settle it:
 
 ```tsx
-<StrobiAvatar animation="sleeping" muted={idle} settleAfterMs={idle ? 1 : 0} />
+<Strobi state="sleeping" muted={idle} settleAfterMs={idle ? 1 : 0} />
 ```
 
 ## Errors thrown on render
 
-| Message starts with                                | Cause                                                       | Fix                                                |
-| -------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------- |
-| `… needs the Bundle Mode of react-native-worklets` | Step 3 of the setup is missing, or Metro kept an old cache. | Do step 3, then restart Metro with `--clear`.      |
-| `… only renders on iOS and Android`                | The component was rendered on the web.                      | Render `@bible-strong/avatar-react` on the web.    |
-| `Invalid avatar definition`                        | The JSON does not match the schema.                         | Export it again from Avatar Lab, or read `errors`. |
-| `Avatar accepts either animation or expression`    | Two targets were given.                                     | Keep one.                                          |
+| Message starts with                                | Cause                                                       | Fix                                           |
+| -------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------- |
+| `… needs the Bundle Mode of react-native-worklets` | Step 3 of the setup is missing, or Metro kept an old cache. | Do step 3, then restart Metro with `--clear`. |
+| `… only renders on iOS and Android`                | The component was rendered on the web.                      | Render `@bible-strong/avatar-react` there.    |
+| `Invalid avatar character`                         | `createAvatar` got no character.                            | Export it again from Avatar Lab.              |
+| `Invalid avatar definition`                        | A first-version file is broken.                             | Export it again from Avatar Lab.              |
 
 ## Do not
 
-- Do not sample frames on the JS thread (`requestAnimationFrame` with `renderAvatarFrame`). Measured
-  in a production app: 12 to 19 % of a core at rest, and a runaway loop in background.
-- Do not write the paths with `setNativeProps`: about 64 ms a frame, against about 2 ms here.
+- Do not run the engine on the JS thread with `requestAnimationFrame`: measured in a production
+  app with the first version, 12 to 19 % of a core at rest, and a runaway loop in background.
+- Do not write the paths with `setNativeProps`: about 64 ms a frame under Fabric.
 - Do not import this package in a file that the web bundle loads.
-- Do not rebuild the definition object at every render.
+- Do not rebuild the character object at every render.
 
 ## Check your integration
 
-1. `npx tsc --noEmit` passes, and a wrong animation key is a type error with `createAvatar`.
-2. The avatar appears and blinks on an iOS simulator and on an Android emulator.
-3. Changing `animation` moves the avatar from its current pose, without a jump.
-4. No frame is sampled after the app goes to background.
+1. The avatar appears and moves on an iOS simulator and on an Android emulator.
+2. Changing `state` moves the avatar from its current pose, without a jump, and `onStateChange`
+   receives it.
+3. `state="searching"` turns the body into a spinner.
+4. No frame is computed after the app goes to background.
 
 ## Versions
 
-Verified with React Native 0.88, Reanimated 4.7, Worklets 0.13 and `react-native-svg` 15.16, on
-iOS and Android. The peer ranges of Reanimated and Worklets start there, because Bundle Mode and
-its import forwarding are recent. The `strictGlobal` option of the worklets plugin is not tested.
+Verified with React Native 0.88, Reanimated 4.7, Worklets 0.13 and `react-native-svg` 15.16. The
+peer ranges of Reanimated and Worklets start there, because Bundle Mode and its import forwarding
+are recent. The `strictGlobal` option of the worklets plugin is not tested.
 
-The package follows Semantic Versioning. While it remains below `1.0.0`, breaking API changes
-increment the minor version and fixes increment the patch version.
+The package follows Semantic Versioning. Version 1 replaced the expressions and animations of
+each avatar with the shared catalogue of states, clips, faces and gestures.
