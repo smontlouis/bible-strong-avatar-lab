@@ -1,0 +1,547 @@
+{
+  "activeAvatarId": "strobi",
+  "avatars": [
+    {
+      "id": "strobi",
+      "name": "Strobi",
+      "body": {
+        "primary": {
+          "type": "sphere",
+          "width": 240,
+          "height": 240,
+          "depth": 240.03671875,
+          "roundness": 1
+        },
+        "nodes": []
+      },
+      "colors": {
+        "body": "#5b7fe5",
+        "eyes": "#111316"
+      },
+      "eyes": {
+        "widthLeft": 20,
+        "widthRight": 20,
+        "heightLeft": 50,
+        "heightRight": 50,
+        "spacing": 35,
+        "positionXLeft": 0,
+        "positionXRight": 0,
+        "positionYLeft": -7,
+        "positionYRight": -7,
+        "leftAngle": 0,
+        "rightAngle": 0
+      }
+    },
+    {
+      "id": "avatar-4fe2d1bd-cf46-4e5e-a62d-d6b60be519ed",
+      "name": "Freddy",
+      "body": {
+        "primary": {
+          "type": "cube",
+          "width": 174.732421875,
+          "height": 149.474609375,
+          "depth": 125.596484375,
+          "roundness": 0.7621875
+        },
+        "nodes": [
+          {
+            "id": "shape-1089630b-c718-4abb-9891-aa817d0a26c0",
+            "name": "Sphère 1",
+            "surface": {
+              "type": "sphere",
+              "width": 81.60000000000001,
+              "height": 81.60000000000001,
+              "depth": 37.96875000000001,
+              "roundness": 1
+            },
+            "position": [-82, -72, -18],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-6c5a8bdd-04b7-4581-8889-cf8e1af5246e",
+            "name": "Sphère 2",
+            "surface": {
+              "type": "sphere",
+              "width": 81.60000000000001,
+              "height": 81.60000000000001,
+              "depth": 37.024609375000004,
+              "roundness": 1
+            },
+            "position": [82, -72, -18],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-68a52731-6b5b-487d-8508-dd3c6cebf781",
+            "name": "Cylindre 3",
+            "surface": {
+              "type": "cylinder",
+              "width": 59.483593750000004,
+              "height": 63.461328124999994,
+              "depth": 73.10000000000001,
+              "roundness": 1.5026171875,
+              "morphRoundness": 0.366171875
+            },
+            "position": [-1.021484375, -72, -18],
+            "rotation": [0, 0, 0]
+          }
+        ]
+      },
+      "colors": {
+        "body": "#e6855c",
+        "eyes": "#ffffff"
+      },
+      "eyes": {
+        "widthLeft": 28.934879954481378,
+        "widthRight": 28.934879954481378,
+        "heightLeft": 60.839338555790405,
+        "heightRight": 60.839338555790405,
+        "spacing": 47.380859375,
+        "positionXLeft": -0.11992187500000001,
+        "positionXRight": -0.11992187500000001,
+        "positionYLeft": -4.310546875000002,
+        "positionYRight": -4.310546875000002,
+        "leftAngle": 0,
+        "rightAngle": 0
+      }
+    },
+    {
+      "id": "avatar-295e74a7-5d70-4d61-83d4-7beebb22bdd8",
+      "name": "Citrus",
+      "body": {
+        "primary": {
+          "type": "cone",
+          "width": 252.708984375,
+          "height": 274.9671875,
+          "depth": 225,
+          "roundness": 0,
+          "morphRoundness": 1.1473828125,
+          "tipRoundness": 0.743515625,
+          "baseRoundness": 1.34375
+        },
+        "nodes": []
+      },
+      "colors": {
+        "body": "#ffcf24",
+        "eyes": "#000000"
+      },
+      "eyes": {
+        "widthLeft": 20,
+        "widthRight": 20,
+        "heightLeft": 50,
+        "heightRight": 50,
+        "spacing": 35,
+        "positionXLeft": 0,
+        "positionXRight": 0,
+        "positionYLeft": 22.954687500000002,
+        "positionYRight": 22.954687500000002,
+        "leftAngle": 0,
+        "rightAngle": 0
+      }
+    },
+    {
+      "id": "avatar-1786600724626",
+      "name": "Nova",
+      "body": {
+        "primary": {
+          "type": "capsule",
+          "width": 205,
+          "height": 270,
+          "depth": 205,
+          "roundness": 1
+        },
+        "nodes": []
+      },
+      "colors": {
+        "body": "#55b6c3",
+        "eyes": "#111316"
+      },
+      "eyes": {
+        "widthLeft": 13.26171875,
+        "widthRight": 13.26171875,
+        "heightLeft": 26.074181467301138,
+        "heightRight": 46.98897797482194,
+        "spacing": 19.765234375,
+        "positionXLeft": -12.965625,
+        "positionXRight": -12.965625,
+        "positionYLeft": 0.7968750000000009,
+        "positionYRight": -6.371484375,
+        "leftAngle": -7.4886718750000005,
+        "rightAngle": -7.796875
+      }
+    },
+    {
+      "id": "avatar-7874f78a-93ec-4536-a3b6-bb53ed744efd",
+      "name": "Grok bot",
+      "body": {
+        "primary": {
+          "type": "sphere",
+          "width": 240,
+          "height": 240,
+          "depth": 240,
+          "roundness": 1
+        },
+        "nodes": []
+      },
+      "colors": {
+        "body": "#000000",
+        "eyes": "#ffffff"
+      },
+      "eyes": {
+        "widthLeft": 20,
+        "widthRight": 20,
+        "heightLeft": 50,
+        "heightRight": 50,
+        "spacing": 35,
+        "positionXLeft": 0,
+        "positionXRight": 0,
+        "positionYLeft": -7,
+        "positionYRight": -7,
+        "leftAngle": 0,
+        "rightAngle": 0
+      }
+    },
+    {
+      "id": "avatar-1b2ee9c6-a6c5-4054-87e7-fec24f285269",
+      "name": "Sunee",
+      "body": {
+        "primary": {
+          "type": "sphere",
+          "width": 182.95728256225593,
+          "height": 185.5484375,
+          "depth": 100.01221191461767,
+          "roundness": 1
+        },
+        "nodes": [
+          {
+            "id": "shape-38130162-a15b-4fa8-a58b-9c74b07e1a25",
+            "name": "Sphère 1",
+            "surface": {
+              "type": "sphere",
+              "width": 60,
+              "height": 60,
+              "depth": 24.375287224264703,
+              "roundness": 1
+            },
+            "position": [-94.48309236361106, -95.44637036124786, -10.398419675330803],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-f987c6e1-02e3-4256-9053-655414890a3c",
+            "name": "Sphère 1 copie",
+            "surface": {
+              "type": "sphere",
+              "width": 59.57851562500001,
+              "height": 59.57851562500001,
+              "depth": 24.204057179245304,
+              "roundness": 1
+            },
+            "position": [-6.440040491385305, -133.984012454223, -10.398419675330803],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-0f31bd3d-2d53-4c9d-a5e0-d587d6ef9b8c",
+            "name": "Sphère 1 copie copie",
+            "surface": {
+              "type": "sphere",
+              "width": 81.60000000000001,
+              "height": 81.60000000000001,
+              "depth": 33.150390625,
+              "roundness": 1
+            },
+            "position": [89.09066821815593, -114.30101031028101, -10.398419675330803],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-9a17a167-46fb-4871-9252-24abbb80b1ca",
+            "name": "Sphère 1 copie copie copie",
+            "surface": {
+              "type": "sphere",
+              "width": 70.12148437500001,
+              "height": 70.12148437500001,
+              "depth": 28.487188703873578,
+              "roundness": 1
+            },
+            "position": [132.2484739833418, -11.704819633353354, -10.398419675330803],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-e6574431-f8b6-482f-89d0-c280a327461f",
+            "name": "Sphère 1 copie copie copie copie",
+            "surface": {
+              "type": "sphere",
+              "width": 61.89843750000001,
+              "height": 61.89843750000001,
+              "depth": 25.146536546594966,
+              "roundness": 1
+            },
+            "position": [-138.13379284351342, -1.1847860044189815, -10.398419675330803],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-5bc8f568-1cbb-4419-84bc-ce264b218a02",
+            "name": "Sphère 1 copie copie copie copie copie",
+            "surface": {
+              "type": "sphere",
+              "width": 61.11328125000001,
+              "height": 61.11328125000001,
+              "depth": 24.827563061433676,
+              "roundness": 1
+            },
+            "position": [-103.29429634246448, 92.4041125555865, -10.398419675330803],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-405e86d3-93c9-4de8-a15e-9ae1ba33c88c",
+            "name": "Sphère 1 copie copie copie copie copie copie",
+            "surface": {
+              "type": "sphere",
+              "width": 61.726171875000006,
+              "height": 61.726171875000006,
+              "depth": 25.076552811790915,
+              "roundness": 1
+            },
+            "position": [-2.4878844479075983, 133.06983674233183, -10.398419675330803],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-0abdf33f-450d-4125-9354-b02842084138",
+            "name": "Sphère 1 copie copie copie copie copie copie copie",
+            "surface": {
+              "type": "sphere",
+              "width": 64.116796875,
+              "height": 64.116796875,
+              "depth": 26.047755662132705,
+              "roundness": 1
+            },
+            "position": [109.54168183067505, 83.98361858650364, -10.398419675330803],
+            "rotation": [0, 0, 0]
+          }
+        ]
+      },
+      "colors": {
+        "body": "#e69a5c",
+        "eyes": "#111316"
+      },
+      "eyes": {
+        "widthLeft": 20,
+        "widthRight": 20,
+        "heightLeft": 50,
+        "heightRight": 50,
+        "spacing": 35,
+        "positionXLeft": 0,
+        "positionXRight": 0,
+        "positionYLeft": -7,
+        "positionYRight": -7,
+        "leftAngle": 0,
+        "rightAngle": 0
+      }
+    },
+    {
+      "id": "avatar-b6362e59-81a3-4334-a399-a721b23cf553",
+      "name": "Kirby",
+      "body": {
+        "primary": {
+          "type": "sphere",
+          "width": 240,
+          "height": 240,
+          "depth": 240,
+          "roundness": 1
+        },
+        "nodes": [
+          {
+            "id": "shape-2f26b4c0-61de-4fde-ae09-c4595cdaab59",
+            "name": "Sphère 1",
+            "surface": {
+              "type": "sphere",
+              "width": 108.11015625000002,
+              "height": 81.60000000000001,
+              "depth": 81.60000000000001,
+              "roundness": 1
+            },
+            "position": [-103.30437876033604, 30.4449714479682, -9.784765625],
+            "rotation": [0, 0, -14.843359375]
+          },
+          {
+            "id": "shape-3cd1a09e-b9a8-4271-95b1-4c21a09a6580",
+            "name": "Sphère 1 copie",
+            "surface": {
+              "type": "sphere",
+              "width": 108.11015625000002,
+              "height": 81.60000000000001,
+              "depth": 81.60000000000001,
+              "roundness": 1
+            },
+            "position": [98.15429266544173, 32.55003025735345, -9.784765625],
+            "rotation": [0, 0, 15.175000000000004]
+          }
+        ]
+      },
+      "colors": {
+        "body": "#ffc2e9",
+        "eyes": "#3e4e65"
+      },
+      "eyes": {
+        "widthLeft": 20,
+        "widthRight": 20,
+        "heightLeft": 60.473828125,
+        "heightRight": 60.473828125,
+        "spacing": 28.74921875,
+        "positionXLeft": 0,
+        "positionXRight": 0,
+        "positionYLeft": -7,
+        "positionYRight": -7,
+        "leftAngle": 0,
+        "rightAngle": 0
+      }
+    },
+    {
+      "id": "avatar-fafdaf4d-2071-41d6-9d42-7d34670956f0",
+      "name": "Cloudee",
+      "body": {
+        "primary": {
+          "type": "sphere",
+          "width": 159.787109375,
+          "height": 159.787109375,
+          "depth": 159.77982741038028,
+          "roundness": 1
+        },
+        "nodes": [
+          {
+            "id": "shape-3e98b39e-4765-4895-9309-3d0dd55bd316",
+            "name": "Sphère 1",
+            "surface": {
+              "type": "sphere",
+              "width": 81.60000000000001,
+              "height": 81.60000000000001,
+              "depth": 81.60000000000001,
+              "roundness": 1
+            },
+            "position": [-54.211163573292225, -19.983270576375716, -18],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-52d58f1c-c8da-4077-8d29-454907ad8847",
+            "name": "Sphère 1 copie",
+            "surface": {
+              "type": "sphere",
+              "width": 108.64140625000002,
+              "height": 87.10000590491492,
+              "depth": 90.99923895827905,
+              "roundness": 1
+            },
+            "position": [-64.06931629506641, 18.35102511266605, -18],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-d4b4e8ad-8625-488d-920c-c497da226f9f",
+            "name": "Sphère 1 copie copie",
+            "surface": {
+              "type": "sphere",
+              "width": 97.79101562500003,
+              "height": 96.8381380478929,
+              "depth": 89.56416057242059,
+              "roundness": 1
+            },
+            "position": [61.23234219342984, 18.962019686907013, -18],
+            "rotation": [0, 0, 0]
+          },
+          {
+            "id": "shape-56ea10ed-1202-4b78-9968-96f870f633f7",
+            "name": "Sphère 1 copie",
+            "surface": {
+              "type": "sphere",
+              "width": 94.34892531002268,
+              "height": 94.3451962078319,
+              "depth": 100.53515625000001,
+              "roundness": 1
+            },
+            "position": [41.48876642638391, -37.63883372407813, -17.99133043155456],
+            "rotation": [0, 0, 0]
+          }
+        ]
+      },
+      "colors": {
+        "body": "#c9cbcf",
+        "eyes": "#111316"
+      },
+      "eyes": {
+        "widthLeft": 13.942812499999993,
+        "widthRight": 13.942812499999993,
+        "heightLeft": 45.4203125,
+        "heightRight": 45.4203125,
+        "spacing": 12.757031249999997,
+        "positionXLeft": 0,
+        "positionXRight": 0,
+        "positionYLeft": -1.0691406249999993,
+        "positionYRight": -1.0691406249999993,
+        "leftAngle": 0,
+        "rightAngle": 0
+      }
+    },
+    {
+      "id": "avatar-2739f2c2-a5b4-45d9-8915-c9d6101d4d3b",
+      "name": "Cubee",
+      "body": {
+        "primary": {
+          "type": "cube",
+          "width": 191.49921875,
+          "height": 191.49921875,
+          "depth": 171.95848214285726,
+          "roundness": 0.73265625
+        },
+        "nodes": []
+      },
+      "colors": {
+        "body": "#e65c5c",
+        "eyes": "#111316"
+      },
+      "eyes": {
+        "widthLeft": 19.975390625,
+        "widthRight": 28.008984374999997,
+        "heightLeft": 29.983984375,
+        "heightRight": 36.986718749999994,
+        "spacing": 16.812109375,
+        "positionXLeft": 0,
+        "positionXRight": 0,
+        "positionYLeft": -7,
+        "positionYRight": -7,
+        "leftAngle": 0,
+        "rightAngle": 0
+      }
+    },
+    {
+      "id": "avatar-4b9ea0c1-286f-4aa1-b053-61fcc416ba7e",
+      "name": "Onee",
+      "body": {
+        "primary": {
+          "type": "cone",
+          "width": 250,
+          "height": 182.006640625,
+          "depth": 225,
+          "roundness": 0,
+          "morphRoundness": 1.2003515624999999,
+          "tipRoundness": 2,
+          "baseRoundness": 2
+        },
+        "nodes": []
+      },
+      "colors": {
+        "body": "#dbe2f5",
+        "eyes": "#111316"
+      },
+      "eyes": {
+        "widthLeft": 13.389062500000001,
+        "widthRight": 19.10390625,
+        "heightLeft": 44.011328125000006,
+        "heightRight": 37.198828125000006,
+        "spacing": 21.41328125,
+        "positionXLeft": 0,
+        "positionXRight": 0,
+        "positionYLeft": 18.613671875,
+        "positionYRight": 18.613671875,
+        "leftAngle": 6.980078125,
+        "rightAngle": -7.012890625000001
+      }
+    }
+  ]
+}

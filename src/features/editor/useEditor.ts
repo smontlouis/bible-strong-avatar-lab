@@ -1,40 +1,33 @@
 import {
-  characterFromLegacyDefinition,
   createAvatarEngine,
   createBodyNode,
   duplicateBodyNode,
-  expressionFromDefinition,
   MAX_BODY_NODES,
   seedOfName,
-  type AvatarCharacter,
   type AvatarEngine,
   type bodyPrimitiveTypes,
   type BodyNode,
-  type Expression,
   type SurfaceConfig,
 } from '@bible-strong/avatar-core'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { createAvatarDefinition } from '@/features/avatar/avatarDefinition'
 import {
+  avatarFromSource,
+  characterOfAvatar,
   createAvatar,
   defaultAvatarOutlineStyle,
   type AvatarColors,
-  type AvatarEyeDefaults,
+  type AvatarFeatures,
+  type AvatarLibrary,
   type AvatarOutlineStyle,
   type StudioAvatar,
-} from '@/features/avatar/avatars'
-import { studioAvatarFromDefinitionSource } from '@/features/avatar/importAvatarDefinition'
+} from '@/features/editor/avatar'
+import { loadLibrary, persistLibrary } from '@/features/editor/document'
 import {
   defaultSnapshotComposition,
   type SnapshotComposition,
-} from '@/features/export/snapshotComposition'
-import type { SnapshotBackground } from '@/features/export/snapshotExporter'
-import {
-  loadStudioDocument,
-  persistStudioDocument,
-  type StudioDocument,
-} from '@/features/studio/studioDocument'
+} from '@/features/editor/snapshotComposition'
+import { restExpression, type PhotoTool, type SnapshotBackground } from '@/features/editor/utils'
 import { useStudioLanguage } from '@/i18n'
 
 export const editorTabs = [
@@ -59,7 +52,6 @@ export type HandPose = { head: [number, number, number]; position: [number, numb
 
 const restPose: HandPose = { head: [0, 0, 0], position: [0, 0], zoom: 0.6 }
 
-export type PhotoTool = 'pose' | 'frame'
 export type PhotoSettings = {
   background: SnapshotBackground
   colorFrom: string
@@ -69,18 +61,9 @@ export type PhotoSettings = {
   composition: SnapshotComposition
 }
 
-/** The character of an avatar of the Studio: what it is, apart from what it does. */
-export const characterOfAvatar = (avatar: StudioAvatar): AvatarCharacter | null => {
-  const definition = createAvatarDefinition({
-    avatar,
-    behavior: { expressions: [], sequences: [] },
-  })
-  return definition.ok ? characterFromLegacyDefinition(definition.value) : null
-}
-
 export const useEditor = () => {
   const { t, language } = useStudioLanguage()
-  const [document, setDocument] = useState<StudioDocument>(() => loadStudioDocument())
+  const [library, setLibrary] = useState<AvatarLibrary>(() => loadLibrary())
   const [tab, setTab] = useState<EditorTab>('avatars')
   // Whether the avatar on the stage is being built: its body, colours and features.
   const [building, setBuilding] = useState(false)
@@ -105,22 +88,18 @@ export const useEditor = () => {
   })
   const [selectedBodyNodeId, setSelectedBodyNodeId] = useState<'primary' | string>('primary')
 
-  const avatars = document.library.avatars
-  const activeAvatar =
-    avatars.find(avatar => avatar.id === document.library.activeAvatarId) ?? avatars[0]
+  const avatars = library.avatars
+  const activeAvatar = avatars.find(avatar => avatar.id === library.activeAvatarId) ?? avatars[0]
   const character = useMemo(() => characterOfAvatar(activeAvatar), [activeAvatar])
   // One engine per avatar: two avatars do not draw the same clips at the same time.
   const engine = useRef<AvatarEngine>(createAvatarEngine({ seed: seedOfName(activeAvatar.id) }))
 
   useEffect(() => {
-    persistStudioDocument(document)
-  }, [document])
+    persistLibrary(library)
+  }, [library])
 
   const updateLibrary = (avatarsNext: StudioAvatar[], activeAvatarId = activeAvatar.id) =>
-    setDocument(current => ({
-      ...current,
-      library: { ...current.library, avatars: avatarsNext, activeAvatarId },
-    }))
+    setLibrary({ avatars: avatarsNext, activeAvatarId })
 
   const updateActiveAvatar = (update: (avatar: StudioAvatar) => StudioAvatar) =>
     updateLibrary(avatars.map(avatar => (avatar.id === activeAvatar.id ? update(avatar) : avatar)))
@@ -154,8 +133,7 @@ export const useEditor = () => {
   const renameAvatar = (name: string) => updateActiveAvatar(avatar => ({ ...avatar, name }))
   /** Bring in an avatar from a file: its character is kept, its animations are not. */
   const importAvatar = (source: string) => {
-    const imported = studioAvatarFromDefinitionSource(source)
-    const avatar: StudioAvatar = { ...imported.avatar, behavior: undefined }
+    const avatar = avatarFromSource(source)
     updateLibrary([...avatars, avatar], avatar.id)
     setSelectedBodyNodeId('primary')
     setTab('avatars')
@@ -207,33 +185,14 @@ export const useEditor = () => {
   // Colours, outline and the face's own features.
   const updateColors = (changes: Partial<AvatarColors>) =>
     updateActiveAvatar(avatar => ({ ...avatar, colors: { ...avatar.colors, ...changes } }))
-  const updateFeatures = (changes: Partial<AvatarEyeDefaults>) =>
+  const updateFeatures = (changes: Partial<AvatarFeatures>) =>
     updateActiveAvatar(avatar => ({ ...avatar, eyes: { ...avatar.eyes, ...changes } }))
-  const outline: AvatarOutlineStyle =
-    activeAvatar.renderStyle.type === 'vector' && activeAvatar.renderStyle.outline
-      ? activeAvatar.renderStyle.outline
-      : defaultAvatarOutlineStyle
+  const outline: AvatarOutlineStyle = activeAvatar.renderStyle.outline ?? defaultAvatarOutlineStyle
   const updateOutline = (changes: Partial<AvatarOutlineStyle>) =>
     updateActiveAvatar(avatar => ({
       ...avatar,
       renderStyle: { type: 'vector', outline: { ...outline, ...changes } },
     }))
-
-  // A neutral face at rest, for the thumbnails of the body's shapes.
-  const expression: Expression = useMemo(
-    () =>
-      expressionFromDefinition('neutral', {
-        head: { x: 0, y: 0, z: 0 },
-        eyes: {
-          left: { width: 0, height: 0, x: 0, y: 0, angle: 0 },
-          right: { width: 0, height: 0, x: 0, y: 0, angle: 0 },
-          spacing: 0,
-        },
-        perspective: 1,
-        motion: { eyes: 'none', body: 'none' },
-      }),
-    []
-  )
 
   return {
     t,
@@ -287,7 +246,7 @@ export const useEditor = () => {
       setPhoto(current => ({ ...current, ...changes })),
     surface,
     bodyNodes,
-    expression,
+    expression: restExpression,
     selectedBodyNodeId,
     selectedBodyNode,
     selectBodyNode,

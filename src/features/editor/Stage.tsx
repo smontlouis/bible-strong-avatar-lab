@@ -18,14 +18,14 @@ import {
 } from '@bible-strong/avatar-core'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { PlaybackIdentity } from '@/app/components/common'
+import { PlaybackIdentity } from '@/features/editor/panels'
 import { Scene } from '@/features/editor/Scene'
 import type { Editor } from '@/features/editor/useEditor'
-import { BodyNodeGizmo, RotationGizmo } from '@/features/rendering/components/AvatarCanvas'
+import { BodyNodeGizmo, RotationGizmo } from '@/features/editor/gizmos'
 import {
   createRenderedRotationGizmo,
   paintRenderedRotationGizmo,
-} from '@/features/rendering/renderedRotationGizmo'
+} from '@/features/editor/renderedRotationGizmo'
 
 /** What the stage tells the panels about the avatar, a few times a second. */
 export type StageStatus = {

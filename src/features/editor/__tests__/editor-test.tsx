@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import {
-  characterFromLegacyDefinition,
   createAvatarEngine,
   setEnginePose,
   setEngineState,
@@ -9,10 +8,10 @@ import {
 import { act, fireEvent, render } from '@testing-library/react'
 import { vi } from 'vitest'
 
-import { createAvatarDefinition } from '@/features/avatar/avatarDefinition'
+import { avatarFromSource, characterOfAvatar } from '@/features/editor/avatar'
+import { loadLibrary } from '@/features/editor/document'
 import { Editor } from '@/features/editor/Editor'
 import { pictureSvg } from '@/features/editor/picture'
-import { loadStudioDocument } from '@/features/studio/studioDocument'
 import { StudioLanguageProvider } from '@/i18n'
 
 let pending: FrameRequestCallback[] = []
@@ -93,7 +92,7 @@ describe('the editor', () => {
     fireEvent.change(first.getByLabelText('Nom de l’avatar'), { target: { value: 'Strobi bis' } })
     fireEvent.click(first.getByRole('button', { name: 'Enregistrer' }))
     first.unmount()
-    expect(loadStudioDocument().library.avatars[0].name).toBe('Strobi bis')
+    expect(loadLibrary().avatars[0].name).toBe('Strobi bis')
     const { getByRole } = open()
     expect(getByRole('button', { name: 'Strobi bis' })).toBeTruthy()
   })
@@ -102,7 +101,7 @@ describe('the editor', () => {
     const { getByRole, getByLabelText } = open()
     fireEvent.click(getByRole('button', { name: 'Ajouter un avatar' }))
     expect((getByLabelText('Nom de l’avatar') as HTMLInputElement).value).toBe('Nouvel avatar')
-    expect(loadStudioDocument().library.avatars.at(-1)?.name).toBe('Nouvel avatar')
+    expect(loadLibrary().avatars.at(-1)?.name).toBe('Nouvel avatar')
   })
 
   it('stops the avatar and lets it be turned by hand in the Pose tab', () => {
@@ -136,13 +135,7 @@ describe('the editor', () => {
 })
 
 describe('the picture of an avatar', () => {
-  const avatar = loadStudioDocument().library.avatars[0]
-  const definition = createAvatarDefinition({
-    avatar,
-    behavior: { expressions: [], sequences: [] },
-  })
-  if (!definition.ok) throw new Error('The fixture avatar has no definition.')
-  const character = characterFromLegacyDefinition(definition.value)
+  const character = characterOfAvatar(loadLibrary().avatars[0])
 
   const plain = {
     background: 'transparent',
@@ -190,5 +183,20 @@ describe('the picture of an avatar', () => {
     setEngineState(engine, 'radar')
     for (let step = 0; step < 90; step += 1) advanceEngine(engine, 1 / 60)
     expect(pictureSvg(character, engine, plain)).toContain('stroke-linecap="round"')
+  })
+})
+
+describe('an avatar saved as a file', () => {
+  it('comes back with its body, its colours and its face', () => {
+    const avatar = loadLibrary().avatars.find(item => item.body.nodes.length > 0)!
+    const character = characterOfAvatar(avatar)
+    const back = avatarFromSource(JSON.stringify(character))
+    expect(back.id).not.toBe(avatar.id)
+    expect(characterOfAvatar(back)).toEqual(character)
+  })
+
+  it('refuses a file that holds no avatar', () => {
+    expect(() => avatarFromSource('not json')).toThrow()
+    expect(() => avatarFromSource('{"version":2}')).toThrow()
   })
 })

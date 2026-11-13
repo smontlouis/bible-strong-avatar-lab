@@ -9,7 +9,7 @@ import {
   normalizeSnapshotComposition,
   snapshotCornerRadius,
   type SnapshotComposition,
-} from '@/features/export/snapshotComposition'
+} from '@/features/editor/snapshotComposition'
 
 // A picture of the avatar as the engine has it now, as a file. It is written as plain SVG so
 // that it stands by itself outside the Studio.

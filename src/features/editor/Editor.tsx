@@ -37,8 +37,8 @@ import {
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
-import { InspectorCard, PanelTitle, StatePlayer } from '@/app/components/common'
-import { ColorField, NumericField } from '@/app/components/controls'
+import { InspectorCard, PanelTitle, StatePlayer } from '@/features/editor/panels'
+import { ColorField, NumericField } from '@/features/editor/controls'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,20 +54,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Switch } from '@/components/ui/switch'
+import { characterOfAvatar } from '@/features/editor/avatar'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
 import { PhotoPanel, PoseControls, slugOf, takePicture } from '@/features/editor/PhotoPanel'
 import { Scene } from '@/features/editor/Scene'
 import { emptyStatus, Stage, type StageStatus } from '@/features/editor/Stage'
 import {
-  characterOfAvatar,
   editorTabs,
   useEditor,
   type Editor as EditorState,
   type EditorTab,
 } from '@/features/editor/useEditor'
-import { BodyConstructionAccordion } from '@/features/studio/components/BodyConstructionAccordion'
-import { PhotoStageFrame } from '@/features/studio/components/PhotoStageFrame'
-import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
+import { BodyConstructionAccordion } from '@/features/editor/BodyConstruction'
+import { PhotoStageFrame } from '@/features/editor/PhotoStageFrame'
+import { StudioIdentity } from '@/features/editor/StudioIdentity'
 import { useStudioLanguage } from '@/i18n'
 
 const STACKED_LAYOUT_QUERY = '(max-width: 980px)'

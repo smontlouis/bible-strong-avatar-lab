@@ -1,8 +1,8 @@
 import { faceNames } from '@bible-strong/avatar-core'
 import { Camera, Move3D, RotateCcw, Scan, Shuffle } from 'lucide-react'
 
-import { InspectorCard, PanelTitle } from '@/app/components/common'
-import { ColorField, NumericField } from '@/app/components/controls'
+import { InspectorCard, PanelTitle } from '@/features/editor/panels'
+import { ColorField, NumericField } from '@/features/editor/controls'
 import {
   Accordion,
   AccordionContent,
@@ -22,8 +22,8 @@ import { Separator } from '@/components/ui/separator'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
 import { downloadPicture, pictureSvg } from '@/features/editor/picture'
 import type { Editor } from '@/features/editor/useEditor'
-import { normalizeSnapshotComposition } from '@/features/export/snapshotComposition'
-import { randomSnapshotPalette } from '@/features/export/snapshotPalette'
+import { normalizeSnapshotComposition } from '@/features/editor/snapshotComposition'
+import { randomSnapshotPalette } from '@/features/editor/snapshotPalette'
 
 export const slugOf = (name: string) =>
   name

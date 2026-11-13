@@ -100,18 +100,16 @@ Open [http://localhost:5173](http://localhost:5173).
 
 ## Available commands
 
-| Command             | Purpose                                                                           |
-| ------------------- | --------------------------------------------------------------------------------- |
-| `pnpm dev`          | Regenerate the standalone engine and start Vite in development mode.              |
-| `pnpm typecheck`    | Run TypeScript in strict, no-emit mode.                                           |
-| `pnpm test`         | Run the Vitest suite once.                                                        |
-| `pnpm test:watch`   | Run Vitest in watch mode.                                                         |
-| `pnpm engine`       | Regenerate the standalone engine used by exported packages.                       |
-| `pnpm engine:check` | Verify that the committed generated engine is current.                            |
-| `pnpm build`        | Regenerate the engine and create a production build in `dist/`.                   |
-| `pnpm preview`      | Serve the production build locally.                                               |
-| `pnpm format`       | Format the repository with Prettier.                                              |
-| `pnpm check`        | Run engine freshness, formatting, type checking, tests, and the production build. |
+| Command           | Purpose                                                         |
+| ----------------- | --------------------------------------------------------------- |
+| `pnpm dev`        | Start Vite in development mode.                                 |
+| `pnpm typecheck`  | Run TypeScript in strict, no-emit mode.                         |
+| `pnpm test`       | Run the Vitest suite once.                                      |
+| `pnpm test:watch` | Run Vitest in watch mode.                                       |
+| `pnpm build`      | Create a production build in `dist/`.                           |
+| `pnpm preview`    | Serve the production build locally.                             |
+| `pnpm format`     | Format the repository with Prettier.                            |
+| `pnpm check`      | Run formatting, type checking, tests, and the production build. |
 
 ## Validation
 
@@ -137,7 +135,7 @@ The deployable site is written to `dist/`. Serve it locally before publishing:
 pnpm preview
 ```
 
-The application is a client-only Vite site with no server runtime or environment variables. Talk Mode and Stream Mode exist only on the development server (`pnpm dev`), which serves the `/api/direct-dialogue` route they need: a production build leaves them out. The build uses relative asset paths, so the contents of `dist/` can be hosted at a domain root or a subpath, including a GitHub Pages project URL. Any static host that serves `index.html` can deploy it.
+The application is a client-only Vite site with no server runtime or environment variables. The build uses relative asset paths, so the contents of `dist/` can be hosted at a domain root or a subpath, including a GitHub Pages project URL. Any static host that serves `index.html` can deploy it.
 
 Vercel Web Analytics and Speed Insights are integrated in the React entry point. Enable both products in the Vercel project dashboard, then redeploy so their collection routes become available.
 
@@ -151,34 +149,30 @@ Vercel Web Analytics and Speed Insights are integrated in the React entry point.
 - **Tailwind CSS 4** and reusable components under `src/components/ui/` provide the interface layer.
 - **Vitest** covers geometry, playback, editing, persistence, rendering, and export behavior.
 
-Geometry, playback, document operations, and the standalone runtime remain framework-independent. React state stores durable editor data; Motion values handle frame-by-frame visual updates without forcing React renders.
+Geometry and playback live in `packages/avatar-core` and remain framework-independent. React state stores durable editor data; Motion values handle frame-by-frame visual updates without forcing React renders.
 
 ## Repository map
 
-| Path                                     | Responsibility                                                           |
-| ---------------------------------------- | ------------------------------------------------------------------------ |
-| `src/app/`                               | Application shell, shared controls, utilities, and global styles.        |
-| `src/components/ui/`                     | Reusable interface primitives.                                           |
-| `src/features/avatar/`                   | Avatar identity, body, geometry, expressions, manipulation, and tests.   |
-| `src/features/animation/`                | Animation sequences, framework-independent playback, and tests.          |
-| `src/features/rendering/`                | Stable SVG scene, canvas preview, rotation gizmo, and rendering tests.   |
-| `src/features/export/`                   | Packages, snapshots, ZIPs, standalone runtime, and export tests.         |
-| `src/features/studio/`                   | Studio controller, composed views, persistence, bundled data, and tests. |
-| `src/i18n/`                              | Localized interface copy and translation tests.                          |
-| `src/lib/`                               | Small shared utilities without product-domain ownership.                 |
-| `scripts/generate-standalone-engine.mjs` | Standalone-engine generator.                                             |
-| `docs/adr/`                              | Accepted architecture decisions.                                         |
-| `legacy/`                                | Self-contained HTML prototypes that preceded the React application.      |
+| Path                   | Responsibility                                                               |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `packages/`            | The runtime packages: core engine and its React, web and native renderers.   |
+| `src/app/`             | Application shell and global styles.                                         |
+| `src/components/ui/`   | Reusable interface primitives.                                               |
+| `src/features/editor/` | The Studio: avatar library, body construction, stage, photo mode, and tests. |
+| `src/i18n/`            | Localized interface copy and translation tests.                              |
+| `src/lib/`             | Small shared utilities without product-domain ownership.                     |
+| `docs/adr/`            | Accepted architecture decisions.                                             |
+| `legacy/`              | Self-contained HTML prototypes that preceded the React application.          |
 
 ## Persistence and privacy
 
-There is no remote backend in this repository. The complete Studio document and interface language preference are stored in the browser's local storage. Exported files are generated locally in the browser. Clearing site data removes the local project, so JSON export is the recommended backup mechanism.
+There is no remote backend in this repository. The avatar library and interface language preference are stored in the browser's local storage. Exported files are generated locally in the browser. Clearing site data removes the local library, so saving each character as JSON is the recommended backup mechanism.
 
 The current project format is a pre-release schema. Compatibility is maintained with the current schema only unless an explicit migration is introduced.
 
 ## Contributing
 
-Keep domain calculations outside React components, preserve the separation between durable React state and high-frequency Motion values, and add focused tests for domain changes. Do not edit `src/features/export/standaloneEngine.generated.ts` directly; run `pnpm engine` after changing its source modules.
+Keep domain calculations outside React components, preserve the separation between durable React state and high-frequency Motion values, and add focused tests for domain changes.
 
 English, French, and Simplified Chinese interface copy must stay synchronized across `src/i18n/index.ts` and `src/i18n/zh.ts`.
 
