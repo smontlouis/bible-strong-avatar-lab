@@ -8,7 +8,6 @@ export default defineConfig({
       entry: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
       formats: ['es'],
       fileName: 'index',
-      cssFileName: 'styles',
     },
     sourcemap: true,
     rollupOptions: {

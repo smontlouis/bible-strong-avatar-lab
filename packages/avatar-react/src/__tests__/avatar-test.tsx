@@ -4,6 +4,7 @@ import { act, createRef } from 'react'
 import { render } from '@testing-library/react'
 import { vi } from 'vitest'
 
+import legacyJson from '../../../../examples/react-vite-consumer/src/strobi.avatar.json'
 import { Avatar, createAvatar, type AvatarHandle } from '../index'
 
 const character: AvatarCharacter = {
@@ -147,5 +148,12 @@ describe('@bible-strong/avatar-react', () => {
     const Fixture = createAvatar(character)
     const { getByRole } = render(<Fixture ariaLabel="Mine" size={32} />)
     expect(getByRole('img', { name: 'Mine' })).toBeTruthy()
+  })
+
+  it('makes a component from a file of the first format, and refuses a broken one', () => {
+    const Strobi = createAvatar(legacyJson)
+    const { getByRole } = render(<Strobi ariaLabel="Strobi" />)
+    expect(getByRole('img', { name: 'Strobi' })).toBeTruthy()
+    expect(() => createAvatar({ body: {} })).toThrow(/Invalid avatar character/)
   })
 })

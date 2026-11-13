@@ -8,12 +8,16 @@
   <body>
     <main>
       <div id="avatar"></div>
+      <output id="status"></output>
       <div class="controls">
-        <button type="button" data-animation="sleeping">Sleeping</button>
-        <button type="button" data-animation="idle">Idle</button>
-        <button type="button" data-expression="neutral">Neutral</button>
+        <button type="button" data-state="idle">Idle</button>
+        <button type="button" data-state="thinking">Thinking</button>
+        <button type="button" data-state="searching">Searching</button>
+        <button type="button" data-state="happy">Happy</button>
+        <button type="button" data-state="sleeping">Sleeping</button>
+        <button type="button" data-gesture="nod">Nod</button>
+        <button type="button" data-gesture="spin">Spin</button>
         <button type="button" id="pause">Pause</button>
-        <button type="button" id="stop">Stop</button>
       </div>
     </main>
     <script type="module" src="/src/main.ts"></script>
