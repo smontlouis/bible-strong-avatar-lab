@@ -734,7 +734,7 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
               title={t('Reprendre l’état')}
               onClick={() => takeUp(name)}
             >
-              <Play className="size-2.5" fill="currentColor" />
+              <X className="size-3" />
             </button>
           </span>
         )}

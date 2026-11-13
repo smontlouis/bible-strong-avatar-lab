@@ -168,6 +168,18 @@ describe('the editor', () => {
     expect(stage().innerHTML).not.toBe(still)
   })
 
+  it('goes back to idle when the States tab opens on a clip played alone', async () => {
+    const { getByRole, container } = open()
+    fireEvent.click(getByRole('button', { name: 'Clips' }))
+    await pick('Clip', 'Working_B')
+    frames(12)
+    fireEvent.click(getByRole('button', { name: 'États' }))
+    frames(12)
+    expect(container.querySelector('.state-player')!.getAttribute('aria-label')).toBe(
+      'En lecture : idle'
+    )
+  })
+
   it('shows the nine faces and holds the one that is picked', () => {
     const { getByRole, getAllByRole } = open()
     fireEvent.click(getByRole('button', { name: 'Visages' }))

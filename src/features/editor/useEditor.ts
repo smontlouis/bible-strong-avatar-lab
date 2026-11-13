@@ -209,6 +209,13 @@ export const useEditor = () => {
     setTab: (next: EditorTab) => {
       setTab(next)
       setBuilding(false)
+      // The States tab shows a state: a clip played alone gives way to `idle`.
+      if (next === 'states' && 'clip' in doing) {
+        setStopped(false)
+        setHeld(false)
+        setDoing({ state: 'idle' })
+        setPlaying(true)
+      }
     },
     building,
     setBuilding,
