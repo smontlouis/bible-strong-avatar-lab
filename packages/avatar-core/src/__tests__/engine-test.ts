@@ -1,4 +1,4 @@
-import { clips, routines, stateGroups, stateNames, states } from '../catalogue'
+import { clips, stateGroups, stateNames, states } from '../catalogue'
 import {
   advanceEngine,
   createAvatarEngine,
@@ -12,7 +12,6 @@ import {
   setEngineGaze,
   setEngineGazeAlways,
   setEnginePose,
-  setEngineRoutine,
   setEngineState,
   type AvatarEngine,
 } from '../engine'
@@ -49,16 +48,6 @@ describe('the catalogue of states', () => {
       if (states[name].next) expect(states[states[name].next!]).toBeDefined()
     }
     expect(stateGroups.flatMap(group => group.states).sort()).toEqual([...stateNames].sort())
-  })
-
-  it('has the four scenarios, whose steps name states that exist', () => {
-    expect(Object.keys(routines).sort()).toEqual(['chat', 'code', 'computer-use', 'research'])
-    for (const steps of Object.values(routines)) {
-      for (const [state, seconds] of steps) {
-        expect(states[state]).toBeDefined()
-        expect(seconds).toBeGreaterThan(0)
-      }
-    }
   })
 })
 
@@ -259,76 +248,6 @@ describe('gaze', () => {
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before, 6)
     setEngineGazeAlways(engine, true)
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before + 18 * 0.55, 1)
-  })
-})
-
-describe('scenarios', () => {
-  it('leads the avatar through the states of chat, each for its time, and starts over', () => {
-    const engine = createAvatarEngine()
-    setEngineRoutine(engine, 'chat')
-    const seen: string[] = []
-    for (let elapsed = 0; elapsed < 31.8 + 2; elapsed += STEP) {
-      advanceEngine(engine, STEP)
-      const step = routines.chat[engine.routine!.step][0]
-      if (step !== seen[seen.length - 1]) seen.push(step)
-    }
-    expect(seen.slice(0, 13)).toEqual(routines.chat.map(step => step[0]))
-    // Round again.
-    expect(seen[13]).toBe('working')
-  })
-
-  it('changes state when a step is over, without waiting for the clip to end', () => {
-    const engine = createAvatarEngine()
-    setEngineRoutine(engine, 'chat')
-    expect(engine.state).toBe('working')
-    run(engine, 1.7)
-    expect(engine.state).toBe('thinking')
-    expect(engine.morph).toBe('thinking')
-  })
-
-  it('keeps the same clips going from one state of work to the next, and changes the text', () => {
-    const engine = createAvatarEngine()
-    setEngineRoutine(engine, 'code')
-    // Steps 3 and 4 of code are reading then running: both are states of work.
-    run(engine, 1.6 + 2.6 + 0.2)
-    expect(engine.state).toBe('reading')
-    expect(engine.routine!.text).toBe('Reading the file')
-    const clip = engine.player.clip?.name
-    run(engine, 2.8)
-    expect(routines.code[engine.routine!.step][0]).toBe('running')
-    expect(engine.routine!.text).toBe('Running a few commands')
-    expect(engine.state).toBe('reading')
-    expect(engine.player.clip?.name).toBe(clip)
-  })
-
-  it('does not say the same thing twice in a row when it has a choice', () => {
-    const engine = createAvatarEngine({ seed: 9 })
-    setEngineRoutine(engine, 'chat')
-    const thoughts: string[] = []
-    let step = -1
-    for (let elapsed = 0; elapsed < 31.8 * 3; elapsed += STEP) {
-      advanceEngine(engine, STEP)
-      const routine = engine.routine!
-      if (routine.step !== step) {
-        step = routine.step
-        if (routines.chat[step][0] === 'thinking') thoughts.push(routine.text!)
-      }
-    }
-    expect(thoughts.length).toBeGreaterThan(6)
-    for (let index = 1; index < thoughts.length; index += 1) {
-      expect(thoughts[index]).not.toBe(thoughts[index - 1])
-    }
-  })
-
-  it('stops a scenario and leaves the avatar where it is', () => {
-    const engine = createAvatarEngine()
-    setEngineRoutine(engine, 'research')
-    run(engine, 2)
-    setEngineRoutine(engine, null)
-    const state = engine.state
-    run(engine, 5)
-    expect(engine.routine).toBeNull()
-    expect(engine.state).toBe(state)
   })
 })
 

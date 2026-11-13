@@ -1,4 +1,4 @@
-import { clips, routines, states, type StateDefinition } from './catalogue'
+import { clips, states, type StateDefinition } from './catalogue'
 import type { ClipDefinition } from './clips'
 import type { Quaternion } from './geometry'
 import { inspectEyeScales, inspectLeanOfTurn } from './faces'
@@ -118,20 +118,6 @@ export type FreePose = {
   zoom?: number
 }
 
-/** A scenario as it runs: a list of states, each for a time, with what is said meanwhile. */
-type Routine = {
-  name: string
-  /** Which step of the scenario runs. */
-  step: number
-  /** Seconds spent in the step. */
-  time: number
-  /** What is said during the step, if anything. */
-  text: string | null
-  /** The last text drawn from each list of texts, so that it is not drawn twice in a row. */
-  lastTexts: Record<string, string>
-  random: Random
-}
-
 export type AvatarEngine = {
   player: AvatarPlayer
   random: Random
@@ -156,8 +142,6 @@ export type AvatarEngine = {
   morphing: Morphing
   gestures: Gesture[]
   gaze: Gaze
-  /** The scenario that leads the avatar from state to state, when one does. */
-  routine: Routine | null
   /** A pose set by hand: what it gives takes the place of what the clip asks. */
   pose: FreePose | null
 }
@@ -191,7 +175,6 @@ export const createAvatarEngine = (
   },
   gestures: [],
   gaze: { target: null, at: [0, 0], hold: 0, always: false },
-  routine: null,
   pose: null,
 })
 
@@ -293,63 +276,6 @@ export const playEngineClip = (
   engine.started = true
   playClip(engine.player, clip, options)
   engine.loopsSeen = engine.player.loopCount
-}
-
-// The states of plain work. A scenario that goes from one to another only changes what is
-// said: the avatar goes on with the clips it was drawing.
-const workStates = ['reading', 'working', 'coding', 'running', 'computing', 'controlling']
-
-const enterRoutineStep = (engine: AvatarEngine, routine: Routine) => {
-  const steps = routines[routine.name]
-  const [state, , text] = steps[routine.step]
-  routine.time = 0
-  if (text === undefined) routine.text = null
-  else if (typeof text === 'string') routine.text = text
-  else {
-    // One text of the list, and not the one drawn from it last time when there is another.
-    const key = text.join('|')
-    const choices = text.length > 1 ? text.filter(item => item !== routine.lastTexts[key]) : text
-    routine.text = choices[Math.floor(nextRandom(routine.random) * choices.length)]
-    routine.lastTexts[key] = routine.text
-  }
-  const working = engine.state !== null && workStates.includes(engine.state)
-  if (!(working && workStates.includes(state)) && engine.state !== state) {
-    setEngineState(engine, state)
-  }
-}
-
-/**
- * Run a scenario of the catalogue: it leads the avatar from state to state, round and round.
- * `null` stops it and leaves the avatar in the state it is in.
- */
-export const setEngineRoutine = (engine: AvatarEngine, name: string | null) => {
-  if (name === null || !routines[name]) {
-    engine.routine = null
-    return
-  }
-  engine.routine = {
-    name,
-    step: 0,
-    time: 0,
-    text: null,
-    lastTexts: {},
-    random: { seed: engine.random.seed ^ 0x5f3759df },
-  }
-  enterRoutineStep(engine, engine.routine)
-}
-
-const advanceRoutine = (engine: AvatarEngine, seconds: number) => {
-  const routine = engine.routine
-  if (!routine) return
-  const steps = routines[routine.name]
-  routine.time += seconds
-  // A step ends when its time is up, whatever the clip is doing.
-  while (routine.time >= steps[routine.step][1]) {
-    const over = routine.time - steps[routine.step][1]
-    routine.step = (routine.step + 1) % steps.length
-    enterRoutineStep(engine, routine)
-    routine.time = over
-  }
 }
 
 /** Place the avatar by hand, or pass `null` to give it back to the clip that plays. */
@@ -483,7 +409,6 @@ const advanceMorphing = (engine: AvatarEngine, seconds: number) => {
 /** Move the engine forward by a time, in seconds. */
 export const advanceEngine = (engine: AvatarEngine, seconds: number) => {
   const step = Math.max(0, Math.min(MAX_STEP_SECONDS, seconds))
-  advanceRoutine(engine, step)
   advanceDirector(engine, step)
   advanceMorphing(engine, step)
   // A body that has turned into a spinner has stopped its choreography.

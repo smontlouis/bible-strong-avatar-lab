@@ -147,9 +147,7 @@ const english: Record<string, string> = {
   'Remettre au repos': 'Back to rest',
   'Revenir à idle': 'Back to idle',
   Rotation: 'Rotation',
-  Scénarios: 'Scenarios',
   Spinners: 'Spinners',
-  Status: 'Status',
   'Suit le pointeur': 'Follows the pointer',
   Temporisé: 'Timed',
   'Temps du clip': 'Clip time',
@@ -159,8 +157,6 @@ const english: Record<string, string> = {
     'An imported avatar keeps its body, colors, nose and mouth. Its expressions and animations are not brought in.',
   'Un geste se pose par-dessus ce qui joue, sans le relancer. Plusieurs gestes s’additionnent.':
     'A gesture is laid over what plays, without restarting it. Several gestures add up.',
-  'Un scénario mène l’avatar d’état en état, chacun pour un temps, avec ce qui se dit pendant. Il tourne en boucle.':
-    'A scenario leads the avatar from state to state, each for a time, with what is said meanwhile. It loops.',
   'Un visage, c’est la forme des deux yeux. Le clip choisit le visage, sauf si un état le tient ou si tu en imposes un ici.':
     'A face is the shape of the two eyes. The clip chooses the face, unless a state holds one or you set one here.',
   'Une bouche en trait suit le visage : elle se relève pour happy, tombe pour sad.':

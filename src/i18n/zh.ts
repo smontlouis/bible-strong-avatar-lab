@@ -114,9 +114,7 @@ export const chinese: Record<string, string> = {
   'Remettre au repos': '恢复静止',
   'Revenir à idle': '回到 idle',
   Rotation: '旋转',
-  Scénarios: '场景',
   Spinners: '加载动画',
-  Status: '状态流程',
   'Suit le pointeur': '跟随指针',
   Temporisé: '定时',
   'Temps du clip': '片段时间',
@@ -126,8 +124,6 @@ export const chinese: Record<string, string> = {
     '导入的头像保留身体、颜色、鼻子和嘴巴。其表情和动画不会导入。',
   'Un geste se pose par-dessus ce qui joue, sans le relancer. Plusieurs gestes s’additionnent.':
     '手势叠加在正在播放的内容上，不会重新开始。多个手势会相加。',
-  'Un scénario mène l’avatar d’état en état, chacun pour un temps, avec ce qui se dit pendant. Il tourne en boucle.':
-    '场景带领头像依次经历各个状态，每个状态持续一段时间并配有文字。循环播放。',
   'Un visage, c’est la forme des deux yeux. Le clip choisit le visage, sauf si un état le tient ou si tu en imposes un ici.':
     '表情即两只眼睛的形状。由片段选择表情，除非状态固定了表情或你在此指定。',
   'Une bouche en trait suit le visage : elle se relève pour happy, tombe pour sad.':

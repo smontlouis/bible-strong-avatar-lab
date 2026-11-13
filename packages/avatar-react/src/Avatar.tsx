@@ -15,7 +15,6 @@ import {
   setEngineGaze,
   setEngineGazeAlways,
   setEnginePose,
-  setEngineRoutine,
   setEngineState,
   type AvatarCharacter,
   type AvatarEngine,
@@ -45,11 +44,9 @@ export type AvatarProps = {
   character: AvatarCharacter
   ref?: Ref<AvatarHandle>
   /**
-   * What the avatar does. A scenario leads it from state to state; a state draws its own clips;
-   * a clip plays alone, round and round. The first that is given wins, in that order. With none
-   * the avatar is `idle`.
+   * What the avatar does. A state draws its own clips; a clip plays alone, round and round. A
+   * state wins over a clip. With none the avatar is `idle`.
    */
-  routine?: string
   state?: string
   clip?: string
   /** A face to hold whatever the avatar does. Leave it out to let the avatar decide. */
@@ -74,8 +71,6 @@ export type AvatarProps = {
   ariaLabel?: string
   /** Called when the avatar goes into another state, by itself or because it was asked to. */
   onStateChange?: (state: string | null) => void
-  /** Called with what a scenario says at each of its steps, and `null` when it says nothing. */
-  onText?: (text: string | null) => void
 }
 
 // A spinner draws at most this many marks at once, two patterns crossing included.
@@ -91,17 +86,7 @@ const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const applyDoing = (
-  engine: AvatarEngine,
-  routine: string | undefined,
-  state: string | undefined,
-  clip: string | undefined
-) => {
-  if (routine !== undefined) {
-    setEngineRoutine(engine, routine)
-    return
-  }
-  setEngineRoutine(engine, null)
+const applyDoing = (engine: AvatarEngine, state: string | undefined, clip: string | undefined) => {
   if (state === undefined && clip !== undefined && clips[clip]) playEngineClip(engine, clips[clip])
   else setEngineState(engine, state ?? 'idle')
 }
@@ -109,7 +94,6 @@ const applyDoing = (
 export function Avatar({
   character,
   ref,
-  routine,
   state,
   clip,
   face,
@@ -123,7 +107,6 @@ export function Avatar({
   style,
   ariaLabel = 'Avatar',
   onStateChange,
-  onText,
 }: AvatarProps): ReactElement {
   const id = useId().replace(/:/g, '')
   const compact = typeof size === 'number' && size < COMPACT_UNDER
@@ -135,7 +118,7 @@ export function Avatar({
   const engine = useMemo(() => {
     const created = createAvatarEngine({ seed: resolvedSeed, compact })
     setEngineEmphasis(created, emphasis)
-    applyDoing(created, routine, state, clip)
+    applyDoing(created, state, clip)
     setEngineFace(created, face ?? null)
     setEnginePose(created, pose ?? null)
     return created
@@ -148,8 +131,8 @@ export function Avatar({
   )
 
   const svg = useRef<SVGSVGElement | null>(null)
-  const callbacks = useRef({ onStateChange, onText })
-  callbacks.current = { onStateChange, onText }
+  const callbacks = useRef({ onStateChange })
+  callbacks.current = { onStateChange }
 
   useImperativeHandle(
     ref,
@@ -213,13 +196,13 @@ export function Avatar({
   }
 
   // What the avatar does, set on the engine that lives.
-  const doing = useRef({ routine, state, clip })
+  const doing = useRef({ state, clip })
   useEffect(() => {
     const before = doing.current
-    if (before.routine === routine && before.state === state && before.clip === clip) return
-    doing.current = { routine, state, clip }
-    applyDoing(engine, routine, state, clip)
-  }, [engine, routine, state, clip])
+    if (before.state === state && before.clip === clip) return
+    doing.current = { state, clip }
+    applyDoing(engine, state, clip)
+  }, [engine, state, clip])
   useEffect(() => setEngineFace(engine, face ?? null), [engine, face])
   useEffect(() => setEnginePose(engine, pose ?? null), [engine, pose])
   useEffect(() => setEngineEmphasis(engine, emphasis), [engine, emphasis])
@@ -252,12 +235,10 @@ export function Avatar({
   // asked for less motion: they get one settled picture, drawn again when something changes.
   const reduced = prefersReducedMotion()
   useLayoutEffect(() => {
-    let reported = { state: engine.state, text: engine.routine?.text ?? null }
+    let reported = engine.state
     const report = () => {
-      const text = engine.routine?.text ?? null
-      if (engine.state !== reported.state) callbacks.current.onStateChange?.(engine.state)
-      if (text !== reported.text) callbacks.current.onText?.(text)
-      reported = { state: engine.state, text }
+      if (engine.state !== reported) callbacks.current.onStateChange?.(engine.state)
+      reported = engine.state
     }
     if (reduced) {
       for (let step = 0; step < SETTLE_STEPS; step += 1) advanceEngine(engine, SETTLE_STEP_SECONDS)
@@ -295,7 +276,7 @@ export function Avatar({
     }
     // `draw` reads the latest refs; the loop only restarts for what it closes over.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, character, reduced, routine, state, clip, face, pose, paused])
+  }, [engine, character, reduced, state, clip, face, pose, paused])
 
   const outline = character.style?.outline?.enabled ? character.style.outline : null
   const stroke = outline

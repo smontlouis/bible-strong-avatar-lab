@@ -10,7 +10,6 @@ import {
   playerFrame,
   pokeEngine,
   renderCharacterFrame,
-  routines,
   stateGroups,
   states,
   type AvatarCharacter,
@@ -24,7 +23,6 @@ import {
   Copy,
   Download,
   Film,
-  ListChecks,
   Move3D,
   Pencil,
   Play,
@@ -83,7 +81,6 @@ const tabLabels: Record<EditorTab, string> = {
   states: 'États',
   clips: 'Clips',
   faces: 'Visages',
-  status: 'Status',
   export: 'Exporter',
 }
 
@@ -92,7 +89,6 @@ const tabIcons: Record<Exclude<EditorTab, 'avatars'>, typeof Play> = {
   states: Activity,
   clips: Film,
   faces: Smile,
-  status: ListChecks,
   export: Download,
 }
 
@@ -728,66 +724,12 @@ function FacesPanel({ editor }: { editor: EditorState }) {
   )
 }
 
-function StatusPanel({ editor, status }: { editor: EditorState; status: StageStatus }) {
-  const { t, doing, setDoing } = editor
-  const running = 'routine' in doing ? doing.routine : null
-  return (
-    <div className="panel-stack">
-      <Group title="Scénarios">
-        <Chips>
-          {Object.keys(routines).map(name => (
-            <Choice
-              active={running === name}
-              key={name}
-              onClick={() => setDoing({ routine: name })}
-            >
-              {name}
-            </Choice>
-          ))}
-        </Chips>
-        <p className={note}>
-          {t(
-            'Un scénario mène l’avatar d’état en état, chacun pour un temps, avec ce qui se dit pendant. Il tourne en boucle.'
-          )}
-        </p>
-      </Group>
-      {running && (
-        <ol className="flex flex-col gap-1">
-          {routines[running].map(([state, seconds, text], index) => {
-            const active = index === status.routineStep
-            return (
-              <li
-                className={`flex items-baseline gap-2 rounded-lg px-3 py-1.5 text-sm ${
-                  active ? 'bg-neutral-900 text-white' : 'bg-neutral-50 text-neutral-700'
-                }`}
-                key={index}
-              >
-                <span className="w-5 shrink-0 text-xs opacity-60">{index + 1}</span>
-                <span className="w-24 shrink-0 font-medium">{state}</span>
-                <span className="w-10 shrink-0 text-xs opacity-70">{seconds} s</span>
-                <span className="truncate text-xs opacity-80">
-                  {active
-                    ? (status.text ?? '')
-                    : typeof text === 'string'
-                      ? text
-                      : (text?.[0] ?? '')}
-                  {!active && Array.isArray(text) && text.length > 1 ? ` +${text.length - 1}` : ''}
-                </span>
-              </li>
-            )
-          })}
-        </ol>
-      )}
-    </div>
-  )
-}
-
 const snippet = (name: string) => `import { Avatar } from '@bible-strong/avatar-react'
 import ${name} from './${name}.character.json'
 
 <Avatar character={${name}} state="thinking" />
 <Avatar character={${name}} clip="Done_A" face="happy" />
-<Avatar character={${name}} routine="chat" followPointer />`
+<Avatar character={${name}} state="listening" followPointer />`
 
 function ExportPanel({ editor }: { editor: EditorState }) {
   const { t, character, activeAvatar } = editor
@@ -849,8 +791,7 @@ export function Editor() {
   }, [])
 
   // What the avatar is doing, as the stage and the bar at the bottom name it.
-  const doingName =
-    'routine' in doing ? doing.routine : (status.state ?? status.clip) || t('au repos')
+  const doingName = (status.state ?? status.clip) || t('au repos')
   const { photoMode } = editor
   const stopped = building || tab === 'pose' || photoMode
 
@@ -1012,7 +953,6 @@ export function Editor() {
             {tab === 'states' && <StatesPanel editor={editor} status={status} />}
             {tab === 'clips' && <ClipsPanel editor={editor} status={status} />}
             {tab === 'faces' && <FacesPanel editor={editor} />}
-            {tab === 'status' && <StatusPanel editor={editor} status={status} />}
             {tab === 'export' && <ExportPanel editor={editor} />}
           </>
         )}
@@ -1040,10 +980,7 @@ export function Editor() {
         <footer className="state-playback-footer">
           <div className="state-playback-bar">
             <div className="state-playback-timeline">
-              <span className="eyebrow">
-                {status.joining ? t('raccord') : status.clip}
-                {status.text ? ` · ${status.text}` : ''}
-              </span>
+              <span className="eyebrow">{status.joining ? t('raccord') : status.clip}</span>
             </div>
             <div className="state-playback-controls">
               <StatePlayer
@@ -1060,7 +997,7 @@ export function Editor() {
         </footer>
       )}
       {!building && !photoMode && (
-        <nav className="mobile-mode-tabs has-seven-tabs" aria-label={t('Mode d’édition')}>
+        <nav className="mobile-mode-tabs has-six-tabs" aria-label={t('Mode d’édition')}>
           <Button
             className="mobile-mode-tab mobile-avatar-tab"
             variant="ghost"

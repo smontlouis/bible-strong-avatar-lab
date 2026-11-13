@@ -11,7 +11,6 @@ import {
   setEngineGaze,
   setEngineGazeAlways,
   setEnginePose,
-  setEngineRoutine,
   setEngineState,
   type CharacterScene,
   type Expression,
@@ -36,8 +35,6 @@ export type StageStatus = {
   face: string
   state: string | null
   morph: string | null
-  routineStep: number
-  text: string | null
 }
 
 export const emptyStatus: StageStatus = {
@@ -48,8 +45,6 @@ export const emptyStatus: StageStatus = {
   face: 'neutral',
   state: null,
   morph: null,
-  routineStep: 0,
-  text: null,
 }
 
 // The pose the body is built in: at rest, facing the viewer, at its own size.
@@ -106,11 +101,6 @@ export function Stage({
     setPose({ ...pose, head: [next.headX, next.headY, next.headZ] })
 
   useEffect(() => {
-    if ('routine' in doing) {
-      setEngineRoutine(engine.current, doing.routine)
-      return
-    }
-    setEngineRoutine(engine.current, null)
     if ('state' in doing) setEngineState(engine.current, doing.state)
     else if (clips[doing.clip]) playEngineClip(engine.current, clips[doing.clip])
   }, [doing, engine, activeAvatar.id])
@@ -177,8 +167,6 @@ export function Stage({
           face: frame.face,
           state: current.state,
           morph: current.morph,
-          routineStep: current.routine?.step ?? 0,
-          text: current.routine?.text ?? null,
         })
       }
       request = requestAnimationFrame(tick)

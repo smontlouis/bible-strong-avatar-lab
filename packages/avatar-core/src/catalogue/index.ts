@@ -1,6 +1,5 @@
 import type { ClipDefinition } from '../clips'
 import clipsData from './clips.json'
-import routinesData from './routines.json'
 import statesData from './states.json'
 
 /** The clips every avatar can play, by name. */
@@ -36,8 +35,3 @@ const stateCatalogue = statesData as unknown as {
 export const states: Readonly<Record<string, StateDefinition>> = stateCatalogue.states
 export const stateGroups: readonly { label: string; states: string[] }[] = stateCatalogue.groups
 export const stateNames: readonly string[] = Object.keys(states)
-
-/** One step of a scenario: a state, how long it lasts, and what is said meanwhile. */
-export type RoutineStep = [state: string, seconds: number, text?: string | string[]]
-
-export const routines = routinesData as unknown as Readonly<Record<string, RoutineStep[]>>

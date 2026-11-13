@@ -128,14 +128,6 @@ describe('@bible-strong/avatar-react', () => {
     expect(Number(part(container, 'disc').getAttribute('opacity'))).toBeGreaterThan(0.99)
   })
 
-  it('says what a scenario says', () => {
-    const texts: (string | null)[] = []
-    render(<Avatar character={character} routine="code" onText={text => texts.push(text)} />)
-    frames(60 * 5)
-    expect(texts.length).toBeGreaterThan(1)
-    expect(texts.at(-1)).toBe('Reading the file')
-  })
-
   it('draws one settled picture, and asks for no frame, for who wants less motion', () => {
     reduced = true
     const { container } = render(<Avatar character={character} state="streaming" />)
