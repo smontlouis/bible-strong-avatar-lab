@@ -1,6 +1,6 @@
 {
   "name": "@bible-strong/avatar-react",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "React 19 renderer for Bible Strong procedural avatars.",
   "keywords": [
     "avatar",
