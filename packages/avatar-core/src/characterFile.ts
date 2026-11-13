@@ -1,4 +1,4 @@
-import Ajv2020 from 'ajv/dist/2020.js'
+import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020.js'
 
 import {
   validateAvatarDefinition,
@@ -51,8 +51,12 @@ const characterSchema = {
   $defs: avatarDefinitionSchema.$defs,
 } as const
 
-const ajv = new Ajv2020({ allErrors: true, strict: true })
-const validateSchema = ajv.compile<AvatarCharacter>(characterSchema)
+// Compiled on first use: a renderer that is given a checked character never pays for it.
+let compiled: ValidateFunction<AvatarCharacter> | undefined
+const validateSchema = () =>
+  (compiled ??= new Ajv2020({ allErrors: true, strict: true }).compile<AvatarCharacter>(
+    characterSchema
+  ))
 
 const pointer = (path: string, segment: unknown) =>
   `${path}/${String(segment).replaceAll('~', '~0').replaceAll('/', '~1')}`
@@ -62,11 +66,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 /** Whether a value is a character as the Studio exports it. */
 export const validateCharacter = (value: unknown): ValidationResult<AvatarCharacter> => {
+  const validate = validateSchema()
   // A copy, through JSON: React Native has no `structuredClone` everywhere.
-  if (validateSchema(value)) {
+  if (validate(value)) {
     return { ok: true, value: JSON.parse(JSON.stringify(value)) as AvatarCharacter }
   }
-  const errors: AvatarDefinitionError[] = (validateSchema.errors ?? []).map(error => ({
+  const errors: AvatarDefinitionError[] = (validate.errors ?? []).map(error => ({
     path:
       error.keyword === 'required'
         ? pointer(error.instancePath, error.params.missingProperty)

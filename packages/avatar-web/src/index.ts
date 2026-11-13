@@ -37,7 +37,7 @@ export type CreateAvatarOptions = {
   face?: string
   /** A state without a face of its own shows surprise. */
   emphasis?: boolean
-  /** Start still, where the clip begins. */
+  /** Start still, where the clip begins: nothing is computed until `resume`. */
   paused?: boolean
   /** Let the avatar follow the pointer with its head. */
   followPointer?: boolean
@@ -291,6 +291,8 @@ export function createAvatar(
   if (paused) pauseEngine(engine)
 
   let destroyed = false
+  // Paused, nothing is computed: what is asked meanwhile plays once the avatar is resumed.
+  let held = paused
   let visible = true
   let request: number | null = null
   let last: number | undefined
@@ -319,7 +321,7 @@ export function createAvatar(
   }
   // Something was asked of the avatar: run it, or show the pose it settles in.
   const refresh = () => {
-    if (destroyed) return
+    if (destroyed || held) return
     if (prefersReducedMotion()) {
       stopLoop()
       for (let step = 0; step < SETTLE_STEPS; step += 1) advanceEngine(engine, SETTLE_STEP_SECONDS)
@@ -394,9 +396,12 @@ export function createAvatar(
       refresh()
     },
     pause() {
+      held = true
       pauseEngine(engine)
+      stopLoop()
     },
     resume() {
+      held = false
       resumeEngine(engine)
       refresh()
     },
@@ -408,7 +413,7 @@ export function createAvatar(
       return {
         state: engine.state,
         clip: engine.player.clip?.name ?? null,
-        paused: !engine.player.playing,
+        paused: held,
       }
     },
     destroy() {

@@ -107,9 +107,10 @@ describe('@bible-strong/avatar-web', () => {
 
   it('holds still when paused, and goes on when resumed', () => {
     const avatar = createAvatar('#avatar', { character: legacyJson, state: 'happy', paused: true })
-    run(2)
+    // Nothing is computed while it is paused.
+    expect(frames.size).toBe(0)
     const held = head()
-    run(30)
+    avatar.setState('thinking')
     expect(head()).toBe(held)
     expect(avatar.getState().paused).toBe(true)
     avatar.resume()

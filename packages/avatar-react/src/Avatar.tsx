@@ -53,7 +53,7 @@ export type AvatarProps = {
   face?: string
   /** A pose set by hand: what it gives takes the place of what the clip asks. */
   pose?: FreePose
-  /** Stop the avatar where it is. */
+  /** Stop the avatar where it is: nothing is computed until it goes on. */
   paused?: boolean
   /** Let the avatar follow the pointer with its head. */
   followPointer?: boolean
@@ -246,6 +246,8 @@ export function Avatar({
       report()
       return
     }
+    // Paused, nothing is computed: what is asked meanwhile plays once the avatar goes on.
+    if (paused) return
     let request = 0
     let last: number | undefined
     let visible = true

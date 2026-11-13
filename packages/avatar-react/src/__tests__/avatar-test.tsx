@@ -75,6 +75,17 @@ describe('@bible-strong/avatar-react', () => {
     expect(part(container, 'left').getAttribute('d')).not.toBe(before)
   })
 
+  it('computes nothing while it is paused, and goes on when it is not', () => {
+    const { container, rerender } = render(
+      <Avatar character={character} clip="Streaming_A" paused />
+    )
+    expect(pending).toHaveLength(0)
+    const held = part(container, 'left').getAttribute('d')
+    rerender(<Avatar character={character} clip="Streaming_A" />)
+    frames(30)
+    expect(part(container, 'left').getAttribute('d')).not.toBe(held)
+  })
+
   it('is idle when nothing is asked of it, and goes to the state it is given', () => {
     const states: (string | null)[] = []
     const { rerender } = render(
