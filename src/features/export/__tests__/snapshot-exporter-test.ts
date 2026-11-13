@@ -29,7 +29,7 @@ describe('avatar snapshot export', () => {
     expect(svg).not.toContain('width="300" height="300" fill=')
   })
 
-  it('exports the front copy of a coloured node clipped inside the head', () => {
+  it('exports the front copy of a coloured node clipped to where it is nearer', () => {
     const hand = {
       id: 'hand',
       name: 'Hand',
@@ -53,7 +53,7 @@ describe('avatar snapshot export', () => {
 
     expect(masked.frontClipPaths[0]).toMatch(/^M.*Z$/)
     expect(svg).toContain(
-      `<clipPath id="snapshot-front-clip-0" clip-path="url(#snapshot-head-clip)"><path d="${masked.frontClipPaths[0]}"/></clipPath>`
+      `<clipPath id="snapshot-front-clip-0"><path d="${masked.frontClipPaths[0]}"/></clipPath>`
     )
     expect(svg).toContain('<g clip-path="url(#snapshot-front-clip-0)"><path')
   })

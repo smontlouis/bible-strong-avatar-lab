@@ -263,7 +263,7 @@ export function Avatar({
       element?.setAttribute('d', frameScene.geometry.frontPaths[index] ?? '')
       element?.setAttribute('fill', frameScene.bodyColors.front[index] ?? frameScene.colors.body)
       // A node of another colour than the body shows in front only where it is nearer than
-      // the head: its copy in front is clipped to that region, inside the head's outline.
+      // the head: its copy in front is clipped to that region.
       const clip = frameScene.geometry.frontClipPaths[index] ?? ''
       frontClipRefs.current[index]?.setAttribute('d', clip)
       if (clip) element?.setAttribute('clip-path', `url(#${clipId}-front-${index})`)
@@ -565,11 +565,7 @@ export function Avatar({
       <svg className="bs-avatar__svg" viewBox="-150 -150 300 300" aria-hidden="true">
         <defs>
           {Array.from({ length: bodyPathSlots }, (_, index) => (
-            <clipPath
-              id={`${clipId}-front-${index}`}
-              clipPath={`url(#${clipId})`}
-              key={`front-clip-${index}`}
-            >
+            <clipPath id={`${clipId}-front-${index}`} key={`front-clip-${index}`}>
               <path
                 ref={element => {
                   frontClipRefs.current[index] = element

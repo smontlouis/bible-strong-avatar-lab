@@ -84,7 +84,7 @@ export const serializeAvatarSnapshot = (
     .filter(item => item.clip)
     .map(
       item =>
-        `<clipPath id="snapshot-front-clip-${item.index}" clip-path="url(#snapshot-head-clip)"><path d="${escapeXml(item.clip)}"/></clipPath>`
+        `<clipPath id="snapshot-front-clip-${item.index}"><path d="${escapeXml(item.clip)}"/></clipPath>`
     )
     .join('')
   const nodeColor = (nodeId: string | null | undefined) =>

@@ -668,21 +668,18 @@ function AvatarInstance(props: AvatarProps): ReactElement {
             clipped={masked ? false : undefined}
           />
         ))}
-        {masked && (
-          <G clipPath={`url(#${clipId})`}>
-            {layers.map(index => (
-              <BodyPath
-                key={`front-masked-${index}`}
-                frame={frame}
-                muted={mutedProgress}
-                layer="front"
-                index={index}
-                clipped
-                clipPath={`url(#${clipId}-front-${index})`}
-              />
-            ))}
-          </G>
-        )}
+        {masked &&
+          layers.map(index => (
+            <BodyPath
+              key={`front-masked-${index}`}
+              frame={frame}
+              muted={mutedProgress}
+              layer="front"
+              index={index}
+              clipped
+              clipPath={`url(#${clipId}-front-${index})`}
+            />
+          ))}
       </Svg>
     </View>
   )

@@ -285,11 +285,7 @@ export function SnapshotPreview({
               <motion.path d={scene.headPath} />
             </clipPath>
             {scene.frontClipPaths.map((clipValue, index) => (
-              <clipPath
-                id={`${clipId}-front-${index}`}
-                clipPath={`url(#${clipId})`}
-                key={`front-clip-${index}`}
-              >
+              <clipPath id={`${clipId}-front-${index}`} key={`front-clip-${index}`}>
                 <motion.path d={clipValue} />
               </clipPath>
             ))}

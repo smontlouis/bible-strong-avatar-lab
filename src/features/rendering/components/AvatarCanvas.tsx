@@ -850,7 +850,7 @@ export function AvatarCanvas({
             <motion.path d={headPath} />
           </clipPath>
           {frontClipPaths.map((clipValue, index) => (
-            <clipPath id={frontClipId(index)} clipPath="url(#avatar-head-clip)" key={index}>
+            <clipPath id={frontClipId(index)} key={index}>
               <motion.path d={clipValue} />
             </clipPath>
           ))}

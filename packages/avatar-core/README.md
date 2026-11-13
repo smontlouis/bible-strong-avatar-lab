@@ -186,8 +186,7 @@ type AvatarScene = {
 finished avatar does not need.
 
 Draw in this order: `backPaths`, `headPath`, then eyes, nose and mouth clipped to `headPath`, then
-`frontPaths`. When `frontClipPaths[i]` is not empty, clip `frontPaths[i]` by it and by `headPath`:
-that path is the part of a coloured node that is nearer than the head's surface (see below). A body node moves between `backPaths` and `frontPaths` as the head turns, so a
+`frontPaths`. When `frontClipPaths[i]` is not empty, clip `frontPaths[i]` by it: that path is the part of a coloured node that is nearer than the head's surface (see below). A body node moves between `backPaths` and `frontPaths` as the head turns, so a
 renderer keeps `definition.body.nodes.length + 2` slots on each side and reads an empty string for
 an unused slot. When `definition.style.outline.enabled` is true, stroke the body and head paths
 underneath with its colour, width and opacity.
@@ -196,14 +195,20 @@ underneath with its colour, width and opacity.
 
 Two shapes of one colour merge into one flat area, so which is in front cannot be seen: a node
 without a colour of its own is drawn wholly behind or wholly in front of the head, by the depth of
-its centre. A node whose `color` differs from the body's is measured instead. It is always in
+its centre. A node whose `color` differs from the body's is measured instead. It is in
 `backPaths`, and it is in `frontPaths` too, with a clip, wherever its surface is nearer than the
-head's: it sinks into the head along a line, as two solids would.
+head's: it sinks into the head along a line, as two solids would. A node that stands whole in
+front of the head is in `frontPaths` only, without a clip.
 
-The line is traced on a lattice of 4 units in the 300-unit view, so it is less exact than an
-outline; outlines themselves stay exact. Measuring costs about as much again as drawing the node,
-and nothing for a node of the body's colour. Two nodes are not measured against each other: they
-are sorted whole, by depth.
+The line is the true one where the two solids meet, found on the node's own surface and drawn as
+curves through exact points. Every surface type works, as a head and as a node. Two things are
+left out: the ears of `mickey` and the tip of `cursor`, which are drawn behind the head whatever
+the node does, and two nodes against each other, which are sorted whole, by depth. Measuring a
+node costs about as much as drawing two or three more nodes, and nothing for a node of the body's
+colour.
+
+`surfaceField(surface)` gives the function behind this: zero on the surface, negative inside,
+growing outward, in the surface's own space.
 
 ## Entry points
 
