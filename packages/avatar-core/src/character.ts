@@ -46,7 +46,7 @@ const STANDARD_EYE_REACH = 0.31535
 // How close the eyes may be set for their width, against the standard face.
 const CLOSEST_EYE_GAP = 0.92
 // The least room each eye leaves between itself and the middle of the face, in head radii.
-const EYE_CLEARANCE = 0.045
+const EYE_CLEARANCE = 0.02
 
 /** The radius the face is measured in: the head's, or the smaller one when it is not round. */
 const faceRadius = (character: Readonly<AvatarCharacter>) =>

@@ -134,8 +134,8 @@ describe('characters', () => {
         const scene = renderCharacterFrame(close, frame)
         const left = box(scene.geometry.leftPath)
         const right = box(scene.geometry.rightPath)
-        expect(left.maxX).toBeLessThan(-3)
-        expect(right.minX).toBeGreaterThan(3)
+        expect(left.maxX).toBeLessThan(-1)
+        expect(right.minX).toBeGreaterThan(1)
       }
     }
   })
