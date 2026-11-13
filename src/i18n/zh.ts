@@ -147,6 +147,9 @@ export const chinese: Record<string, string> = {
   arrêté: '已停止',
   'Visage tenu par l’état': '状态固定的表情',
   'Se transforme en spinner': '变形为加载动画',
+  'Sort 2 fois plus souvent': '出现频率为 2 倍',
+  'Sort 3 fois plus souvent': '出现频率为 3 倍',
+  'Sort 4 fois plus souvent': '出现频率为 4 倍',
   'Taille des yeux': '眼睛大小',
   'Écart des yeux': '眼睛间距',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':

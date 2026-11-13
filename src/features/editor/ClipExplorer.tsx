@@ -623,6 +623,16 @@ function Pill({
   )
 }
 
+/**
+ * The clips of a state, each once, with how many times it is in the state's list: a clip that
+ * is there three times comes out three times as often.
+ */
+const clipsOfState = (state: string) => {
+  const counts = new Map<string, number>()
+  for (const clip of states[state].clips) counts.set(clip, (counts.get(clip) ?? 0) + 1)
+  return [...counts].map(([clip, times]) => ({ clip, times }))
+}
+
 const usesClip = (state: string, clip: string) =>
   states[state].clips.includes(clip) || (states[state].compactClips?.includes(clip) ?? false)
 
@@ -726,7 +736,7 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
       ? `${state.holdSeconds} s → ${state.next}`
       : state.next
         ? `${t('Dans l’ordre')} → ${state.next}`
-        : state.clips.length > 1
+        : name && clipsOfState(name).length > 1
           ? t('Mélangé')
           : t('Un seul clip')
 
@@ -761,7 +771,7 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
         )}
       </div>
       <div className="grid grid-cols-2 gap-1.5">
-        {state.clips.map((item, index) => {
+        {clipsOfState(name).map(({ clip: item, times }) => {
           const playingNow = item === status.clip
           return (
             <button
@@ -773,7 +783,8 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
               }`}
               aria-pressed={playingNow}
               aria-label={`${t('Clip')} ${item}`}
-              key={`${item}-${index}`}
+              title={times > 1 ? t(`Sort ${times} fois plus souvent`) : undefined}
+              key={item}
               onClick={() => {
                 inspect(item)
                 setPlaying(true)
@@ -785,7 +796,10 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
                   style={{ width: 'calc(var(--at, 0) * 100%)' }}
                 />
               )}
-              <strong className="relative truncate text-xs">{item}</strong>
+              <strong className="relative truncate text-xs">
+                {item}
+                {times > 1 && <span className="ml-1 font-semibold opacity-60">×{times}</span>}
+              </strong>
               <span className="relative shrink-0 text-[0.65rem] tabular-nums opacity-70">
                 {seconds(clips[item].duration)}
               </span>
@@ -806,8 +820,8 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
           detail={item =>
             states[item].morph
               ? states[item].morph
-              : states[item].clips.length > 1
-                ? `${states[item].clips.length} clips`
+              : clipsOfState(item).length > 1
+                ? `${clipsOfState(item).length} clips`
                 : undefined
           }
           placeholder={t('Rechercher un état…')}

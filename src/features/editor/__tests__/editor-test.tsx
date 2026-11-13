@@ -168,6 +168,21 @@ describe('the editor', () => {
     expect(stage().innerHTML).not.toBe(still)
   })
 
+  it('shows each clip of a state once, with how often it comes out', () => {
+    const { getByRole, getAllByRole } = open()
+    fireEvent.click(getByRole('button', { name: 'États' }))
+    frames(12)
+    const tiles = getAllByRole('button').filter(button =>
+      button.getAttribute('aria-label')?.startsWith('Clip Idle_')
+    )
+    expect(tiles.map(tile => tile.getAttribute('aria-label'))).toEqual([
+      'Clip Idle_B',
+      'Clip Idle_D',
+      'Clip Idle_A',
+    ])
+    expect(tiles[0].textContent).toContain('×3')
+  })
+
   it('goes back to idle when the States tab opens on a clip played alone', async () => {
     const { getByRole, container } = open()
     fireEvent.click(getByRole('button', { name: 'Clips' }))

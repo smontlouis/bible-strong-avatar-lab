@@ -180,6 +180,9 @@ const english: Record<string, string> = {
   arrêté: 'stopped',
   'Visage tenu par l’état': 'Face held by the state',
   'Se transforme en spinner': 'Turns into a spinner',
+  'Sort 2 fois plus souvent': 'Comes out 2 times as often',
+  'Sort 3 fois plus souvent': 'Comes out 3 times as often',
+  'Sort 4 fois plus souvent': 'Comes out 4 times as often',
   'Taille des yeux': 'Eye size',
   'Écart des yeux': 'Eye gap',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':
