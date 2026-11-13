@@ -137,6 +137,8 @@ export const chinese: Record<string, string> = {
   'Glisse l’avatar sur la scène, depuis n’importe quel onglet : ce qu’il fait se met en pause et il suit ta main. Affine ici avec le gizmo ou les valeurs. Lecture le fait reprendre là où il en était.':
     '在任意标签页中拖动舞台上的头像：它正在做的动作会暂停并跟随你的手。可在此用控制器或数值微调。播放会让它从暂停处继续。',
   'posé à la main': '手动摆放',
+  Mélangé: '随机',
+  'Un seul clip': '单个片段',
   'Taille des yeux': '眼睛大小',
   'Écart des yeux': '眼睛间距',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':

@@ -170,6 +170,8 @@ const english: Record<string, string> = {
   'Glisse l’avatar sur la scène, depuis n’importe quel onglet : ce qu’il fait se met en pause et il suit ta main. Affine ici avec le gizmo ou les valeurs. Lecture le fait reprendre là où il en était.':
     'Drag the avatar on the stage, from any tab: what it does pauses and it follows your hand. Refine it here with the gizmo or the values. Play makes it go on from where it was.',
   'posé à la main': 'posed by hand',
+  Mélangé: 'Shuffled',
+  'Un seul clip': 'A single clip',
   'Taille des yeux': 'Eye size',
   'Écart des yeux': 'Eye gap',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':

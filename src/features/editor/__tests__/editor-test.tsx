@@ -73,6 +73,7 @@ describe('the editor', () => {
   it('plays a state picked in the States tab and says which clip plays', () => {
     const { getByRole, getAllByText } = open()
     fireEvent.click(getByRole('button', { name: 'États' }))
+    fireEvent.click(getByRole('button', { name: 'Lifecycle' }))
     fireEvent.click(getByRole('button', { name: 'finished' }))
     frames(30)
     expect(getAllByText(/Done_B/).length).toBeGreaterThan(0)
@@ -81,6 +82,7 @@ describe('the editor', () => {
   it('stops a clip on the keyframe that is picked and shows its curves and its easing', () => {
     const { getByRole, getAllByRole, getByText, container } = open()
     fireEvent.click(getByRole('button', { name: 'Clips' }))
+    fireEvent.click(getByRole('button', { name: 'Clip' }))
     fireEvent.click(getByRole('button', { name: 'Working_B' }))
     frames(60)
     const keys = getAllByRole('button').filter(button =>
@@ -100,15 +102,16 @@ describe('the editor', () => {
       /^[XYZ] · /.test(button.getAttribute('aria-label') ?? '')
     )
     expect(points).toHaveLength(18)
-    expect(getByText(/Utilisé par : reading/)).toBeTruthy()
+    expect(getByRole('button', { name: 'État reading' })).toBeTruthy()
   })
 
   it('leaves a state for its clip when a keyframe is picked, until the state is resumed', () => {
-    const { getByRole, getAllByRole, getByText, queryByText } = open()
+    const { getByRole, getAllByRole, getByText, queryByText, queryByRole } = open()
     fireEvent.click(getByRole('button', { name: 'États' }))
+    fireEvent.click(getByRole('button', { name: 'Lifecycle' }))
     fireEvent.click(getByRole('button', { name: 'finished' }))
     frames(30)
-    expect(getByText('Clip courant')).toBeTruthy()
+    expect(queryByText('Clip seul')).toBeNull()
     const keys = getAllByRole('button').filter(button =>
       button.getAttribute('aria-label')?.startsWith('Étirement · ')
     )
@@ -117,17 +120,18 @@ describe('the editor', () => {
     // The state is still the one shown, but its clip now plays alone.
     expect(getByText('Clip seul')).toBeTruthy()
     expect(getByRole('heading', { name: 'finished' })).toBeTruthy()
-    expect(getByText('Boucle')).toBeTruthy()
+    expect(getByRole('button', { name: 'Boucle' })).toBeTruthy()
     fireEvent.click(getByRole('button', { name: 'Reprendre l’état' }))
     frames(12)
     expect(queryByText('Clip seul')).toBeNull()
-    expect(getByText('Clip courant')).toBeTruthy()
+    expect(queryByRole('button', { name: 'Boucle' })).toBeNull()
   })
 
   it('stops the avatar at rest with the stop button, and starts it anew with play', () => {
     const { getByRole, container } = open()
     const stage = () => container.querySelector('.avatar-wrap svg')!
     fireEvent.click(getByRole('button', { name: 'États' }))
+    fireEvent.click(getByRole('button', { name: 'Lifecycle' }))
     fireEvent.click(getByRole('button', { name: 'thinking' }))
     frames(60)
     fireEvent.click(getByRole('button', { name: 'Arrêter thinking' }))
@@ -195,6 +199,7 @@ describe('the editor', () => {
   it('takes the avatar in hand when it is dragged in any tab, and lets it go on play', () => {
     const { getByRole, container } = open()
     fireEvent.click(getByRole('button', { name: 'États' }))
+    fireEvent.click(getByRole('button', { name: 'Lifecycle' }))
     fireEvent.click(getByRole('button', { name: 'reading' }))
     frames(30)
     const bar = () => container.querySelector('.state-player')!.getAttribute('aria-label')

@@ -14,14 +14,11 @@ import {
   type ClipFaceKey,
   type ClipKey,
 } from '@bible-strong/avatar-core'
-import { ChevronRight, Pause, Play, RotateCcw, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Check, ChevronDown, ChevronRight, Pause, Play, Repeat, SkipBack, X } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
-import { InspectorCard } from '@/features/editor/panels'
 import type { StageStatus } from '@/features/editor/Stage'
 import type { Editor } from '@/features/editor/useEditor'
 
@@ -207,10 +204,13 @@ export function ClipTimeline({
   clip,
   live = false,
   onTouch,
+  header,
 }: {
   editor: Editor
   clip: ClipDefinition
   live?: boolean
+  /** Drawn above the timeline, inside it: it can follow the playhead through `--at`. */
+  header?: ReactNode
   /** Called before the timeline of a state's clip is moved by hand. */
   onTouch?: () => void
 }) {
@@ -295,47 +295,61 @@ export function ClipTimeline({
   )
 
   return (
-    <div className="group flex flex-col gap-2" ref={root} data-joining="false">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" type="button" onClick={toggle}>
+    <div className="group flex flex-col gap-3" ref={root} data-joining="false">
+      {header}
+      <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
+        <Button
+          size="icon-sm"
+          type="button"
+          aria-label={t(playing ? 'Pause' : 'Lecture')}
+          onClick={toggle}
+        >
           {playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}
-          {t(playing ? 'Pause' : 'Lecture')}
         </Button>
-        <Button variant="outline" size="sm" type="button" onClick={() => seek(0)}>
-          <RotateCcw />
-          {t('Début')}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          type="button"
+          aria-label={t('Début')}
+          onClick={() => seek(0)}
+        >
+          <SkipBack />
         </Button>
-        <span className="font-mono text-xs tabular-nums" ref={clock} />
-        <span className="hidden rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold text-secondary-foreground group-data-[joining=true]:inline">
+        <span className="px-1.5 font-mono text-[0.7rem] tabular-nums" ref={clock} />
+        <span className="hidden rounded-full bg-secondary px-2 py-0.5 text-[0.6rem] font-semibold text-secondary-foreground group-data-[joining=true]:inline">
           {t('raccord')}
         </span>
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className={quiet}>{t('Vitesse')}</span>
-        {speeds.map(value => (
-          <Button
-            variant={speed === value ? 'default' : 'outline'}
-            size="sm"
-            type="button"
-            aria-pressed={speed === value}
-            key={value}
-            onClick={() => setSpeed(value)}
-          >
-            ×{value}
-          </Button>
-        ))}
+        <div className="ml-auto flex items-center rounded-lg bg-background p-0.5 ring-1 ring-border">
+          {speeds.map(value => (
+            <button
+              type="button"
+              className={`h-6 rounded-md px-1.5 text-[0.65rem] font-semibold tabular-nums ${
+                speed === value
+                  ? 'bg-secondary text-secondary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              aria-pressed={speed === value}
+              aria-label={`${t('Vitesse')} ×${value}`}
+              key={value}
+              onClick={() => setSpeed(value)}
+            >
+              {value}×
+            </button>
+          ))}
+        </div>
         {!live && (
-          <label className="ml-auto flex items-center gap-1.5 text-xs">
-            <Switch checked={loops} onCheckedChange={setLoops} aria-label={t('Boucle')} />
-            {t('Boucle')}
-          </label>
+          <Button
+            variant={loops ? 'secondary' : 'ghost'}
+            size="icon-sm"
+            type="button"
+            aria-pressed={loops}
+            aria-label={t('Boucle')}
+            onClick={() => setLoops(!loops)}
+          >
+            <Repeat />
+          </Button>
         )}
       </div>
-      {live && (
-        <p className="rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
-          {t('Lecture de l’état · touche la timeline pour passer sur ce clip seul.')}
-        </p>
-      )}
 
       <div
         className="flex touch-none flex-col gap-1 select-none"
@@ -580,16 +594,58 @@ export function ClipTimeline({
           )
         })}
       </div>
-      <p className="flex gap-3 text-[0.65rem] text-muted-foreground">
-        <span>◆ {t('Image clé')}</span>
-        <span>│ {t('Temps de lecture')}</span>
-      </p>
     </div>
   )
 }
 
-/** A row of a list: a name on the left, a detail on the right, pressed when it is the one shown. */
-function Row({
+// A surface of the inspector, as the Studio's cards draw them, with room of its own.
+const surface = 'rounded-2xl border border-border bg-card shadow-[0_4px_14px_rgb(24_28_35/5%)]'
+
+/**
+ * A setting on one line, as the reference engine lays them out: what it is on the left, what it
+ * is set to on the right. Pressed, it opens its choices underneath.
+ */
+function PickerRow({
+  label,
+  value,
+  active = false,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string
+  value: string
+  active?: boolean
+  open: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
+  return (
+    <div className={`rounded-xl ${open ? 'bg-muted' : ''}`}>
+      <button
+        type="button"
+        className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
+          active ? 'text-secondary-foreground' : 'text-foreground'
+        } ${open ? '' : 'hover:bg-muted'}`}
+        aria-expanded={open}
+        aria-label={label}
+        onClick={onToggle}
+      >
+        <span className={`font-medium ${active ? '' : 'text-muted-foreground'}`}>{label}</span>
+        <span className="flex min-w-0 items-center gap-1.5 font-semibold">
+          <span className="truncate">{value}</span>
+          <ChevronDown
+            className={`size-3.5 shrink-0 opacity-60 transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        </span>
+      </button>
+      {open && <div className="px-1.5 pb-1.5">{children}</div>}
+    </div>
+  )
+}
+
+/** One choice of a picker: its name, a detail, and a check when it is the one set. */
+function Option({
   active,
   name,
   detail,
@@ -597,31 +653,42 @@ function Row({
 }: {
   active: boolean
   name: string
-  detail: string
+  detail?: string
   onClick: () => void
 }) {
   return (
     <button
       type="button"
-      className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-sm ${
-        active ? 'bg-secondary font-semibold text-secondary-foreground' : 'hover:bg-muted'
+      className={`flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs ${
+        active
+          ? 'bg-background font-semibold text-secondary-foreground ring-1 ring-ring'
+          : 'hover:bg-background'
       }`}
       aria-pressed={active}
       aria-label={name}
       onClick={onClick}
     >
-      <span>{name}</span>
-      <span
-        className={`text-[0.7rem] tabular-nums ${active ? 'text-secondary-foreground/70' : 'text-muted-foreground'}`}
-      >
-        {detail}
-      </span>
+      <span className="truncate">{name}</span>
+      {active ? (
+        <Check className="size-3.5 shrink-0" />
+      ) : (
+        detail && (
+          <span className="shrink-0 text-[0.65rem] text-muted-foreground tabular-nums">
+            {detail}
+          </span>
+        )
+      )}
     </button>
   )
 }
 
-const matches = (name: string, query: string) =>
-  name.toLowerCase().includes(query.trim().toLowerCase())
+function Pill({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-semibold text-muted-foreground">
+      {children}
+    </span>
+  )
+}
 
 const usesClip = (state: string, clip: string) =>
   states[state].clips.includes(clip) || (states[state].compactClips?.includes(clip) ?? false)
@@ -634,132 +701,94 @@ const clipFamilies = clipNames.reduce<Record<string, string[]>>((families, name)
 }, {})
 
 export function ClipsPanel({ editor, status }: { editor: Editor; status: StageStatus }) {
-  const { t, doing, setDoing, setPlaying } = editor
-  const [query, setQuery] = useState('')
-  const [ofState, setOfState] = useState('')
+  const { t, doing, setDoing, setPlaying, setTab } = editor
+  const [open, setOpen] = useState(false)
   // Stopped, nothing plays: the clip asked for is still the one shown.
   const clip = clips[status.clip] ?? ('clip' in doing ? clips[doing.clip] : undefined)
   const current = 'clip' in doing ? doing.clip : status.clip
-  const shown = clipNames.filter(
-    name => matches(name, query) && (!ofState || usesClip(ofState, name))
-  )
   const users = clip ? stateNames.filter(state => usesClip(state, clip.name)) : []
   return (
     <div className="panel-stack">
-      {clip && (
-        <InspectorCard>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className={eyebrow}>{t('Explorateur de clips')}</p>
-              <h3 className="truncate text-xl font-semibold">{clip.name}</h3>
-              <p className={quiet}>
-                {users.length
-                  ? `${t('Utilisé par')} : ${users.join(' · ')}`
-                  : t('Aucun état ne joue ce clip.')}
-              </p>
-            </div>
-            <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs tabular-nums">
-              {seconds(clip.duration)}
-            </span>
-          </div>
-          <ClipTimeline editor={editor} clip={clip} key={clip.name} />
-        </InspectorCard>
-      )}
-      <InspectorCard>
-        <p className={eyebrow}>{t('Clips')}</p>
-        <div className="my-2 flex flex-col gap-2">
-          <Input
-            type="search"
-            value={query}
-            placeholder={t('Rechercher un clip…')}
-            aria-label={t('Rechercher un clip')}
-            onChange={event => setQuery(event.currentTarget.value)}
-          />
-          <select
-            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
-            value={ofState}
-            aria-label={t('Voir les clips d’un état')}
-            onChange={event => setOfState(event.currentTarget.value)}
-          >
-            <option value="">{t('Tous les clips · aucun filtre')}</option>
-            {stateNames.map(state => (
-              <option value={state} key={state}>
-                {state}
-              </option>
+      <div className={`${surface} flex flex-col gap-0.5 p-1.5`}>
+        <PickerRow
+          label={t('Clip')}
+          value={clip ? `${clip.name} · ${seconds(clip.duration)}` : '—'}
+          active
+          open={open}
+          onToggle={() => setOpen(!open)}
+        >
+          <div className="flex max-h-80 flex-col gap-2 overflow-y-auto">
+            {Object.entries(clipFamilies).map(([family, names]) => (
+              <div key={family}>
+                <p className="eyebrow px-1 pt-1">{family}</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {names.map(name => (
+                    <Option
+                      active={current === name}
+                      name={name}
+                      detail={seconds(clips[name].duration)}
+                      key={name}
+                      onClick={() => {
+                        setOpen(false)
+                        setPlaying(true)
+                        setDoing({ clip: name })
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
-          </select>
-          <div className="flex items-center justify-between">
-            <span className={quiet}>
-              {shown.length} / {clipNames.length} {t('clips')}
-            </span>
-            {(query || ofState) && (
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={() => {
-                  setQuery('')
-                  setOfState('')
-                }}
-              >
-                {t('Effacer les filtres')}
-              </Button>
-            )}
           </div>
-        </div>
-        {Object.entries(clipFamilies).map(([family, names]) => {
-          const rows = names.filter(name => shown.includes(name))
-          if (!rows.length) return null
-          return (
-            <div className="mb-2" key={family}>
-              <p className={`${eyebrow} px-2.5 py-1`}>{family}</p>
-              {rows.map(name => (
-                <Row
-                  active={current === name}
-                  name={name}
-                  detail={seconds(clips[name].duration)}
-                  key={name}
-                  onClick={() => {
-                    setPlaying(true)
-                    setDoing({ clip: name })
-                  }}
-                />
-              ))}
+        </PickerRow>
+        {clip && (
+          <div className="flex items-baseline gap-3 px-3 py-2">
+            <span className="shrink-0 text-sm font-medium text-muted-foreground">
+              {t('Utilisé par')}
+            </span>
+            <div className="flex flex-wrap justify-end gap-1">
+              {users.length ? (
+                users.map(state => (
+                  <button
+                    type="button"
+                    className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-semibold text-foreground hover:bg-secondary hover:text-secondary-foreground"
+                    aria-label={`${t('État')} ${state}`}
+                    key={state}
+                    onClick={() => {
+                      setTab('states')
+                      setPlaying(true)
+                      setDoing({ state })
+                    }}
+                  >
+                    {state}
+                  </button>
+                ))
+              ) : (
+                <span className="text-xs text-muted-foreground">—</span>
+              )}
             </div>
-          )
-        })}
-      </InspectorCard>
+          </div>
+        )}
+      </div>
+      {clip && (
+        <div className={`${surface} p-3`}>
+          <ClipTimeline editor={editor} clip={clip} key={clip.name} />
+        </div>
+      )}
     </div>
   )
 }
 
-const RECENT_CLIPS = 4
-
 export function StatesPanel({ editor, status }: { editor: Editor; status: StageStatus }) {
   const { t, doing, setDoing, setPlaying, engine } = editor
-  const [query, setQuery] = useState('')
   // The state left for one of its clips: it stays shown until it is taken up again.
   const [left, setLeft] = useState<string | null>(null)
   const inspecting = left !== null && 'clip' in doing
   const name = inspecting ? left : (status.state ?? ('state' in doing ? doing.state : null))
   const state = name ? states[name] : undefined
   const clip = clips[status.clip]
-  // The clips the state has played lately, the newest last.
-  const [recent, setRecent] = useState<{ state: string | null; clips: string[] }>({
-    state: null,
-    clips: [],
-  })
-  useEffect(() => {
-    if (!status.clip || !status.state) return
-    setRecent(before => {
-      const same = before.state === status.state
-      if (same && before.clips.at(-1) === status.clip) return before
-      return {
-        state: status.state,
-        clips: [...(same ? before.clips : []), status.clip].slice(-RECENT_CLIPS),
-      }
-    })
-  }, [status.state, status.clip])
+  const groupOf = (item: string | null) =>
+    stateGroups.find(group => item !== null && group.states.includes(item))?.label ?? null
+  const [openGroup, setOpenGroup] = useState<string | null>(null)
 
   /** Leave the state for one of its clips, which then plays alone, round and round. */
   const inspect = (item: string, from?: number) => {
@@ -773,6 +802,7 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
   }
   const takeUp = (item: string) => {
     setLeft(null)
+    setOpenGroup(null)
     setPlaying(true)
     setDoing({ state: item })
   }
@@ -780,122 +810,113 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
   const policy = !state
     ? ''
     : state.next && state.holdSeconds !== undefined
-      ? `${t('Temporisé')} · ${state.holdSeconds} s → ${state.next}`
+      ? `${state.holdSeconds} s → ${state.next}`
       : state.next
         ? `${t('Dans l’ordre')} → ${state.next}`
         : state.clips.length > 1
-          ? t('Clips alternés par le moteur')
-          : t('Un seul clip, en boucle')
-  const current = 'state' in doing ? doing.state : name
+          ? t('Mélangé')
+          : t('Un seul clip')
+  const activeGroup = groupOf(name)
+
+  const tiles = state && name && (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <h3 className="mr-1 text-lg font-semibold">{name}</h3>
+        <Pill>{policy}</Pill>
+        {state.face && <Pill>{state.face}</Pill>}
+        {state.morph && <Pill>{state.morph}</Pill>}
+        {inspecting && (
+          <span className="ml-auto flex items-center gap-1 rounded-full bg-secondary py-0.5 pr-0.5 pl-2 text-[0.65rem] font-semibold text-secondary-foreground">
+            {t('Clip seul')}
+            <button
+              type="button"
+              className="grid size-5 place-items-center rounded-full bg-background text-secondary-foreground"
+              aria-label={t('Reprendre l’état')}
+              title={t('Reprendre l’état')}
+              onClick={() => takeUp(name)}
+            >
+              <Play className="size-2.5" fill="currentColor" />
+            </button>
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {state.clips.map((item, index) => {
+          const playingNow = item === status.clip
+          return (
+            <button
+              type="button"
+              className={`relative overflow-hidden rounded-lg px-2.5 py-2 text-left ${
+                playingNow
+                  ? 'bg-secondary text-secondary-foreground ring-1 ring-ring'
+                  : 'bg-muted hover:ring-1 hover:ring-border'
+              }`}
+              aria-pressed={playingNow}
+              aria-label={`${t('Clip')} ${item}`}
+              key={`${item}-${index}`}
+              onClick={() => {
+                inspect(item)
+                setPlaying(true)
+              }}
+            >
+              {playingNow && (
+                <span
+                  className="pointer-events-none absolute inset-y-0 left-0 bg-ring/15"
+                  style={{ width: 'calc(var(--at, 0) * 100%)' }}
+                />
+              )}
+              <strong className="relative block truncate text-xs">{item}</strong>
+              <span className="relative text-[0.65rem] tabular-nums opacity-70">
+                {seconds(clips[item].duration)}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+
   return (
     <div className="panel-stack">
-      {state && name && (
-        <InspectorCard>
-          <p className={eyebrow}>{t('État')}</p>
-          <h3 className="text-xl font-semibold">{name}</h3>
-          <p className={quiet}>{policy}</p>
-          {inspecting && (
-            <div className="my-2.5 flex items-center justify-between gap-2 rounded-lg bg-secondary px-2.5 py-2">
-              <p className="text-xs font-semibold text-secondary-foreground">
-                {t('Mode clip : l’état est en pause, ce clip tourne seul.')}
-              </p>
-              <Button size="sm" type="button" onClick={() => takeUp(name)}>
-                <Play fill="currentColor" />
-                {t('Reprendre l’état')}
-              </Button>
-            </div>
-          )}
-          <div className="my-2.5 grid grid-cols-2 gap-1.5">
-            {state.clips.map((item, index) => (
-              <button
-                type="button"
-                className={`rounded-lg px-2.5 py-1.5 text-left ${
-                  item === status.clip
-                    ? 'bg-secondary text-secondary-foreground ring-1 ring-ring'
-                    : 'bg-muted hover:ring-1 hover:ring-border'
-                }`}
-                aria-pressed={item === status.clip}
-                aria-label={`${t('Clip')} ${item}`}
-                key={`${item}-${index}`}
-                onClick={() => {
-                  inspect(item)
-                  setPlaying(true)
-                }}
-              >
-                <strong className="block truncate text-xs">{item}</strong>
-                <span className="text-[0.65rem] tabular-nums opacity-70">
-                  {seconds(clips[item].duration)}
-                </span>
-              </button>
-            ))}
-          </div>
-          <p className={quiet}>
-            {t('Derniers clips')} : {(recent.state === name ? recent.clips : []).join(' → ') || '—'}
-          </p>
-          <p className={quiet}>
-            {t('visage')} {state.face ?? t('automatique')}
-            {state.morph ? ` · ${t('morphing')} ${state.morph}` : ''}
-          </p>
-        </InspectorCard>
-      )}
-      {state && clip && (
-        <InspectorCard>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <p className={eyebrow}>{t(inspecting ? 'Clip seul' : 'Clip courant')}</p>
-              <h3 className="text-lg font-semibold">{clip.name}</h3>
-            </div>
-            <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs tabular-nums">
-              {seconds(clip.duration)}
-            </span>
-          </div>
-          <ClipTimeline
-            editor={editor}
-            clip={clip}
-            live={!inspecting}
-            key={clip.name}
-            onTouch={() => inspect(clip.name, engine.current.player.time)}
-          />
-        </InspectorCard>
-      )}
-      <InspectorCard>
-        <p className={eyebrow}>{t('États')}</p>
-        <div className="my-2 flex flex-col gap-2">
-          <Input
-            type="search"
-            value={query}
-            placeholder={t('idle, reading, radar…')}
-            aria-label={t('Rechercher un état')}
-            onChange={event => setQuery(event.currentTarget.value)}
-          />
-          <span className={quiet}>
-            {stateNames.filter(item => matches(item, query)).length} / {stateNames.length}{' '}
-            {t('états')}
-          </span>
-        </div>
-        {stateGroups.map(group => {
-          const rows = group.states.filter(item => matches(item, query))
-          if (!rows.length) return null
-          return (
-            <div className="mb-2" key={group.label}>
-              <p className={`${eyebrow} px-2.5 py-1`}>{group.label}</p>
-              {rows.map(item => (
-                <Row
-                  active={current === item}
+      <div className={`${surface} flex flex-col gap-0.5 p-1.5`}>
+        {stateGroups.map(group => (
+          <PickerRow
+            label={group.label}
+            value={activeGroup === group.label && name ? name : '—'}
+            active={activeGroup === group.label}
+            open={openGroup === group.label}
+            key={group.label}
+            onToggle={() => setOpenGroup(openGroup === group.label ? null : group.label)}
+          >
+            <div className="grid grid-cols-2 gap-1">
+              {group.states.map(item => (
+                <Option
+                  active={!inspecting && name === item}
                   name={item}
-                  detail={
-                    states[item].morph
-                      ? t('Morphing')
-                      : `${states[item].clips.length} ${t(states[item].clips.length > 1 ? 'clips' : 'clip')}`
-                  }
                   key={item}
                   onClick={() => takeUp(item)}
                 />
               ))}
             </div>
-          )
-        })}
-      </InspectorCard>
+          </PickerRow>
+        ))}
+      </div>
+      {tiles && (
+        <div className={`${surface} p-3`}>
+          {clip ? (
+            <ClipTimeline
+              editor={editor}
+              clip={clip}
+              live={!inspecting}
+              key={clip.name}
+              header={tiles}
+              onTouch={() => inspect(clip.name, engine.current.player.time)}
+            />
+          ) : (
+            tiles
+          )}
+        </div>
+      )}
     </div>
   )
 }
