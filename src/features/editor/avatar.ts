@@ -21,6 +21,10 @@ const mouthShapes = ['curve', 'ellipse', 'rounded', 'rounded-triangle'] as const
 export type AvatarFeatures = {
   positionYLeft: number
   positionYRight: number
+  /** The size of the eyes against the standard ones: width and height together. */
+  eyeScale: number
+  /** The distance between the eyes against the standard one. */
+  eyeGap: number
   noseEnabled: boolean
   noseShape: (typeof noseShapes)[number]
   noseRoundness: number
@@ -61,6 +65,8 @@ export const defaultAvatarOutlineStyle: AvatarOutlineStyle = {
 export const defaultAvatarFeatures: AvatarFeatures = {
   positionYLeft: -7,
   positionYRight: -7,
+  eyeScale: 1,
+  eyeGap: 1,
   noseEnabled: false,
   noseShape: 'inverted-triangle',
   noseRoundness: 50,
@@ -109,6 +115,10 @@ const parseRenderStyle = (value: unknown): AvatarRenderStyle => {
   }
 }
 
+// How far the size and the gap of the eyes may go from the standard ones.
+export const EYE_BUILD_MIN = 0.6
+export const EYE_BUILD_MAX = 1.6
+
 const parseFeatures = (value: unknown): AvatarFeatures => {
   const candidate = (value ?? {}) as Record<string, unknown>
   const parsed = { ...defaultAvatarFeatures } as Record<string, unknown>
@@ -118,6 +128,8 @@ const parseFeatures = (value: unknown): AvatarFeatures => {
     else if (typeof fallback === 'boolean') parsed[field] = stored === true
   })
   const features = parsed as AvatarFeatures
+  features.eyeScale = numberOr(candidate.eyeScale, 1, EYE_BUILD_MIN, EYE_BUILD_MAX)
+  features.eyeGap = numberOr(candidate.eyeGap, 1, EYE_BUILD_MIN, EYE_BUILD_MAX)
   if (noseShapes.includes(candidate.noseShape as never)) {
     features.noseShape = candidate.noseShape as AvatarFeatures['noseShape']
   }
@@ -189,9 +201,9 @@ export const characterOfAvatar = (avatar: StudioAvatar): AvatarCharacter => {
     ...(outline ? { style: { outline } } : {}),
     face: {
       eyes: {
-        width: 1,
-        height: 1,
-        gap: 1,
+        width: features.eyeScale,
+        height: features.eyeScale,
+        gap: features.eyeGap,
         shiftY: (features.positionYLeft + features.positionYRight) / 2 / faceRadius(avatar.body),
       },
       nose: {
@@ -270,6 +282,8 @@ export const avatarFromSource = (source: string): StudioAvatar => {
     eyes: parseFeatures({
       positionYLeft: shiftY,
       positionYRight: shiftY,
+      eyeScale: face.eyes?.width,
+      eyeGap: face.eyes?.gap,
       noseEnabled: nose.enabled,
       noseShape: nose.shape,
       noseRoundness: nose.roundness,

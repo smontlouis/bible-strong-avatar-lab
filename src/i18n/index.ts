@@ -124,8 +124,10 @@ const english: Record<string, string> = {
     'The body gathers into a small disc and a pattern is drawn around it. The clip stops meanwhile.',
   'Le corps, les couleurs et le visage. Les clips, les états et les visages viennent avec la bibliothèque.':
     'The body, the colors and the face. Clips, states and faces come with the library.',
-  'Les yeux sont les mêmes pour tous les avatars. Seule leur hauteur se règle.':
-    'The eyes are the same for every avatar. Only their height can be set.',
+  'Les yeux gardent leurs proportions sur tous les avatars. Leur taille, leur écart et leur hauteur se règlent.':
+    'Eyes keep their proportions on every avatar. Their size, gap and height can be set.',
+  'Taille des yeux': 'Eye size',
+  'Écart des yeux': 'Eye gap',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':
     'The avatar as it is on the stage. Set its pose in the Pose tab.',
   'Ne cligne pas': 'Does not blink',

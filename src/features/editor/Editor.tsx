@@ -54,7 +54,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Switch } from '@/components/ui/switch'
-import { characterOfAvatar } from '@/features/editor/avatar'
+import { characterOfAvatar, EYE_BUILD_MAX, EYE_BUILD_MIN } from '@/features/editor/avatar'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
 import { PhotoPanel, PoseControls, slugOf, takePicture } from '@/features/editor/PhotoPanel'
 import { Scene } from '@/features/editor/Scene'
@@ -294,7 +294,7 @@ function CharacterPanel({ editor }: { editor: EditorState }) {
         <PanelTitle
           level={3}
           title="Visage"
-          subtitle="Les yeux sont les mêmes pour tous les avatars. Seule leur hauteur se règle."
+          subtitle="Les yeux gardent leurs proportions sur tous les avatars. Leur taille, leur écart et leur hauteur se règlent."
         />
         <div className="surface-fields">
           <NumericField
@@ -305,6 +305,22 @@ function CharacterPanel({ editor }: { editor: EditorState }) {
             step={1}
             unit="u"
             onChange={y => editor.updateFeatures({ positionYLeft: y, positionYRight: y })}
+          />
+          <NumericField
+            label="Taille des yeux"
+            value={features.eyeScale}
+            min={EYE_BUILD_MIN}
+            max={EYE_BUILD_MAX}
+            step={0.05}
+            onChange={eyeScale => editor.updateFeatures({ eyeScale })}
+          />
+          <NumericField
+            label="Écart des yeux"
+            value={features.eyeGap}
+            min={EYE_BUILD_MIN}
+            max={EYE_BUILD_MAX}
+            step={0.05}
+            onChange={eyeGap => editor.updateFeatures({ eyeGap })}
           />
         </div>
         <SwitchRow

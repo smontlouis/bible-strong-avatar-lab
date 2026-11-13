@@ -195,6 +195,25 @@ describe('an avatar saved as a file', () => {
     expect(characterOfAvatar(back)).toEqual(character)
   })
 
+  it('carries the size and the gap of the eyes, and keeps them within bounds', () => {
+    const avatar = loadLibrary().avatars[0]
+    const built = { ...avatar, eyes: { ...avatar.eyes, eyeScale: 1.3, eyeGap: 0.8 } }
+    const character = characterOfAvatar(built)
+    expect(character.face.eyes).toMatchObject({ width: 1.3, height: 1.3, gap: 0.8 })
+    expect(avatarFromSource(JSON.stringify(character)).eyes).toMatchObject({
+      eyeScale: 1.3,
+      eyeGap: 0.8,
+    })
+    const wild = {
+      ...character,
+      face: { ...character.face, eyes: { ...character.face.eyes, width: 9, gap: 0 } },
+    }
+    expect(avatarFromSource(JSON.stringify(wild)).eyes).toMatchObject({
+      eyeScale: 1.6,
+      eyeGap: 0.6,
+    })
+  })
+
   it('refuses a file that holds no avatar', () => {
     expect(() => avatarFromSource('not json')).toThrow()
     expect(() => avatarFromSource('{"version":2}')).toThrow()

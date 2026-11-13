@@ -92,8 +92,10 @@ export const chinese: Record<string, string> = {
     '身体收拢成一个小圆盘，周围绘出图案。此时片段暂停。',
   'Le corps, les couleurs et le visage. Les clips, les états et les visages viennent avec la bibliothèque.':
     '身体、颜色和面部。片段、状态和表情随库提供。',
-  'Les yeux sont les mêmes pour tous les avatars. Seule leur hauteur se règle.':
-    '所有头像的眼睛相同，只能调整高度。',
+  'Les yeux gardent leurs proportions sur tous les avatars. Leur taille, leur écart et leur hauteur se règlent.':
+    '眼睛在所有头像上保持比例。可以调整大小、间距和高度。',
+  'Taille des yeux': '眼睛大小',
+  'Écart des yeux': '眼睛间距',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':
     '舞台上当前的头像。在“姿势”选项卡中调整姿势。',
   'Ne cligne pas': '不眨眼',
