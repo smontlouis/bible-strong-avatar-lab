@@ -17,7 +17,6 @@ import {
 import {
   ChevronRight,
   Clock,
-  ListOrdered,
   LoaderCircle,
   Shuffle,
   SkipForward,
@@ -755,17 +754,11 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
       }
     }
     if (state.next) {
-      return distinct > 1
-        ? {
-            icon: ListOrdered,
-            label: `${t('Dans l’ordre')} → ${state.next}`,
-            title: t(`Joue ses clips une fois chacun, dans l’ordre, puis passe à ${state.next}`),
-          }
-        : {
-            icon: SkipForward,
-            label: `${t('Une fois')} → ${state.next}`,
-            title: t(`Joue son clip une fois, puis passe à ${state.next}`),
-          }
+      return {
+        icon: SkipForward,
+        label: `${t('Une fois')} → ${state.next}`,
+        title: t(`Joue l’état une fois, puis passe à ${state.next}`),
+      }
     }
     return distinct > 1
       ? {

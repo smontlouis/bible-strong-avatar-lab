@@ -1070,11 +1070,7 @@ const frenchStates: Record<string, string> = {
 
 const dynamicTranslations: [RegExp, string][] = [
   [/^Passe à (.+) après (.+) s$/, 'Goes on to $1 after $2 s'],
-  [
-    /^Joue ses clips une fois chacun, dans l’ordre, puis passe à (.+)$/,
-    'Plays its clips once each, in order, then goes on to $1',
-  ],
-  [/^Joue son clip une fois, puis passe à (.+)$/, 'Plays its clip once, then goes on to $1'],
+  [/^Joue l’état une fois, puis passe à (.+)$/, 'Plays the state once, then goes on to $1'],
   [/^Modifier l’expression (.+)$/, 'Edit expression $1'],
   [/^Modifier (.+)$/, 'Edit $1'],
   [/^Supprimer (.+) \?$/, 'Delete $1?'],

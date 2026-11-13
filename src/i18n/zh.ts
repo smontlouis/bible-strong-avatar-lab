@@ -955,11 +955,7 @@ export const chinese: Record<string, string> = {
 export const translateChineseDynamicText = (text: string) => {
   const rules: Array<[RegExp, (...matches: string[]) => string]> = [
     [/^Passe à (.+) après (.+) s$/, (next, time) => `${time} 秒后转为 ${next}`],
-    [
-      /^Joue ses clips une fois chacun, dans l’ordre, puis passe à (.+)$/,
-      next => `按顺序各播放一次片段，然后转为 ${next}`,
-    ],
-    [/^Joue son clip une fois, puis passe à (.+)$/, next => `播放一次片段，然后转为 ${next}`],
+    [/^Joue l’état une fois, puis passe à (.+)$/, next => `播放一次该状态，然后转为 ${next}`],
     [/^Modifier l’expression (.+)$/, value => `编辑表情 ${value}`],
     [/^Modifier (.+)$/, value => `编辑${value}`],
     [/^Supprimer (.+) \?$/, value => `删除${value}？`],
