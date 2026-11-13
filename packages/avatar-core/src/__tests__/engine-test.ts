@@ -15,6 +15,7 @@ import {
   setEngineGazeAlways,
   setEnginePose,
   setEngineState,
+  stopEngine,
   type AvatarEngine,
 } from '../engine'
 
@@ -250,6 +251,29 @@ describe('gaze', () => {
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before, 6)
     setEngineGazeAlways(engine, true)
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before + 18 * 0.55, 1)
+  })
+})
+
+describe('an avatar stopped', () => {
+  it('comes to rest and stays still, then starts again when a state is asked for', () => {
+    const engine = createAvatarEngine({ seed: 5 })
+    setEngineState(engine, 'thinking')
+    pokeEngine(engine, 'spin')
+    advanceEngine(engine, 2)
+    stopEngine(engine)
+    advanceEngine(engine, STEP)
+    const rest = engineFrame(engine)
+    expect(engine.state).toBeNull()
+    expect(rest.rotation).toEqual([0, 0, 0])
+    expect(rest.position).toEqual([0, 0])
+    expect(rest.lids).toBe(0)
+    expect(rest.face).toBe('neutral')
+    expect(rest.spinner).toBeNull()
+    advanceEngine(engine, 1)
+    expect(engineFrame(engine)).toEqual(rest)
+    setEngineState(engine, 'idle')
+    advanceEngine(engine, 0.5)
+    expect(engine.player.clip).not.toBeNull()
   })
 })
 

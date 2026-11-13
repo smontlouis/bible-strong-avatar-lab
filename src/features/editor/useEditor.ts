@@ -64,6 +64,10 @@ export const useEditor = () => {
   const [doing, setDoing] = useState<Doing>({ state: 'idle' })
   const [face, setFace] = useState<string | null>(null)
   const [playing, setPlaying] = useState(true)
+  // Stopped: the avatar is at rest and still. Played again, it starts what it was doing anew.
+  const [stopped, setStopped] = useState(false)
+  // Counts the times what the avatar does is started anew, so that the stage starts it again.
+  const [run, setRun] = useState(0)
   const [speed, setSpeed] = useState(1)
   const [followsPointer, setFollowsPointer] = useState(false)
   const [pose, setPose] = useState<HandPose>(restPose)
@@ -212,11 +216,28 @@ export const useEditor = () => {
     renameAvatar,
     importAvatar,
     doing,
-    setDoing,
+    setDoing: (next: Doing) => {
+      setStopped(false)
+      setDoing(next)
+    },
+    run,
+    stopped,
+    stop: () => {
+      setStopped(true)
+      setPlaying(false)
+    },
+    /** Leave the stop without starting anew: a clip shown at a time by hand. */
+    clearStop: () => setStopped(false),
     face,
     setFace,
     playing,
-    setPlaying,
+    setPlaying: (next: boolean) => {
+      if (next && stopped) {
+        setStopped(false)
+        setRun(current => current + 1)
+      }
+      setPlaying(next)
+    },
     speed,
     setSpeed,
     followsPointer,

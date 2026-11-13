@@ -272,6 +272,29 @@ export const playClip = (
 }
 
 /**
+ * Stop the clip and leave the body at rest: in the middle, facing the viewer, eyes open, at its
+ * own size. A face held from outside stays held; the clip's own face goes back to `neutral`.
+ */
+export const stopPlayer = (player: AvatarPlayer) => {
+  player.clip = null
+  player.join = null
+  player.time = 0
+  player.playing = false
+  player.squashAnchor = 0
+  player.pose = restingPose()
+  player.clipFace = 'neutral'
+  player.heldFace = null
+  // The face is there at once, and the eyes with it: nothing is left to turn into.
+  const face = player.faceOverride ?? 'neutral'
+  player.face = face
+  player.faceFrom = [faces[face].eyes[0], faces[face].eyes[1]]
+  player.inspectFrom = face === 'inspecting' ? 1 : 0
+  player.smileFrom = faceSmiles[face]
+  player.faceTime = FACE_SECONDS
+  player.lidsBlocked = false
+}
+
+/**
  * Put the clip that plays at a time, in seconds, at once: a join under way is dropped. The
  * player stays playing or paused as it was.
  */

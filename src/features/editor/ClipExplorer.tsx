@@ -256,6 +256,7 @@ export function ClipTimeline({
 
   const seek = (time: number) => {
     if (live) onTouch?.()
+    editor.clearStop()
     setPlaying(false)
     pauseEngine(engine.current)
     seekEngine(engine.current, clamp(time, 0, clip.duration))
@@ -636,7 +637,8 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
   const { t, doing, setDoing, setPlaying } = editor
   const [query, setQuery] = useState('')
   const [ofState, setOfState] = useState('')
-  const clip = clips[status.clip]
+  // Stopped, nothing plays: the clip asked for is still the one shown.
+  const clip = clips[status.clip] ?? ('clip' in doing ? clips[doing.clip] : undefined)
   const current = 'clip' in doing ? doing.clip : status.clip
   const shown = clipNames.filter(
     name => matches(name, query) && (!ofState || usesClip(ofState, name))
@@ -739,7 +741,7 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
   // The state left for one of its clips: it stays shown until it is taken up again.
   const [left, setLeft] = useState<string | null>(null)
   const inspecting = left !== null && 'clip' in doing
-  const name = inspecting ? left : status.state
+  const name = inspecting ? left : (status.state ?? ('state' in doing ? doing.state : null))
   const state = name ? states[name] : undefined
   const clip = clips[status.clip]
   // The clips the state has played lately, the newest last.

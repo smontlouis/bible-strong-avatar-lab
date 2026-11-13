@@ -12,6 +12,7 @@ import {
   setEngineGazeAlways,
   setEnginePose,
   setEngineState,
+  stopEngine,
   type CharacterScene,
   type Expression,
 } from '@bible-strong/avatar-core'
@@ -74,6 +75,8 @@ export function Stage({
     followsPointer,
     photoMode,
     playing,
+    run,
+    stopped,
     pose,
     selectedBodyNode,
     setPose,
@@ -100,15 +103,24 @@ export function Stage({
   const setHead = (next: Expression) =>
     setPose({ ...pose, head: [next.headX, next.headY, next.headZ] })
 
+  const startedRun = useRef(run)
   useEffect(() => {
+    const anew = startedRun.current !== run
+    startedRun.current = run
     if ('state' in doing) setEngineState(engine.current, doing.state)
     else if (clips[doing.clip]) {
       // A clip the engine already plays alone is left where it is: it was started by hand, at
       // a time of its own.
       const alone = engine.current.state === null && engine.current.player.clip?.name === doing.clip
-      if (!alone) playEngineClip(engine.current, clips[doing.clip])
+      if (!alone || anew)
+        playEngineClip(engine.current, clips[doing.clip], { transition: anew ? 'cut' : 'join' })
     }
-  }, [doing, engine, activeAvatar.id])
+  }, [doing, run, engine, activeAvatar.id])
+
+  // Stopped, the avatar comes to rest and stays there.
+  useEffect(() => {
+    if (stopped) stopEngine(engine.current)
+  }, [stopped, engine])
 
   useEffect(() => setEngineFace(engine.current, face), [face, engine])
 
@@ -127,9 +139,9 @@ export function Stage({
         zoom: pose.zoom,
       })
     } else setEnginePose(engine.current, null)
-    if (playing && !building && !posing) resumeEngine(engine.current)
+    if (playing && !stopped && !building && !posing) resumeEngine(engine.current)
     else pauseEngine(engine.current)
-  }, [building, showsDepth, posing, pose, turned, playing, engine])
+  }, [building, showsDepth, posing, pose, turned, playing, stopped, engine])
 
   useEffect(() => {
     // The gaze is a toy of the pose tool: the avatar turns to the pointer from the pose it has.
@@ -211,7 +223,10 @@ export function Stage({
     >
       {!building && !posing && status && (
         <div className="stage-playback-status">
-          <PlaybackIdentity name={status} status={playing ? 'playing' : 'paused'} />
+          <PlaybackIdentity
+            name={status}
+            status={stopped ? 'stopped' : playing ? 'playing' : 'paused'}
+          />
         </div>
       )}
       <Scene scene={scene} character={character} svgRef={svg} className="avatar">

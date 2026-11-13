@@ -14,21 +14,23 @@ import { Editor } from '@/features/editor/Editor'
 import { pictureSvg } from '@/features/editor/picture'
 import { StudioLanguageProvider } from '@/i18n'
 
-let pending: FrameRequestCallback[] = []
+// Each frame asked for, by its number: cancelling one leaves the others.
+let pending = new Map<number, FrameRequestCallback>()
+let nextFrame = 1
 let clock = 0
 const frames = (count: number) => {
   act(() => {
     for (let index = 0; index < count; index += 1) {
       clock += 1000 / 60
-      const due = pending
-      pending = []
+      const due = [...pending.values()]
+      pending = new Map()
       due.forEach(callback => callback(clock))
     }
   })
 }
 
 beforeEach(() => {
-  pending = []
+  pending = new Map()
   clock = 0
   window.localStorage.clear()
   window.localStorage.setItem('avatar-studio-language', 'fr')
@@ -38,10 +40,12 @@ beforeEach(() => {
     addEventListener: () => {},
     removeEventListener: () => {},
   })) as unknown as typeof window.matchMedia
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => pending.push(callback))
-  vi.stubGlobal('cancelAnimationFrame', () => {
-    pending = []
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    const id = nextFrame++
+    pending.set(id, callback)
+    return id
   })
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => pending.delete(id))
 })
 afterEach(() => vi.unstubAllGlobals())
 
@@ -118,6 +122,29 @@ describe('the editor', () => {
     frames(12)
     expect(queryByText('Clip seul')).toBeNull()
     expect(getByText('Clip courant')).toBeTruthy()
+  })
+
+  it('stops the avatar at rest with the stop button, and starts it anew with play', () => {
+    const { getByRole, container } = open()
+    const stage = () => container.querySelector('.avatar-wrap svg')!
+    fireEvent.click(getByRole('button', { name: 'États' }))
+    fireEvent.click(getByRole('button', { name: 'thinking' }))
+    frames(60)
+    fireEvent.click(getByRole('button', { name: 'Arrêter thinking' }))
+    frames(30)
+    const still = stage().innerHTML
+    frames(60)
+    expect(stage().innerHTML).toBe(still)
+    expect(container.querySelector('.state-player')!.getAttribute('aria-label')).toBe(
+      'Arrêté : thinking'
+    )
+    fireEvent.click(getByRole('button', { name: 'Reprendre thinking' }))
+    frames(30)
+    expect(container.querySelector('.state-player')!.getAttribute('aria-label')).toBe(
+      'En lecture : thinking'
+    )
+    frames(30)
+    expect(stage().innerHTML).not.toBe(still)
   })
 
   it('shows the nine faces and holds the one that is picked', () => {

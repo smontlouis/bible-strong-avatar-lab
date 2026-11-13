@@ -598,7 +598,7 @@ export function Editor() {
   }, [])
 
   // What the avatar is doing, as the stage and the bar at the bottom name it.
-  const doingName = (status.state ?? status.clip) || t('au repos')
+  const doingName = (status.state ?? status.clip) || ('state' in doing ? doing.state : doing.clip)
   const { photoMode } = editor
   const stopped = building || tab === 'pose' || photoMode
 
@@ -792,12 +792,9 @@ export function Editor() {
             <div className="state-playback-controls">
               <StatePlayer
                 name={doingName}
-                status={playing ? 'playing' : 'paused'}
+                status={editor.stopped ? 'stopped' : playing ? 'playing' : 'paused'}
                 onToggle={() => editor.setPlaying(!playing)}
-                onStop={() => {
-                  editor.setPlaying(true)
-                  editor.setDoing({ state: 'idle' })
-                }}
+                onStop={editor.stop}
               />
             </div>
           </div>

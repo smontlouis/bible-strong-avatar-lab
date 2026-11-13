@@ -16,6 +16,7 @@ import {
   createAvatarPlayer,
   holdPlayerFace,
   pausePlayer,
+  stopPlayer,
   seekPlayer,
   playClip,
   playerFrame,
@@ -295,6 +296,26 @@ export const setEngineEmphasis = (engine: AvatarEngine, emphasis: boolean) => {
   engine.emphasis = emphasis
   const state = engine.state === null ? undefined : states[engine.state]
   if (state && !state.face) holdPlayerFace(engine.player, emphasis ? 'surprised' : null)
+}
+
+/**
+ * Stop whatever the avatar does and leave it at rest, still: no state, no clip, no gesture, and
+ * nothing it has turned into. It starts again when a state or a clip is asked for.
+ */
+export const stopEngine = (engine: AvatarEngine) => {
+  engine.state = null
+  engine.morph = null
+  // Whatever the body had turned into is gone at once, with its turn.
+  const morphing = engine.morphing
+  morphing.current = null
+  morphing.leaving = null
+  morphing.amount = { at: 0, speed: 0 }
+  morphing.swap = { at: 1, speed: 0 }
+  morphing.spin = { at: 0, speed: 0 }
+  morphing.spinTarget = 0
+  morphing.showing = false
+  engine.gestures = []
+  stopPlayer(engine.player)
 }
 
 /** Put the clip that plays at a time, in seconds. The state that plays, if any, goes on from there. */
