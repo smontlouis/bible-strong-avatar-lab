@@ -42,8 +42,9 @@ import {
   PERSPECTIVE_MAX,
 } from '@/features/editor/avatar'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
+import { ExportPanel } from '@/features/editor/ExportPanel'
 import { ClipsPanel, StatesPanel } from '@/features/editor/ClipExplorer'
-import { PhotoPanel, PoseControls, slugOf, takePicture } from '@/features/editor/PhotoPanel'
+import { PhotoPanel, PoseControls, takePicture } from '@/features/editor/PhotoPanel'
 import { Scene } from '@/features/editor/Scene'
 import { emptyStatus, Stage, type StageStatus } from '@/features/editor/Stage'
 import {
@@ -431,58 +432,6 @@ function PosePanel({ editor }: { editor: EditorState }) {
           checked={editor.followsPointer}
           onChange={editor.setFollowsPointer}
         />
-      </InspectorCard>
-    </div>
-  )
-}
-
-const snippet = (name: string) => `import { Avatar } from '@bible-strong/avatar-react'
-import ${name} from './${name}.character.json'
-
-<Avatar character={${name}} state="thinking" />
-<Avatar character={${name}} clip="Done_A" face="happy" />
-<Avatar character={${name}} state="listening" followPointer />`
-
-function ExportPanel({ editor }: { editor: EditorState }) {
-  const { t, character, activeAvatar } = editor
-  if (!character) return null
-  const slug = slugOf(activeAvatar.name)
-  const identifier = slug.replace(/-([a-z0-9])/g, (_, letter: string) => letter.toUpperCase())
-  const saveCharacter = () => {
-    const link = window.document.createElement('a')
-    link.href = URL.createObjectURL(
-      new Blob([JSON.stringify(character, null, 2)], { type: 'application/json' })
-    )
-    link.download = `${slug}.character.json`
-    link.click()
-    URL.revokeObjectURL(link.href)
-  }
-  return (
-    <div className="panel-stack">
-      <InspectorCard>
-        <PanelTitle
-          level={3}
-          title="Personnage"
-          subtitle="Le corps, les couleurs et le visage. Les clips, les états et les visages viennent avec la bibliothèque."
-        />
-        <Button type="button" onClick={saveCharacter}>
-          <Download />
-          {t('Télécharger le personnage (.json)')}
-        </Button>
-        <pre className="mt-3 overflow-x-auto rounded-lg bg-neutral-900 p-3 text-xs leading-relaxed text-neutral-100">
-          {snippet(identifier)}
-        </pre>
-      </InspectorCard>
-      <InspectorCard>
-        <PanelTitle
-          level={3}
-          title="Image"
-          subtitle="Pose l’avatar, cadre-le, choisis un fond et enregistre-le en PNG ou en SVG."
-        />
-        <Button variant="secondary" type="button" onClick={editor.openPhotoMode}>
-          <Camera />
-          {t('Ouvrir le mode photo')}
-        </Button>
       </InspectorCard>
     </div>
   )
