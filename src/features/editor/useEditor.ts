@@ -30,7 +30,7 @@ import {
 import { restExpression, type PhotoTool, type SnapshotBackground } from '@/features/editor/utils'
 import { useStudioLanguage } from '@/i18n'
 
-export const editorTabs = ['avatars', 'pose', 'states', 'clips', 'faces', 'export'] as const
+export const editorTabs = ['avatars', 'pose', 'states', 'clips', 'export'] as const
 export type EditorTab = (typeof editorTabs)[number]
 
 /** What the avatar on the stage does: a state, or one clip. */

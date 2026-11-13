@@ -1,11 +1,4 @@
-import {
-  clips,
-  faceNames,
-  faces,
-  gestureNames,
-  pokeEngine,
-  states,
-} from '@bible-strong/avatar-core'
+import { clips, states } from '@bible-strong/avatar-core'
 import {
   Activity,
   ArrowLeft,
@@ -18,14 +11,14 @@ import {
   Play,
   Plus,
   RotateCcw,
-  Smile,
   Trash2,
   Upload,
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
-import { InspectorCard, PanelTitle, StatePlayer } from '@/features/editor/panels'
+import { InspectorCard, PanelTitle } from '@/features/editor/panels'
+import { Player } from '@/features/editor/Player'
 import { ColorField, NumericField } from '@/features/editor/controls'
 import {
   AlertDialog,
@@ -71,7 +64,6 @@ const tabLabels: Record<EditorTab, string> = {
   pose: 'Pose',
   states: 'États',
   clips: 'Clips',
-  faces: 'Visages',
   export: 'Exporter',
 }
 
@@ -79,7 +71,6 @@ const tabIcons: Record<Exclude<EditorTab, 'avatars'>, typeof Play> = {
   pose: Move3D,
   states: Activity,
   clips: Film,
-  faces: Smile,
   export: Download,
 }
 
@@ -424,22 +415,6 @@ function CharacterPanel({ editor }: { editor: EditorState }) {
   )
 }
 
-function FaceChips({ editor }: { editor: EditorState }) {
-  const { t, face, setFace } = editor
-  return (
-    <Chips>
-      <Choice active={face === null} onClick={() => setFace(null)}>
-        {t('Automatique')}
-      </Choice>
-      {faceNames.map(name => (
-        <Choice active={face === name} key={name} onClick={() => setFace(name)}>
-          {name}
-        </Choice>
-      ))}
-    </Chips>
-  )
-}
-
 function PosePanel({ editor }: { editor: EditorState }) {
   const { t } = editor
   return (
@@ -451,81 +426,11 @@ function PosePanel({ editor }: { editor: EditorState }) {
       </p>
       <PoseControls editor={editor} />
       <InspectorCard>
-        <PanelTitle
-          level={3}
-          title="Gestes"
-          subtitle="Un geste se pose par-dessus la pose, puis s’efface. Plusieurs gestes s’additionnent."
-        />
-        <Chips>
-          {gestureNames.map(name => (
-            <Button
-              variant="secondary"
-              size="sm"
-              type="button"
-              key={name}
-              onClick={() => pokeEngine(editor.engine.current, name)}
-            >
-              {name}
-            </Button>
-          ))}
-        </Chips>
         <SwitchRow
           label="Suit le pointeur"
           checked={editor.followsPointer}
           onChange={editor.setFollowsPointer}
         />
-      </InspectorCard>
-      <Group title="Visage">
-        <FaceChips editor={editor} />
-      </Group>
-    </div>
-  )
-}
-
-function FacesPanel({ editor }: { editor: EditorState }) {
-  const { t, character, face, setFace } = editor
-  if (!character) return null
-  return (
-    <div className="panel-stack">
-      <InspectorCard>
-        <div className="preset-header">
-          <div>
-            <p className="eyebrow">
-              {faceNames.length} {t('visages')}
-            </p>
-          </div>
-          <Button
-            variant={face === null ? 'default' : 'outline'}
-            size="sm"
-            type="button"
-            aria-pressed={face === null}
-            onClick={() => setFace(null)}
-          >
-            {t('Automatique')}
-          </Button>
-        </div>
-        <div className="expression-grid">
-          {faceNames.map(name => (
-            <Button
-              className="expression-card"
-              variant="outline"
-              aria-pressed={face === name}
-              aria-label={name}
-              title={t(faces[name].blinks ? 'Cligne avec les clips' : 'Ne cligne pas')}
-              type="button"
-              key={name}
-              onClick={() => setFace(name)}
-            >
-              <CharacterPreview character={character} face={name} turned={face === name} />
-              <span>{name}</span>
-            </Button>
-          ))}
-        </div>
-        <p className={note}>
-          {t(
-            'Un visage, c’est la forme des deux yeux. Le clip choisit le visage, sauf si un état le tient ou si tu en imposes un ici.'
-          )}
-        </p>
       </InspectorCard>
     </div>
   )
@@ -759,7 +664,6 @@ export function Editor() {
             {tab === 'pose' && <PosePanel editor={editor} />}
             {tab === 'states' && <StatesPanel editor={editor} status={status} />}
             {tab === 'clips' && <ClipsPanel editor={editor} status={status} />}
-            {tab === 'faces' && <FacesPanel editor={editor} />}
             {tab === 'export' && <ExportPanel editor={editor} />}
           </>
         )}
@@ -785,23 +689,15 @@ export function Editor() {
       )}
       {!stopped && (
         <footer className="state-playback-footer">
-          <div className="state-playback-bar">
-            <div className="state-playback-timeline">
-              <span className="eyebrow">{status.joining ? t('raccord') : status.clip}</span>
-            </div>
-            <div className="state-playback-controls">
-              <StatePlayer
-                name={editor.held ? `${doingName} · ${t('posé à la main')}` : doingName}
-                status={editor.stopped ? 'stopped' : playing ? 'playing' : 'paused'}
-                onToggle={() => editor.setPlaying(!playing)}
-                onStop={editor.stop}
-              />
-            </div>
-          </div>
+          <Player
+            editor={editor}
+            status={status}
+            name={editor.held ? `${doingName} · ${t('posé à la main')}` : doingName}
+          />
         </footer>
       )}
       {!building && !photoMode && (
-        <nav className="mobile-mode-tabs has-six-tabs" aria-label={t('Mode d’édition')}>
+        <nav className="mobile-mode-tabs has-five-tabs" aria-label={t('Mode d’édition')}>
           <Button
             className="mobile-mode-tab mobile-avatar-tab"
             variant="ghost"

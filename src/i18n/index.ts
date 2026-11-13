@@ -175,6 +175,9 @@ const english: Record<string, string> = {
   'Rechercher un état…': 'Search a state…',
   'Aucun état': 'No state',
   'Aucun clip': 'No clip',
+  'Visage tenu': 'Held face',
+  Auto: 'Auto',
+  arrêté: 'stopped',
   'Taille des yeux': 'Eye size',
   'Écart des yeux': 'Eye gap',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':

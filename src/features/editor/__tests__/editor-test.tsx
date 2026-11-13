@@ -156,12 +156,12 @@ describe('the editor', () => {
     const still = stage().innerHTML
     frames(60)
     expect(stage().innerHTML).toBe(still)
-    expect(container.querySelector('.state-player')!.getAttribute('aria-label')).toBe(
+    expect(container.querySelector('.editor-player')!.getAttribute('aria-label')).toBe(
       'Arrêté : thinking'
     )
     fireEvent.click(getByRole('button', { name: 'Reprendre thinking' }))
     frames(30)
-    expect(container.querySelector('.state-player')!.getAttribute('aria-label')).toBe(
+    expect(container.querySelector('.editor-player')!.getAttribute('aria-label')).toBe(
       'En lecture : thinking'
     )
     frames(30)
@@ -175,21 +175,43 @@ describe('the editor', () => {
     frames(12)
     fireEvent.click(getByRole('button', { name: 'États' }))
     frames(12)
-    expect(container.querySelector('.state-player')!.getAttribute('aria-label')).toBe(
+    expect(container.querySelector('.editor-player')!.getAttribute('aria-label')).toBe(
       'En lecture : idle'
     )
   })
 
-  it('shows the nine faces and holds the one that is picked', () => {
-    const { getByRole, getAllByRole } = open()
-    fireEvent.click(getByRole('button', { name: 'Visages' }))
-    const cards = getAllByRole('button').filter(button =>
-      button.classList.contains('expression-card')
+  it('holds a face from the player, over whatever plays, and lets it go', async () => {
+    const { getByRole } = open()
+    press(getByRole('button', { name: 'Visage' }))
+    frames(2)
+    await settle()
+    const faces = screen
+      .getAllByRole('button')
+      .filter(button => button.closest('[data-side]') && button.hasAttribute('aria-pressed'))
+    // Nine faces and the automatic choice.
+    expect(faces).toHaveLength(10)
+    fireEvent.click(screen.getByRole('button', { name: 'happy' }))
+    frames(2)
+    expect(screen.getByRole('button', { name: 'happy' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Automatique' }).getAttribute('aria-pressed')).toBe(
+      'false'
     )
-    expect(cards).toHaveLength(9)
-    fireEvent.click(getByRole('button', { name: 'happy' }))
-    expect(getByRole('button', { name: 'happy' }).getAttribute('aria-pressed')).toBe('true')
-    expect(getByRole('button', { name: 'Automatique' }).getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(screen.getByRole('button', { name: 'Automatique' }))
+    frames(2)
+    expect(screen.getByRole('button', { name: 'Automatique' }).getAttribute('aria-pressed')).toBe(
+      'true'
+    )
+  })
+
+  it('lays a gesture from the player over what plays', () => {
+    const { getByRole, container } = open()
+    const stage = () => container.querySelector('.avatar-wrap svg')!.innerHTML
+    fireEvent.click(getByRole('button', { name: 'Arrêter idle' }))
+    frames(4)
+    const still = stage()
+    fireEvent.click(getByRole('button', { name: 'spin' }))
+    frames(20)
+    expect(stage()).not.toBe(still)
   })
 
   it('builds an avatar on a page of its own, and keeps its new name after a reload', () => {
@@ -211,9 +233,9 @@ describe('the editor', () => {
   })
 
   it('holds the avatar in the Pose tab and lets it be turned by hand', () => {
-    const { getByRole, getByLabelText, queryByRole } = open()
-    // Gestures are a toy of the pose tool: the stage only offers the photo mode.
-    expect(queryByRole('button', { name: 'bounce' })).toBeNull()
+    const { getByRole, getByLabelText } = open()
+    // Gestures are in the player, in every tab.
+    expect(getByRole('button', { name: 'bounce' })).toBeTruthy()
     expect(getByRole('button', { name: 'Ouvrir le mode photo' })).toBeTruthy()
     fireEvent.click(getByRole('button', { name: 'Pose' }))
     frames(4)
@@ -230,7 +252,7 @@ describe('the editor', () => {
     fireEvent.click(getByRole('button', { name: 'États' }))
     await pick('État', 'reading')
     frames(30)
-    const bar = () => container.querySelector('.state-player')!.getAttribute('aria-label')
+    const bar = () => container.querySelector('.editor-player')!.getAttribute('aria-label')
     const area = container.querySelector('.avatar-wrap svg rect')!
     fireEvent.pointerDown(area, { clientX: 100, clientY: 100, pointerId: 1 })
     // A click alone leaves it playing.

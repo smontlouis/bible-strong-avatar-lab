@@ -142,6 +142,9 @@ export const chinese: Record<string, string> = {
   'Rechercher un état…': '搜索状态…',
   'Aucun état': '没有状态',
   'Aucun clip': '没有片段',
+  'Visage tenu': '固定表情',
+  Auto: '自动',
+  arrêté: '已停止',
   'Taille des yeux': '眼睛大小',
   'Écart des yeux': '眼睛间距',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':
