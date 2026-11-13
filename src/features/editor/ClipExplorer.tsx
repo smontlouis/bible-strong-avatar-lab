@@ -14,10 +14,11 @@ import {
   type ClipFaceKey,
   type ClipKey,
 } from '@bible-strong/avatar-core'
-import { Check, ChevronDown, ChevronRight, Pause, Play, Repeat, SkipBack, X } from 'lucide-react'
+import { ChevronRight, Pause, Play, Repeat, SkipBack, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { SectionCombobox } from '@/components/ui/section-combobox'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
 import type { StageStatus } from '@/features/editor/Stage'
 import type { Editor } from '@/features/editor/useEditor'
@@ -601,87 +602,6 @@ export function ClipTimeline({
 // A surface of the inspector, as the Studio's cards draw them, with room of its own.
 const surface = 'rounded-2xl border border-border bg-card shadow-[0_4px_14px_rgb(24_28_35/5%)]'
 
-/**
- * A setting on one line, as the reference engine lays them out: what it is on the left, what it
- * is set to on the right. Pressed, it opens its choices underneath.
- */
-function PickerRow({
-  label,
-  value,
-  active = false,
-  open,
-  onToggle,
-  children,
-}: {
-  label: string
-  value: string
-  active?: boolean
-  open: boolean
-  onToggle: () => void
-  children: ReactNode
-}) {
-  return (
-    <div className={`rounded-xl ${open ? 'bg-muted' : ''}`}>
-      <button
-        type="button"
-        className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
-          active ? 'text-secondary-foreground' : 'text-foreground'
-        } ${open ? '' : 'hover:bg-muted'}`}
-        aria-expanded={open}
-        aria-label={label}
-        onClick={onToggle}
-      >
-        <span className={`font-medium ${active ? '' : 'text-muted-foreground'}`}>{label}</span>
-        <span className="flex min-w-0 items-center gap-1.5 font-semibold">
-          <span className="truncate">{value}</span>
-          <ChevronDown
-            className={`size-3.5 shrink-0 opacity-60 transition-transform ${open ? 'rotate-180' : ''}`}
-          />
-        </span>
-      </button>
-      {open && <div className="px-1.5 pb-1.5">{children}</div>}
-    </div>
-  )
-}
-
-/** One choice of a picker: its name, a detail, and a check when it is the one set. */
-function Option({
-  active,
-  name,
-  detail,
-  onClick,
-}: {
-  active: boolean
-  name: string
-  detail?: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      className={`flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs ${
-        active
-          ? 'bg-background font-semibold text-secondary-foreground ring-1 ring-ring'
-          : 'hover:bg-background'
-      }`}
-      aria-pressed={active}
-      aria-label={name}
-      onClick={onClick}
-    >
-      <span className="truncate">{name}</span>
-      {active ? (
-        <Check className="size-3.5 shrink-0" />
-      ) : (
-        detail && (
-          <span className="shrink-0 text-[0.65rem] text-muted-foreground tabular-nums">
-            {detail}
-          </span>
-        )
-      )}
-    </button>
-  )
-}
-
 function Pill({ children }: { children: ReactNode }) {
   return (
     <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-semibold text-muted-foreground">
@@ -694,52 +614,36 @@ const usesClip = (state: string, clip: string) =>
   states[state].clips.includes(clip) || (states[state].compactClips?.includes(clip) ?? false)
 
 // The clips by family: `Working_B` belongs to `Working`.
-const clipFamilies = clipNames.reduce<Record<string, string[]>>((families, name) => {
-  const family = name.split('_')[0]
-  ;(families[family] ??= []).push(name)
-  return families
-}, {})
+const clipSections = Object.entries(
+  clipNames.reduce<Record<string, string[]>>((families, name) => {
+    const family = name.split('_')[0]
+    ;(families[family] ??= []).push(name)
+    return families
+  }, {})
+).map(([value, items]) => ({ value, items }))
+
+const stateSections = stateGroups.map(group => ({ value: group.label, items: [...group.states] }))
 
 export function ClipsPanel({ editor, status }: { editor: Editor; status: StageStatus }) {
   const { t, doing, setDoing, setPlaying, setTab } = editor
-  const [open, setOpen] = useState(false)
   // Stopped, nothing plays: the clip asked for is still the one shown.
   const clip = clips[status.clip] ?? ('clip' in doing ? clips[doing.clip] : undefined)
-  const current = 'clip' in doing ? doing.clip : status.clip
   const users = clip ? stateNames.filter(state => usesClip(state, clip.name)) : []
   return (
     <div className="panel-stack">
       <div className={`${surface} flex flex-col gap-0.5 p-1.5`}>
-        <PickerRow
+        <SectionCombobox
           label={t('Clip')}
-          value={clip ? `${clip.name} · ${seconds(clip.duration)}` : '—'}
-          active
-          open={open}
-          onToggle={() => setOpen(!open)}
-        >
-          <div className="flex max-h-80 flex-col gap-2 overflow-y-auto">
-            {Object.entries(clipFamilies).map(([family, names]) => (
-              <div key={family}>
-                <p className="eyebrow px-1 pt-1">{family}</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {names.map(name => (
-                    <Option
-                      active={current === name}
-                      name={name}
-                      detail={seconds(clips[name].duration)}
-                      key={name}
-                      onClick={() => {
-                        setOpen(false)
-                        setPlaying(true)
-                        setDoing({ clip: name })
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </PickerRow>
+          value={clip?.name ?? null}
+          sections={clipSections}
+          detail={name => (clips[name] ? seconds(clips[name].duration) : undefined)}
+          placeholder={t('Rechercher un clip…')}
+          empty={t('Aucun clip')}
+          onPick={name => {
+            setPlaying(true)
+            setDoing({ clip: name })
+          }}
+        />
         {clip && (
           <div className="flex items-baseline gap-3 px-3 py-2">
             <span className="shrink-0 text-sm font-medium text-muted-foreground">
@@ -786,9 +690,6 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
   const name = inspecting ? left : (status.state ?? ('state' in doing ? doing.state : null))
   const state = name ? states[name] : undefined
   const clip = clips[status.clip]
-  const groupOf = (item: string | null) =>
-    stateGroups.find(group => item !== null && group.states.includes(item))?.label ?? null
-  const [openGroup, setOpenGroup] = useState<string | null>(null)
 
   /** Leave the state for one of its clips, which then plays alone, round and round. */
   const inspect = (item: string, from?: number) => {
@@ -802,7 +703,6 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
   }
   const takeUp = (item: string) => {
     setLeft(null)
-    setOpenGroup(null)
     setPlaying(true)
     setDoing({ state: item })
   }
@@ -816,7 +716,6 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
         : state.clips.length > 1
           ? t('Mélangé')
           : t('Un seul clip')
-  const activeGroup = groupOf(name)
 
   const tiles = state && name && (
     <div className="flex flex-col gap-3">
@@ -840,13 +739,13 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
           </span>
         )}
       </div>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         {state.clips.map((item, index) => {
           const playingNow = item === status.clip
           return (
             <button
               type="button"
-              className={`relative overflow-hidden rounded-lg px-2.5 py-2 text-left ${
+              className={`relative flex items-center justify-between gap-2 overflow-hidden rounded-lg px-2.5 py-1.5 text-left ${
                 playingNow
                   ? 'bg-secondary text-secondary-foreground ring-1 ring-ring'
                   : 'bg-muted hover:ring-1 hover:ring-border'
@@ -865,8 +764,8 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
                   style={{ width: 'calc(var(--at, 0) * 100%)' }}
                 />
               )}
-              <strong className="relative block truncate text-xs">{item}</strong>
-              <span className="relative text-[0.65rem] tabular-nums opacity-70">
+              <strong className="relative truncate text-xs">{item}</strong>
+              <span className="relative shrink-0 text-[0.65rem] tabular-nums opacity-70">
                 {seconds(clips[item].duration)}
               </span>
             </button>
@@ -879,27 +778,21 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
   return (
     <div className="panel-stack">
       <div className={`${surface} flex flex-col gap-0.5 p-1.5`}>
-        {stateGroups.map(group => (
-          <PickerRow
-            label={group.label}
-            value={activeGroup === group.label && name ? name : '—'}
-            active={activeGroup === group.label}
-            open={openGroup === group.label}
-            key={group.label}
-            onToggle={() => setOpenGroup(openGroup === group.label ? null : group.label)}
-          >
-            <div className="grid grid-cols-2 gap-1">
-              {group.states.map(item => (
-                <Option
-                  active={!inspecting && name === item}
-                  name={item}
-                  key={item}
-                  onClick={() => takeUp(item)}
-                />
-              ))}
-            </div>
-          </PickerRow>
-        ))}
+        <SectionCombobox
+          label={t('État')}
+          value={inspecting ? null : name}
+          sections={stateSections}
+          detail={item =>
+            states[item].morph
+              ? states[item].morph
+              : states[item].clips.length > 1
+                ? `${states[item].clips.length} clips`
+                : undefined
+          }
+          placeholder={t('Rechercher un état…')}
+          empty={t('Aucun état')}
+          onPick={takeUp}
+        />
       </div>
       {tiles && (
         <div className={`${surface} p-3`}>

@@ -172,6 +172,9 @@ const english: Record<string, string> = {
   'posé à la main': 'posed by hand',
   Mélangé: 'Shuffled',
   'Un seul clip': 'A single clip',
+  'Rechercher un état…': 'Search a state…',
+  'Aucun état': 'No state',
+  'Aucun clip': 'No clip',
   'Taille des yeux': 'Eye size',
   'Écart des yeux': 'Eye gap',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':

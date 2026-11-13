@@ -139,6 +139,9 @@ export const chinese: Record<string, string> = {
   'posé à la main': '手动摆放',
   Mélangé: '随机',
   'Un seul clip': '单个片段',
+  'Rechercher un état…': '搜索状态…',
+  'Aucun état': '没有状态',
+  'Aucun clip': '没有片段',
   'Taille des yeux': '眼睛大小',
   'Écart des yeux': '眼睛间距',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':

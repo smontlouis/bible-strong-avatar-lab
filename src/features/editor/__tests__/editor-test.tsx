@@ -5,7 +5,7 @@ import {
   setEngineState,
   advanceEngine,
 } from '@bible-strong/avatar-core'
-import { act, fireEvent, render } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 
 import { avatarFromSource, characterOfAvatar } from '@/features/editor/avatar'
@@ -49,6 +49,27 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 
+/** Pick a choice in one of the editor's comboboxes: open it, then press the option. */
+const press = (element: Element) => {
+  fireEvent.pointerDown(element, { pointerType: 'mouse', button: 0 })
+  fireEvent.mouseDown(element, { button: 0 })
+  fireEvent.pointerUp(element, { pointerType: 'mouse', button: 0 })
+  fireEvent.mouseUp(element, { button: 0 })
+  fireEvent.click(element)
+}
+// The popup opens and closes on frames and timers of its own: both are given time to run.
+const settle = () => act(() => new Promise<void>(resolve => setTimeout(resolve, 30)))
+const pick = async (label: string, option: string) => {
+  press(screen.getByRole('combobox', { name: label }))
+  frames(2)
+  await settle()
+  frames(2)
+  press(screen.getByRole('option', { name: option }))
+  frames(2)
+  await settle()
+  frames(2)
+}
+
 const open = () => {
   const view = render(
     <StudioLanguageProvider>
@@ -70,20 +91,18 @@ describe('the editor', () => {
     expect(getByRole('button', { name: 'États' })).toBeTruthy()
   })
 
-  it('plays a state picked in the States tab and says which clip plays', () => {
+  it('plays a state picked in the States tab and says which clip plays', async () => {
     const { getByRole, getAllByText } = open()
     fireEvent.click(getByRole('button', { name: 'États' }))
-    fireEvent.click(getByRole('button', { name: 'Lifecycle' }))
-    fireEvent.click(getByRole('button', { name: 'finished' }))
+    await pick('État', 'finished')
     frames(30)
     expect(getAllByText(/Done_B/).length).toBeGreaterThan(0)
   })
 
-  it('stops a clip on the keyframe that is picked and shows its curves and its easing', () => {
+  it('stops a clip on the keyframe that is picked and shows its curves and its easing', async () => {
     const { getByRole, getAllByRole, getByText, container } = open()
     fireEvent.click(getByRole('button', { name: 'Clips' }))
-    fireEvent.click(getByRole('button', { name: 'Clip' }))
-    fireEvent.click(getByRole('button', { name: 'Working_B' }))
+    await pick('Clip', 'Working_B')
     frames(60)
     const keys = getAllByRole('button').filter(button =>
       button.getAttribute('aria-label')?.startsWith('Rotation · ')
@@ -105,11 +124,10 @@ describe('the editor', () => {
     expect(getByRole('button', { name: 'État reading' })).toBeTruthy()
   })
 
-  it('leaves a state for its clip when a keyframe is picked, until the state is resumed', () => {
+  it('leaves a state for its clip when a keyframe is picked, until the state is resumed', async () => {
     const { getByRole, getAllByRole, getByText, queryByText, queryByRole } = open()
     fireEvent.click(getByRole('button', { name: 'États' }))
-    fireEvent.click(getByRole('button', { name: 'Lifecycle' }))
-    fireEvent.click(getByRole('button', { name: 'finished' }))
+    await pick('État', 'finished')
     frames(30)
     expect(queryByText('Clip seul')).toBeNull()
     const keys = getAllByRole('button').filter(button =>
@@ -127,12 +145,11 @@ describe('the editor', () => {
     expect(queryByRole('button', { name: 'Boucle' })).toBeNull()
   })
 
-  it('stops the avatar at rest with the stop button, and starts it anew with play', () => {
+  it('stops the avatar at rest with the stop button, and starts it anew with play', async () => {
     const { getByRole, container } = open()
     const stage = () => container.querySelector('.avatar-wrap svg')!
     fireEvent.click(getByRole('button', { name: 'États' }))
-    fireEvent.click(getByRole('button', { name: 'Lifecycle' }))
-    fireEvent.click(getByRole('button', { name: 'thinking' }))
+    await pick('État', 'thinking')
     frames(60)
     fireEvent.click(getByRole('button', { name: 'Arrêter thinking' }))
     frames(30)
@@ -196,11 +213,10 @@ describe('the editor', () => {
     expect(getByRole('switch', { name: 'Suit le pointeur' })).toBeTruthy()
   })
 
-  it('takes the avatar in hand when it is dragged in any tab, and lets it go on play', () => {
+  it('takes the avatar in hand when it is dragged in any tab, and lets it go on play', async () => {
     const { getByRole, container } = open()
     fireEvent.click(getByRole('button', { name: 'États' }))
-    fireEvent.click(getByRole('button', { name: 'Lifecycle' }))
-    fireEvent.click(getByRole('button', { name: 'reading' }))
+    await pick('État', 'reading')
     frames(30)
     const bar = () => container.querySelector('.state-player')!.getAttribute('aria-label')
     const area = container.querySelector('.avatar-wrap svg rect')!
