@@ -186,6 +186,7 @@ const english: Record<string, string> = {
   'Tire ses clips au hasard, chacun une fois par tour, sans fin':
     'Draws its clips at random, each once a round, without end',
   'Joue son clip en boucle, sans fin': 'Plays its clip round and round, without end',
+  Enchaîner: 'Hand over',
   'Taille des yeux': 'Eye size',
   'Écart des yeux': 'Eye gap',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':
@@ -1069,6 +1070,8 @@ const frenchStates: Record<string, string> = {
 }
 
 const dynamicTranslations: [RegExp, string][] = [
+  [/^Passe à (.+) comme dans l’app$/, 'Goes on to $1, as in the app'],
+  [/^Rejoue (.+) au lieu de passer à (.+)$/, 'Plays $1 again instead of going on to $2'],
   [/^Passe à (.+) après (.+) s$/, 'Goes on to $1 after $2 s'],
   [/^Joue l’état une fois, puis passe à (.+)$/, 'Plays the state once, then goes on to $1'],
   [/^Modifier l’expression (.+)$/, 'Edit expression $1'],

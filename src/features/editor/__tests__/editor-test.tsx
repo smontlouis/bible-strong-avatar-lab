@@ -183,6 +183,18 @@ describe('the editor', () => {
     expect(tiles[0].textContent).toContain('×3')
   })
 
+  it('keeps a state that hands over, until handing over is turned on', async () => {
+    const { getByRole, container } = open()
+    const bar = () => container.querySelector('.editor-player')!.getAttribute('aria-label')
+    fireEvent.click(getByRole('button', { name: 'États' }))
+    await pick('État', 'finished')
+    frames(60 * 8)
+    expect(bar()).toBe('En lecture : finished')
+    fireEvent.click(getByRole('button', { name: 'Enchaîner' }))
+    frames(60 * 8)
+    expect(bar()).toBe('En lecture : idle')
+  })
+
   it('goes back to idle when the States tab opens on a clip played alone', async () => {
     const { getByRole, container } = open()
     fireEvent.click(getByRole('button', { name: 'Clips' }))

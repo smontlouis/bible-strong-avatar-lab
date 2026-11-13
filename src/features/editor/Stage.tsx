@@ -11,6 +11,7 @@ import {
   renderCharacterFrame,
   resumeEngine,
   setEngineFace,
+  setEngineHandover,
   setEngineGaze,
   setEngineGazeAlways,
   setEnginePose,
@@ -88,6 +89,7 @@ export function Stage({
     t,
     tab,
     showsDepth,
+    handover,
   } = editor
   const svg = useRef<SVGSVGElement>(null)
   const [scene, setScene] = useState<CharacterScene | null>(null)
@@ -128,6 +130,7 @@ export function Stage({
   }, [stopped, engine])
 
   useEffect(() => setEngineFace(engine.current, face), [face, engine])
+  useEffect(() => setEngineHandover(engine.current, handover), [handover, engine])
 
   // The body is built at rest, and a pose is set by hand on a body that has stopped.
   const wasPosing = useRef(false)

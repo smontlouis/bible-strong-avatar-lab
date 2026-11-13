@@ -149,6 +149,11 @@ export type AvatarEngine = {
   gaze: Gaze
   /** A pose set by hand: what it gives takes the place of what the clip asks. */
   pose: FreePose | null
+  /**
+   * Whether a state that hands over (after a time, or once its clips are played) goes on to the
+   * next state. Off, it starts again instead: to look at it for as long as one likes.
+   */
+  handover: boolean
   /** A pose set by hand that was let go: the body goes back from it to what the clip asks. */
   release: {
     from: { orientation: Quaternion; position: [number, number]; zoom: number }
@@ -186,6 +191,7 @@ export const createAvatarEngine = (
   gestures: [],
   gaze: { target: null, at: [0, 0], hold: 0, always: false },
   pose: null,
+  handover: true,
   release: null,
 })
 
@@ -316,6 +322,11 @@ export const releaseEnginePose = (engine: AvatarEngine) => {
 export const setEngineFace = (engine: AvatarEngine, face: string | null) =>
   setPlayerFace(engine.player, face)
 
+/** Let a state go on to the next one when it is over, or keep it, starting again. */
+export const setEngineHandover = (engine: AvatarEngine, handover: boolean) => {
+  engine.handover = handover
+}
+
 export const setEngineCompact = (engine: AvatarEngine, compact: boolean) => {
   engine.compact = compact
 }
@@ -397,7 +408,7 @@ const advanceDirector = (engine: AvatarEngine, seconds: number) => {
   engine.stateTime += seconds
   if (state.next !== undefined && state.holdSeconds !== undefined) {
     if (engine.stateTime >= state.holdSeconds) {
-      setEngineState(engine, state.next)
+      setEngineState(engine, engine.handover ? state.next : engine.state!)
       return
     }
   }
@@ -407,7 +418,7 @@ const advanceDirector = (engine: AvatarEngine, seconds: number) => {
   if (inOrder(state)) {
     engine.index += 1
     if (engine.index >= listOf(engine, state).length) {
-      setEngineState(engine, state.next!)
+      setEngineState(engine, engine.handover ? state.next! : engine.state!)
       return
     }
   }

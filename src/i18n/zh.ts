@@ -153,6 +153,7 @@ export const chinese: Record<string, string> = {
   'Tire ses clips au hasard, chacun une fois par tour, sans fin':
     '随机抽取片段，每轮各一次，循环不止',
   'Joue son clip en boucle, sans fin': '循环播放其片段',
+  Enchaîner: '衔接',
   'Taille des yeux': '眼睛大小',
   'Écart des yeux': '眼睛间距',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':
@@ -954,6 +955,11 @@ export const chinese: Record<string, string> = {
 
 export const translateChineseDynamicText = (text: string) => {
   const rules: Array<[RegExp, (...matches: string[]) => string]> = [
+    [/^Passe à (.+) comme dans l’app$/, next => `像在应用中一样转为 ${next}`],
+    [
+      /^Rejoue (.+) au lieu de passer à (.+)$/,
+      (state, next) => `重新播放 ${state}，而不是转为 ${next}`,
+    ],
     [/^Passe à (.+) après (.+) s$/, (next, time) => `${time} 秒后转为 ${next}`],
     [/^Joue l’état une fois, puis passe à (.+)$/, next => `播放一次该状态，然后转为 ${next}`],
     [/^Modifier l’expression (.+)$/, value => `编辑表情 ${value}`],

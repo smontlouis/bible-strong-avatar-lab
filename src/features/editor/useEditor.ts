@@ -69,6 +69,9 @@ export const useEditor = () => {
   // Counts the times what the avatar does is started anew, so that the stage starts it again.
   const [run, setRun] = useState(0)
   const [speed, setSpeed] = useState(1)
+  // Whether a state that hands over goes on to the next one. Off, the state starts again, to be
+  // looked at; the choice holds for the session.
+  const [handover, setHandover] = useState(false)
   const [followsPointer, setFollowsPointer] = useState(false)
   const [pose, setPose] = useState<HandPose>(restPose)
   // Held: the avatar was taken in hand. What it does waits, paused, until it is played again.
@@ -260,6 +263,8 @@ export const useEditor = () => {
     },
     speed,
     setSpeed,
+    handover,
+    setHandover,
     followsPointer,
     setFollowsPointer,
     pose,

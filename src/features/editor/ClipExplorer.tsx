@@ -17,6 +17,7 @@ import {
 import {
   ChevronRight,
   Clock,
+  Link2,
   LoaderCircle,
   Shuffle,
   SkipForward,
@@ -777,6 +778,26 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
           <Pill icon={policy.icon} title={policy.title}>
             {policy.label}
           </Pill>
+        )}
+        {state.next && (
+          <button
+            type="button"
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ring-1 ${
+              editor.handover
+                ? 'bg-secondary text-secondary-foreground ring-ring'
+                : 'text-muted-foreground ring-border hover:text-foreground'
+            }`}
+            aria-pressed={editor.handover}
+            title={t(
+              editor.handover
+                ? `Passe à ${state.next} comme dans l’app`
+                : `Rejoue ${name} au lieu de passer à ${state.next}`
+            )}
+            onClick={() => editor.setHandover(!editor.handover)}
+          >
+            <Link2 className="size-3" aria-hidden="true" />
+            {t('Enchaîner')}
+          </button>
         )}
         {state.face && (
           <Pill icon={Smile} title={t('Visage tenu par l’état')}>

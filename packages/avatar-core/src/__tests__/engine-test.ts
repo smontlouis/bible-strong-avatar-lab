@@ -15,6 +15,7 @@ import {
   setEngineFace,
   setEngineGaze,
   setEngineGazeAlways,
+  setEngineHandover,
   setEnginePose,
   releaseEnginePose,
   setEngineState,
@@ -254,6 +255,24 @@ describe('gaze', () => {
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before, 6)
     setEngineGazeAlways(engine, true)
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before + 18 * 0.55, 1)
+  })
+})
+
+describe('a state kept instead of handed over', () => {
+  it('plays a state that hands over again and again, after its clips or after its time', () => {
+    for (const [name, seconds] of [
+      ['finished', 12],
+      ['waking', 6],
+    ] as const) {
+      const engine = createAvatarEngine({ seed: 2 })
+      setEngineHandover(engine, false)
+      setEngineState(engine, name)
+      for (let step = 0; step < seconds * 60; step += 1) advanceEngine(engine, STEP)
+      expect(engine.state).toBe(name)
+      setEngineHandover(engine, true)
+      for (let step = 0; step < seconds * 60; step += 1) advanceEngine(engine, STEP)
+      expect(engine.state).toBe('idle')
+    }
   })
 })
 
