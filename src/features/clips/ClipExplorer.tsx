@@ -12,9 +12,11 @@ import {
   pokeEngine,
   renderCharacterFrame,
   resumeEngine,
+  routines,
   setEngineFace,
   setEngineGaze,
   setEngineGazeAlways,
+  setEngineRoutine,
   setEngineState,
   stateGroups,
   type AvatarCharacter,
@@ -39,10 +41,28 @@ const charactersOfStudio = (): AvatarCharacter[] =>
 
 function Scene({ scene }: { scene: CharacterScene }) {
   const id = useId().replace(/:/g, '')
-  const { geometry, colors, bodyColors, transform } = scene
+  const { geometry, colors, bodyColors, transform, spinner } = scene
+  // A body that turns into a spinner fades its parts and its face as it becomes a disc.
+  const round = spinner?.round ?? 0
   return (
     <svg viewBox="-190 -190 380 380" className="size-full" aria-hidden="true">
-      <g transform={`matrix(${transform.join(' ')})`}>
+      {spinner?.marks.map((mark, index) =>
+        mark.strokeWidth === undefined ? (
+          <path d={mark.d} fill={colors.body} opacity={mark.opacity} key={index} />
+        ) : (
+          <path
+            d={mark.d}
+            fill="none"
+            stroke={colors.body}
+            strokeWidth={mark.strokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={mark.opacity}
+            key={index}
+          />
+        )
+      )}
+      <g transform={`matrix(${transform.join(' ')})`} opacity={spinner?.opacity ?? 1}>
         <defs>
           <clipPath id={`${id}-head`}>
             <path d={geometry.headPath} />
@@ -53,24 +73,29 @@ function Scene({ scene }: { scene: CharacterScene }) {
             </clipPath>
           ))}
         </defs>
-        {geometry.backPaths.map((path, index) => (
-          <path d={path} fill={bodyColors.back[index]} key={index} />
-        ))}
-        <path d={geometry.headPath} fill={colors.body} />
-        <g clipPath={`url(#${id}-head)`} fill={colors.eyes}>
+        <g opacity={1 - round}>
+          {geometry.backPaths.map((path, index) => (
+            <path d={path} fill={bodyColors.back[index]} key={index} />
+          ))}
+        </g>
+        {round < 0.999 && <path d={geometry.headPath} fill={colors.body} />}
+        <g clipPath={`url(#${id}-head)`} fill={colors.eyes} opacity={1 - round}>
           {geometry.leftVisible && <path d={geometry.leftPath} />}
           {geometry.rightVisible && <path d={geometry.rightPath} />}
           <path d={geometry.nosePath} />
           <path d={geometry.mouthPath} />
         </g>
-        {geometry.frontPaths.map((path, index) => (
-          <path
-            d={path}
-            fill={bodyColors.front[index]}
-            clipPath={geometry.frontClipPaths[index] ? `url(#${id}-front-${index})` : undefined}
-            key={index}
-          />
-        ))}
+        <g opacity={1 - round}>
+          {geometry.frontPaths.map((path, index) => (
+            <path
+              d={path}
+              fill={bodyColors.front[index]}
+              clipPath={geometry.frontClipPaths[index] ? `url(#${id}-front-${index})` : undefined}
+              key={index}
+            />
+          ))}
+        </g>
+        {spinner && round > 0 && <path d={spinner.disc} fill={colors.body} opacity={round} />}
       </g>
     </svg>
   )
@@ -89,9 +114,9 @@ export function ClipExplorer() {
   const characters = useMemo(charactersOfStudio, [])
   const [characterIndex, setCharacterIndex] = useState(0)
   // What plays: a state of the catalogue, which draws its own clips, or one clip by name.
-  const [playingWhat, setPlayingWhat] = useState<{ state: string } | { clip: string }>({
-    state: 'idle',
-  })
+  const [playingWhat, setPlayingWhat] = useState<
+    { state: string } | { clip: string } | { routine: string }
+  >({ state: 'idle' })
   const [face, setFace] = useState<string | null>(null)
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
@@ -110,9 +135,15 @@ export function ClipExplorer() {
     joining: false,
     state: '' as string | null,
     morph: null as string | null,
+    text: null as string | null,
   })
 
   useEffect(() => {
+    if ('routine' in playingWhat) {
+      setEngineRoutine(engine.current, playingWhat.routine)
+      return
+    }
+    setEngineRoutine(engine.current, null)
     if ('state' in playingWhat) setEngineState(engine.current, playingWhat.state)
     else playEngineClip(engine.current, clips[playingWhat.clip])
   }, [playingWhat])
@@ -163,6 +194,7 @@ export function ClipExplorer() {
         joining: player.join !== null,
         state: engine.current.state,
         morph: engine.current.morph,
+        text: engine.current.routine?.text ?? null,
       })
       frameRequest = requestAnimationFrame(tick)
     }
@@ -182,8 +214,9 @@ export function ClipExplorer() {
           {status.state ? `état ${status.state} · ` : ''}
           {status.clip} · {status.joining ? 'raccord' : `${status.time.toFixed(2)} s`} /{' '}
           {status.duration} s · visage {status.face}
-          {status.morph ? ` · morphing ${status.morph} (pas encore dessiné)` : ''}
+          {status.morph ? ` · morphing ${status.morph}` : ''}
         </p>
+        <p className="h-5 text-sm text-neutral-700">{status.text}</p>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button className={pill(false)} type="button" onClick={() => setPlaying(value => !value)}>
             {playing ? 'Pause' : 'Lecture'}
@@ -234,13 +267,30 @@ export function ClipExplorer() {
             ))}
           </div>
         </div>
+        <div>
+          <h2 className={heading}>Status · scénarios</h2>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.keys(routines).map(name => (
+              <button
+                className={pill('routine' in playingWhat && playingWhat.routine === name)}
+                type="button"
+                key={name}
+                onClick={() => setPlayingWhat({ routine: name })}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
         {stateGroups.map(group => (
           <div key={group.label}>
             <h2 className={heading}>États · {group.label}</h2>
             <div className="flex flex-wrap gap-1.5">
               {group.states.map(name => (
                 <button
-                  className={pill('state' in playingWhat && playingWhat.state === name)}
+                  className={pill(
+                    'state' in playingWhat ? playingWhat.state === name : status.state === name
+                  )}
                   type="button"
                   key={name}
                   onClick={() => setPlayingWhat({ state: name })}

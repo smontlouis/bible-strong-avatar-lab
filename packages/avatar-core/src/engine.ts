@@ -1,6 +1,15 @@
-import { clips, states, type StateDefinition } from './catalogue'
+import { clips, routines, states, type StateDefinition } from './catalogue'
 import type { ClipDefinition } from './clips'
 import { inspectEyeScales, inspectLeanOfTurn } from './faces'
+import {
+  drawSpinner,
+  SPINNER_PAUSE_SECONDS,
+  spinnerOfMode,
+  spinnerShotSeconds,
+  type SpinnerDrawing,
+  type SpinnerMark,
+  type SpinnerPattern,
+} from './spinners'
 import {
   advancePlayer,
   createAvatarPlayer,
@@ -53,6 +62,58 @@ type Gaze = {
   always: boolean
 }
 
+/** A value that follows its target like a weight on a spring, without overshooting it. */
+type Spring = { at: number; speed: number }
+
+const SPRING_STEP = 1 / 120
+
+const pull = (spring: Spring, target: number, stiffness: number, seconds: number) => {
+  const steps = Math.max(1, Math.ceil(seconds / SPRING_STEP))
+  const step = seconds / steps
+  for (let index = 0; index < steps; index += 1) {
+    spring.speed +=
+      (-2 * stiffness * spring.speed - stiffness * stiffness * (spring.at - target)) * step
+    spring.at += spring.speed * step
+  }
+}
+
+type ShownPattern = { pattern: SpinnerPattern; time: number; shot: number }
+
+/** The body turning into a spinner, and back. */
+type Morphing = {
+  /** The pattern that shows, or the last that did while the body comes back. */
+  current: ShownPattern | null
+  /** The pattern that the current one is taking the place of. */
+  leaving: ShownPattern | null
+  /** How much the body has turned into the spinner, from 0 to 1. */
+  amount: Spring
+  /** How far the current pattern has taken the place of the one that leaves. */
+  swap: Spring
+  /** A half turn of the body each time it goes into a spinner or comes back, in radians. */
+  spin: Spring
+  spinTarget: number
+  spinWay: number
+  /** Whether the spinner shows now: a pattern that comes in shots is hidden between them. */
+  showing: boolean
+  random: Random
+  /** The turn the body is brought to while it is a spinner: each angle at its nearest turn. */
+  rest: [number, number, number]
+}
+
+/** A scenario as it runs: a list of states, each for a time, with what is said meanwhile. */
+type Routine = {
+  name: string
+  /** Which step of the scenario runs. */
+  step: number
+  /** Seconds spent in the step. */
+  time: number
+  /** What is said during the step, if anything. */
+  text: string | null
+  /** The last text drawn from each list of texts, so that it is not drawn twice in a row. */
+  lastTexts: Record<string, string>
+  random: Random
+}
+
 export type AvatarEngine = {
   player: AvatarPlayer
   random: Random
@@ -74,8 +135,11 @@ export type AvatarEngine = {
   emphasis: boolean
   /** What the body is asked to turn into, by the state. */
   morph: string | null
+  morphing: Morphing
   gestures: Gesture[]
   gaze: Gaze
+  /** The scenario that leads the avatar from state to state, when one does. */
+  routine: Routine | null
 }
 
 export const createAvatarEngine = (
@@ -93,8 +157,21 @@ export const createAvatarEngine = (
   compact: options.compact ?? false,
   emphasis: false,
   morph: null,
+  morphing: {
+    current: null,
+    leaving: null,
+    amount: { at: 0, speed: 0 },
+    swap: { at: 1, speed: 0 },
+    spin: { at: 0, speed: 0 },
+    spinTarget: 0,
+    spinWay: 1,
+    showing: false,
+    random: { seed: 2654435769 | 0 },
+    rest: [0, 0, 0],
+  },
   gestures: [],
   gaze: { target: null, at: [0, 0], hold: 0, always: false },
+  routine: null,
 })
 
 const listOf = (engine: Readonly<AvatarEngine>, state: Readonly<StateDefinition>) =>
@@ -151,12 +228,32 @@ const pick = (engine: AvatarEngine) => {
   engine.loopsSeen = engine.player.loopCount
 }
 
+/** Ask the body to turn into a spinner, by the name a state gives it, or `null` to come back. */
+export const setEngineMorph = (engine: AvatarEngine, mode: string | null) => {
+  engine.morph = mode
+  const pattern = mode === null ? undefined : spinnerOfMode[mode]
+  const morphing = engine.morphing
+  if (!pattern || morphing.current?.pattern === pattern) {
+    if (morphing.current) morphing.current.shot = 0
+    return
+  }
+  // A pattern that takes the place of another while it shows lets it leave as it comes in.
+  if (morphing.current && morphing.amount.at > 0.02) {
+    morphing.leaving = morphing.current
+    morphing.swap = { at: 0, speed: 0 }
+  } else {
+    morphing.leaving = null
+    morphing.swap = { at: 1, speed: 0 }
+  }
+  morphing.current = { pattern, time: 0, shot: 0 }
+}
+
 /** Put the avatar in a state of the catalogue. An unknown name changes nothing. */
 export const setEngineState = (engine: AvatarEngine, name: string) => {
   const state = states[name]
   if (!state) return
   engine.state = name
-  engine.morph = state.morph ?? null
+  setEngineMorph(engine, state.morph ?? null)
   holdPlayerFace(engine.player, state.face ?? (engine.emphasis ? 'surprised' : null))
   engine.index = 0
   engine.stateTime = 0
@@ -170,11 +267,68 @@ export const playEngineClip = (
   options: { phase?: number; transition?: 'join' | 'cut' } = {}
 ) => {
   engine.state = null
-  engine.morph = null
+  setEngineMorph(engine, null)
   holdPlayerFace(engine.player, null)
   engine.started = true
   playClip(engine.player, clip, options)
   engine.loopsSeen = engine.player.loopCount
+}
+
+// The states of plain work. A scenario that goes from one to another only changes what is
+// said: the avatar goes on with the clips it was drawing.
+const workStates = ['reading', 'working', 'coding', 'running', 'computing', 'controlling']
+
+const enterRoutineStep = (engine: AvatarEngine, routine: Routine) => {
+  const steps = routines[routine.name]
+  const [state, , text] = steps[routine.step]
+  routine.time = 0
+  if (text === undefined) routine.text = null
+  else if (typeof text === 'string') routine.text = text
+  else {
+    // One text of the list, and not the one drawn from it last time when there is another.
+    const key = text.join('|')
+    const choices = text.length > 1 ? text.filter(item => item !== routine.lastTexts[key]) : text
+    routine.text = choices[Math.floor(nextRandom(routine.random) * choices.length)]
+    routine.lastTexts[key] = routine.text
+  }
+  const working = engine.state !== null && workStates.includes(engine.state)
+  if (!(working && workStates.includes(state)) && engine.state !== state) {
+    setEngineState(engine, state)
+  }
+}
+
+/**
+ * Run a scenario of the catalogue: it leads the avatar from state to state, round and round.
+ * `null` stops it and leaves the avatar in the state it is in.
+ */
+export const setEngineRoutine = (engine: AvatarEngine, name: string | null) => {
+  if (name === null || !routines[name]) {
+    engine.routine = null
+    return
+  }
+  engine.routine = {
+    name,
+    step: 0,
+    time: 0,
+    text: null,
+    lastTexts: {},
+    random: { seed: engine.random.seed ^ 0x5f3759df },
+  }
+  enterRoutineStep(engine, engine.routine)
+}
+
+const advanceRoutine = (engine: AvatarEngine, seconds: number) => {
+  const routine = engine.routine
+  if (!routine) return
+  const steps = routines[routine.name]
+  routine.time += seconds
+  // A step ends when its time is up, whatever the clip is doing.
+  while (routine.time >= steps[routine.step][1]) {
+    const over = routine.time - steps[routine.step][1]
+    routine.step = (routine.step + 1) % steps.length
+    enterRoutineStep(engine, routine)
+    routine.time = over
+  }
 }
 
 export const setEngineFace = (engine: AvatarEngine, face: string | null) =>
@@ -253,11 +407,61 @@ const advanceDirector = (engine: AvatarEngine, seconds: number) => {
   pick(engine)
 }
 
+const morphAmount = (engine: Readonly<AvatarEngine>) =>
+  Math.max(0, Math.min(1, engine.morphing.amount.at))
+
+const advanceMorphing = (engine: AvatarEngine, seconds: number) => {
+  const morphing = engine.morphing
+  const current = morphing.current
+  let showing = false
+  if (current && engine.morph !== null && spinnerOfMode[engine.morph] === current.pattern) {
+    current.shot += seconds
+    const shotSeconds = spinnerShotSeconds[current.pattern]
+    showing = true
+    if (shotSeconds !== undefined && current.shot >= shotSeconds) {
+      // Between two shots the avatar comes back for a moment.
+      showing = false
+      if (current.shot >= shotSeconds + SPINNER_PAUSE_SECONDS) {
+        current.shot = 0
+        showing = true
+      }
+    }
+  }
+  if (current) current.time += seconds
+  if (morphing.leaving) morphing.leaving.time += seconds
+
+  if (showing !== morphing.showing) {
+    morphing.showing = showing
+    if (showing) {
+      morphing.spinWay = nextRandom(morphing.random) < 0.5 ? 1 : -1
+      const turn = engine.player.pose.rotation
+      morphing.rest = [
+        Math.round(turn[0] / 360) * 360,
+        Math.round(turn[1] / 360) * 360,
+        Math.round(turn[2] / 360) * 360,
+      ]
+    }
+    morphing.spinTarget += Math.PI * morphing.spinWay
+  }
+  pull(morphing.amount, showing ? 1 : 0, 14, seconds)
+  pull(morphing.swap, 1, 11, seconds)
+  pull(morphing.spin, morphing.spinTarget, 14, seconds)
+  if (morphing.leaving && morphing.swap.at > 0.996) morphing.leaving = null
+  if (!showing && engine.morph === null && morphing.amount.at < 0.001 && morphing.current) {
+    morphing.current = null
+    morphing.leaving = null
+    morphing.amount = { at: 0, speed: 0 }
+  }
+}
+
 /** Move the engine forward by a time, in seconds. */
 export const advanceEngine = (engine: AvatarEngine, seconds: number) => {
   const step = Math.max(0, Math.min(MAX_STEP_SECONDS, seconds))
+  advanceRoutine(engine, step)
   advanceDirector(engine, step)
-  advancePlayer(engine.player, step)
+  advanceMorphing(engine, step)
+  // A body that has turned into a spinner has stopped its choreography.
+  advancePlayer(engine.player, step, 1 - morphAmount(engine))
 
   for (const gesture of engine.gestures) gesture.time += step
   if (engine.gestures.some(gesture => gesture.time >= gestureSeconds(gesture))) {
@@ -279,9 +483,74 @@ export const advanceEngine = (engine: AvatarEngine, seconds: number) => {
 const swell = (progress: number, from: number, to: number) =>
   progress > from && progress < to ? Math.sin((Math.PI * (progress - from)) / (to - from)) ** 2 : 0
 
+/** The spinner a body has turned into, wholly or in part. */
+export type SpinnerFrame = {
+  /** How much the body has turned into the spinner, from 0 to 1. */
+  amount: number
+  /** How round the body has become, from 0 to 1: it is a plain disc before it is small. */
+  round: number
+  /** The disc the body becomes: its radius in body radii, where it is, how it is turned. */
+  core: SpinnerDrawing['core']
+  /** The marks around the disc, in body radii from the middle of the view. */
+  marks: SpinnerMark[]
+}
+
+export type EngineFrame = PlayerFrame & { spinner: SpinnerFrame | null }
+
+const ROUND_BY = 0.62
+
+const spinnerFrame = (engine: Readonly<AvatarEngine>): SpinnerFrame | null => {
+  const morphing = engine.morphing
+  const amount = morphAmount(engine)
+  if (!morphing.current || amount <= 0.0005) return null
+  const swap = Math.max(0, Math.min(1, morphing.swap.at))
+  const arriving = drawSpinner(
+    morphing.current.pattern,
+    amount * (morphing.leaving ? swap : 1),
+    morphing.current.time,
+    morphing.current.shot
+  )
+  let core = arriving.core
+  let marks = arriving.marks
+  if (morphing.leaving) {
+    const leaving = drawSpinner(
+      morphing.leaving.pattern,
+      amount * (1 - swap),
+      morphing.leaving.time,
+      morphing.leaving.shot
+    )
+    const between = (from: number, to: number) => from + (to - from) * swap
+    core = {
+      radius: between(leaving.core.radius, arriving.core.radius),
+      x: leaving.core.x + arriving.core.x,
+      y: leaving.core.y + arriving.core.y,
+      turn: leaving.core.turn + arriving.core.turn,
+      opacity: between(leaving.core.opacity, arriving.core.opacity),
+      drop: swap > 0.5 ? arriving.core.drop : leaving.core.drop,
+    }
+    marks = [...leaving.marks, ...marks]
+  }
+  const share = Math.max(0, Math.min(1, amount / ROUND_BY))
+  const round = share < 0.5 ? 4 * share ** 3 : 1 - (-2 * share + 2) ** 3 / 2
+  return { amount, round, core, marks }
+}
+
 /** Everything a renderer needs to draw the avatar now: the clip, the gestures and the gaze. */
-export const engineFrame = (engine: Readonly<AvatarEngine>): PlayerFrame => {
-  const frame = playerFrame(engine.player)
+export const engineFrame = (engine: Readonly<AvatarEngine>): EngineFrame => {
+  const frame: EngineFrame = { ...playerFrame(engine.player), spinner: spinnerFrame(engine) }
+
+  // A body that turns into a spinner gives up its pose as it goes: it comes to rest, upright.
+  if (frame.spinner) {
+    const left = 1 - frame.spinner.amount
+    const rest = engine.morphing.rest
+    frame.rotation[0] = rest[0] + (frame.rotation[0] - rest[0]) * left
+    frame.rotation[1] = rest[1] + (frame.rotation[1] - rest[1]) * left
+    frame.rotation[2] = rest[2] + (frame.rotation[2] - rest[2]) * left
+    frame.position[0] *= left
+    frame.position[1] *= left
+    frame.squash[0] = 1 + (frame.squash[0] - 1) * left
+    frame.squash[1] = 1 + (frame.squash[1] - 1) * left
+  }
 
   const gaze = engine.gaze
   if (gaze.hold > 0) {
@@ -330,5 +599,8 @@ export const engineFrame = (engine: Readonly<AvatarEngine>): PlayerFrame => {
   if (frame.inspectWeight > 0 && (!inspect || inspect.follow)) {
     frame.eyeScales = inspectEyeScales(frame.inspectWeight, inspectLeanOfTurn(frame.rotation[1]))
   }
+  // Going into a spinner and coming back, the body makes half a turn.
+  const spin = engine.morphing.spin.at % (Math.PI * 2)
+  if (Math.abs(spin) > 1e-6) frame.rotation[1] += (spin * 180) / Math.PI
   return frame
 }

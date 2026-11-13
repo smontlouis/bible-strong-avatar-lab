@@ -13,7 +13,9 @@ import {
   type AvatarPose,
   type EyeOutline,
 } from './geometry'
+import type { EngineFrame, SpinnerFrame } from './engine'
 import { REST_ZOOM, type PlayerFrame } from './player'
+import type { SpinnerMark } from './spinners'
 import { bodyFromDefinition, expressionFromDefinition, type AvatarScene } from './scene'
 
 // A character is what an avatar is, apart from what it does: its body, its colours, and the
@@ -94,20 +96,152 @@ const orientationOf = (rotation: readonly [number, number, number]) =>
 /** An affine transform as SVG writes it: `matrix(a b c d e f)`. */
 export type SceneTransform = [number, number, number, number, number, number]
 
+/** One mark of a spinner: filled, or drawn as a line of a given width with round ends. */
+export type SpinnerPath = { d: string; opacity: number; strokeWidth?: number }
+
+export type SpinnerScene = {
+  /** The marks around the body, drawn under it in the body's colour. They are not moved. */
+  marks: SpinnerPath[]
+  /**
+   * How round the body has become, from 0 to 1. A renderer fades the body's parts and its face
+   * by it and draws `disc`, in the body's colour, over the head with this opacity; at 1 the
+   * head itself is no longer drawn.
+   */
+  round: number
+  /** The shape the body becomes, moved with the body: a disc, or a drop for a pencil's tip. */
+  disc: string
+  /** The opacity of the body as a whole. */
+  opacity: number
+}
+
 export type CharacterScene = AvatarScene & {
   /**
    * How the whole drawing is moved, sized and stretched about the middle of the view. A clip
    * moves the body after it is drawn: the move does not change how the head is seen.
    */
   transform: SceneTransform
+  /** What the body has turned into, when it has. */
+  spinner: SpinnerScene | null
+}
+
+const number = (value: number) => value.toFixed(2)
+
+const circlePath = (x: number, y: number, radius: number) =>
+  `M${number(x - radius)} ${number(y)}A${number(radius)} ${number(radius)} 0 1 0 ${number(x + radius)} ${number(y)}` +
+  `A${number(radius)} ${number(radius)} 0 1 0 ${number(x - radius)} ${number(y)}Z`
+
+// A drop is a disc this large for the body, with a tip at the body's edge, below.
+const DROP_DISC = 0.77
+
+const dropPath = (radius: number) => {
+  const disc = radius * DROP_DISC
+  const lean = Math.acos(disc / radius)
+  const x = disc * Math.sin(lean)
+  const y = disc * Math.cos(lean)
+  return `M0 ${number(radius)}L${number(x)} ${number(y)}A${number(disc)} ${number(disc)} 0 1 0 ${number(-x)} ${number(y)}Z`
+}
+
+const BAR_END_STEPS = 10
+
+const markPath = (mark: Readonly<SpinnerMark>, unit: number): SpinnerPath | null => {
+  if (mark.kind === 'disc') {
+    return {
+      d: circlePath(mark.x * unit, mark.y * unit, mark.radius * unit),
+      opacity: mark.opacity,
+    }
+  }
+  if (mark.kind === 'ring') {
+    const radius = mark.radius * unit
+    const stroke = { opacity: mark.opacity, strokeWidth: mark.width * unit }
+    if (mark.share === undefined || mark.share >= 0.999) {
+      return { d: circlePath(mark.x * unit, mark.y * unit, radius), ...stroke }
+    }
+    if (mark.share <= 0.001) return null
+    const angle = mark.share * Math.PI * 2
+    return {
+      d:
+        `M${number(mark.x * unit)} ${number(mark.y * unit - radius)}` +
+        `A${number(radius)} ${number(radius)} 0 ${mark.share > 0.5 ? 1 : 0} 1 ` +
+        `${number(mark.x * unit + radius * Math.sin(angle))} ${number(mark.y * unit - radius * Math.cos(angle))}`,
+      ...stroke,
+    }
+  }
+  if (mark.kind === 'line') {
+    return {
+      d: mark.points
+        .map(([x, y], index) => `${index ? 'L' : 'M'}${number(x * unit)} ${number(y * unit)}`)
+        .join(''),
+      opacity: mark.opacity,
+      strokeWidth: mark.width * unit,
+    }
+  }
+  // A bar: two round ends of two sizes, joined by straight sides.
+  const top = mark.top / 2
+  const bottom = mark.bottom / 2
+  const reach = mark.height / 2
+  const outline: [number, number][] = []
+  for (let step = 0; step <= BAR_END_STEPS; step += 1) {
+    const angle = Math.PI + (step / BAR_END_STEPS) * Math.PI
+    outline.push([top * Math.cos(angle), -reach + top + top * Math.sin(angle)])
+  }
+  for (let step = 0; step <= BAR_END_STEPS; step += 1) {
+    const angle = (step / BAR_END_STEPS) * Math.PI
+    outline.push([bottom * Math.cos(angle), reach - bottom + bottom * Math.sin(angle)])
+  }
+  const turn = (mark.turn * Math.PI) / 180
+  const cosine = Math.cos(turn)
+  const sine = Math.sin(turn)
+  return {
+    d:
+      outline
+        .map(([localX, localY], index) => {
+          const x = mark.x + localX * mark.scale - mark.about[0]
+          const y = mark.y + localY * mark.scale - mark.about[1]
+          const turnedX = mark.about[0] + x * cosine - y * sine
+          const turnedY = mark.about[1] + x * sine + y * cosine
+          return `${index ? 'L' : 'M'}${number(turnedX * unit)} ${number(turnedY * unit)}`
+        })
+        .join('') + 'Z',
+    opacity: mark.opacity,
+  }
+}
+
+const spinnerScene = (
+  character: Readonly<AvatarCharacter>,
+  spinner: Readonly<SpinnerFrame>
+): SpinnerScene => {
+  const radius = bodyRadius(character)
+  return {
+    marks: spinner.marks.flatMap(mark => markPath(mark, radius) ?? []),
+    round: spinner.round,
+    disc: spinner.core.drop ? dropPath(radius) : circlePath(0, 0, radius),
+    opacity: spinner.core.opacity,
+  }
 }
 
 const sceneTransform = (
   character: Readonly<AvatarCharacter>,
-  frame: Readonly<PlayerFrame>
+  frame: Readonly<PlayerFrame & { spinner?: SpinnerFrame | null }>
 ): SceneTransform => {
-  const size = frame.zoom / REST_ZOOM
   const radius = bodyRadius(character)
+  const spinner = frame.spinner
+  if (spinner) {
+    // The body shrinks to the disc of the spinner, wherever the pattern puts it and however
+    // it turns it. What is left of the clip's own move is still there.
+    const left = 1 - spinner.amount
+    const size = (frame.zoom / REST_ZOOM) * left + spinner.core.radius * spinner.amount
+    const turn = (spinner.core.turn * Math.PI) / 180
+    const base = frame.zoom / REST_ZOOM
+    return [
+      size * frame.squash[0] * Math.cos(turn),
+      size * frame.squash[0] * Math.sin(turn),
+      -size * frame.squash[1] * Math.sin(turn),
+      size * frame.squash[1] * Math.cos(turn),
+      (base * frame.position[0] + spinner.core.x) * radius || 0,
+      (-base * frame.position[1] + spinner.core.y) * radius || 0,
+    ]
+  }
+  const size = frame.zoom / REST_ZOOM
   // A stretch leaves one point of the body in place: its middle, or its base.
   const anchored = -frame.squashAnchor * (1 - frame.squash[1]) * (character.body.primary.height / 2)
   return [
@@ -144,8 +278,11 @@ const eyeOutlineOnFace = (
 /** Draw a character as the player has it now. */
 export const renderCharacterFrame = (
   character: Readonly<AvatarCharacter>,
-  frame: Readonly<PlayerFrame>
+  frame: Readonly<PlayerFrame> | Readonly<EngineFrame>
 ): CharacterScene => {
+  const spinner = 'spinner' in frame ? frame.spinner : null
+  // Halfway to a spinner the body has no face left.
+  const faceless = spinner !== null && spinner.amount >= 0.5
   const body = bodyFromDefinition(character.body)
   const pose: AvatarPose = {
     // The pose only carries what the face is built of: where the head is and how it is turned
@@ -176,6 +313,12 @@ export const renderCharacterFrame = (
     },
   })
   const nodeColors = new Map(body.nodes.map(node => [node.id, node.color ?? bodyColor]))
+  if (faceless) {
+    geometry.leftVisible = false
+    geometry.rightVisible = false
+    geometry.nosePath = ''
+    geometry.mouthPath = ''
+  }
   return {
     geometry,
     colors: { body: bodyColor, eyes: character.colors.eyes },
@@ -184,5 +327,6 @@ export const renderCharacterFrame = (
       front: geometry.frontNodeIds.map(id => (id ? (nodeColors.get(id) ?? bodyColor) : bodyColor)),
     },
     transform: sceneTransform(character, frame),
+    spinner: spinner ? spinnerScene(character, spinner) : null,
   }
 }
