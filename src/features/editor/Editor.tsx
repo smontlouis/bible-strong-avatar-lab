@@ -446,7 +446,7 @@ function PosePanel({ editor }: { editor: EditorState }) {
     <div className="panel-stack">
       <p className={note}>
         {t(
-          'Place l’avatar librement : glisse sur la scène pour le tourner, sers-toi du gizmo de rotation, ou règle les valeurs. Le clip est arrêté.'
+          'Glisse l’avatar sur la scène, depuis n’importe quel onglet : ce qu’il fait se met en pause et il suit ta main. Affine ici avec le gizmo ou les valeurs. Lecture le fait reprendre là où il en était.'
         )}
       </p>
       <PoseControls editor={editor} />
@@ -600,7 +600,7 @@ export function Editor() {
   // What the avatar is doing, as the stage and the bar at the bottom name it.
   const doingName = (status.state ?? status.clip) || ('state' in doing ? doing.state : doing.clip)
   const { photoMode } = editor
-  const stopped = building || tab === 'pose' || photoMode
+  const stopped = building || photoMode
 
   const stage = (
     <section
@@ -791,7 +791,7 @@ export function Editor() {
             </div>
             <div className="state-playback-controls">
               <StatePlayer
-                name={doingName}
+                name={editor.held ? `${doingName} · ${t('posé à la main')}` : doingName}
                 status={editor.stopped ? 'stopped' : playing ? 'playing' : 'paused'}
                 onToggle={() => editor.setPlaying(!playing)}
                 onStop={editor.stop}

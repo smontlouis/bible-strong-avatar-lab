@@ -134,6 +134,9 @@ export const chinese: Record<string, string> = {
   'Reprendre l’état': '恢复状态',
   'Clip seul': '单独片段',
   Clip: '片段',
+  'Glisse l’avatar sur la scène, depuis n’importe quel onglet : ce qu’il fait se met en pause et il suit ta main. Affine ici avec le gizmo ou les valeurs. Lecture le fait reprendre là où il en était.':
+    '在任意标签页中拖动舞台上的头像：它正在做的动作会暂停并跟随你的手。可在此用控制器或数值微调。播放会让它从暂停处继续。',
+  'posé à la main': '手动摆放',
   'Taille des yeux': '眼睛大小',
   'Écart des yeux': '眼睛间距',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':
@@ -182,8 +185,6 @@ export const chinese: Record<string, string> = {
   'Choisis le visage visible sur la photo.': '选择照片中显示的表情。',
   'Pose l’avatar, cadre-le, choisis un fond et enregistre-le en PNG ou en SVG.':
     '摆好头像姿势、取景、选择背景，然后保存为 PNG 或 SVG。',
-  'Place l’avatar librement : glisse sur la scène pour le tourner, sers-toi du gizmo de rotation, ou règle les valeurs. Le clip est arrêté.':
-    '自由摆放头像：在舞台上拖动旋转，使用旋转控件，或直接设置数值。片段已停止。',
   visages: '个表情',
   'Un geste se pose par-dessus la pose, puis s’efface. Plusieurs gestes s’additionnent.':
     '手势叠加在姿势之上，随后消失。多个手势会相加。',

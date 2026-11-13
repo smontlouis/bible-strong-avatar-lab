@@ -4,7 +4,10 @@ import {
   engineFrame,
   pauseEngine,
   playEngineClip,
+  frameOrientation,
   poseFromExpression,
+  quaternionToEuler,
+  releaseEnginePose,
   renderCharacterFrame,
   resumeEngine,
   setEngineFace,
@@ -77,6 +80,7 @@ export function Stage({
     playing,
     run,
     stopped,
+    held,
     pose,
     selectedBodyNode,
     setPose,
@@ -92,7 +96,8 @@ export function Stage({
   const report = useRef(onStatus)
   report.current = onStatus
   const building = editor.building
-  const posing = (tab === 'pose' || photoMode) && !building
+  // Posed by hand: in the photo mode, or held, wherever it was taken in hand.
+  const posing = (held || photoMode) && !building
   // The head's turn as the gizmo has it: a face at rest, turned by the three angles.
   const turned = useMemo(
     () => ({ ...expression, headX: pose.head[0], headY: pose.head[1], headZ: pose.head[2] }),
@@ -125,6 +130,7 @@ export function Stage({
   useEffect(() => setEngineFace(engine.current, face), [face, engine])
 
   // The body is built at rest, and a pose is set by hand on a body that has stopped.
+  const wasPosing = useRef(false)
   useEffect(() => {
     if (building)
       setEnginePose(engine.current, {
@@ -138,7 +144,11 @@ export function Stage({
         position: pose.position,
         zoom: pose.zoom,
       })
-    } else setEnginePose(engine.current, null)
+    } else if (wasPosing.current) {
+      // Let go, the body goes back to the clip where it waited, without a jump.
+      releaseEnginePose(engine.current)
+    } else if (engine.current.pose) setEnginePose(engine.current, null)
+    wasPosing.current = posing
     if (playing && !stopped && !building && !posing) resumeEngine(engine.current)
     else pauseEngine(engine.current)
   }, [building, showsDepth, posing, pose, turned, playing, stopped, engine])
@@ -193,22 +203,63 @@ export function Stage({
   }, [character, engine])
 
   // In the pose tool, dragging the stage turns the avatar.
-  const drag = useRef<{ x: number; y: number; head: [number, number, number] } | null>(null)
+  /**
+   * Take the avatar in hand as it is now: the pose starts from the frame on the stage, so that
+   * nothing moves when the hand takes over.
+   */
+  const grab = () => {
+    const frame = engineFrame(engine.current)
+    const [x, y, z] = quaternionToEuler(frameOrientation(frame)).map(
+      angle => (angle * 180) / Math.PI
+    )
+    const next = {
+      head: [x, y, z] as [number, number, number],
+      position: [frame.position[0], frame.position[1]] as [number, number],
+      zoom: frame.zoom,
+    }
+    setPose(next)
+    return next
+  }
+
+  // The Pose tab takes the avatar in hand as soon as it opens.
+  useEffect(() => {
+    if (tab === 'pose' && !building && !held && !photoMode) grab()
+    // Only the opening of the tab takes it.
+  }, [tab])
+
+  // Wherever the avatar is, dragging it on the stage takes it in hand, past a few pixels: a
+  // click alone leaves it playing.
+  const GRAB_PIXELS = 4
+  const drag = useRef<{
+    x: number
+    y: number
+    head: [number, number, number] | null
+    pose: typeof pose
+  } | null>(null)
   const startTurn = (event: React.PointerEvent<SVGSVGElement>) => {
-    if (!posing) return
-    drag.current = { x: event.clientX, y: event.clientY, head: pose.head }
+    if (building) return
+    drag.current = {
+      x: event.clientX,
+      y: event.clientY,
+      head: posing ? pose.head : null,
+      pose,
+    }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
   const turn = (event: React.PointerEvent<SVGSVGElement>) => {
     const from = drag.current
     if (!from) return
+    const dx = event.clientX - from.x
+    const dy = event.clientY - from.y
+    if (!from.head) {
+      if (Math.hypot(dx, dy) < GRAB_PIXELS) return
+      const taken = grab()
+      from.head = taken.head
+      from.pose = taken
+    }
     setPose({
-      ...pose,
-      head: [
-        from.head[0] - (event.clientY - from.y) * 0.4,
-        from.head[1] + (event.clientX - from.x) * 0.4,
-        from.head[2],
-      ],
+      ...from.pose,
+      head: [from.head[0] - dy * 0.4, from.head[1] + dx * 0.4, from.head[2]],
     })
   }
   const endTurn = () => {
@@ -219,7 +270,7 @@ export function Stage({
   return (
     <div
       className="avatar-wrap"
-      style={{ cursor: posing ? 'grab' : undefined, touchAction: 'none' }}
+      style={{ cursor: building ? undefined : 'grab', touchAction: 'none' }}
     >
       {!building && !posing && status && (
         <div className="stage-playback-status">
@@ -236,7 +287,7 @@ export function Stage({
           width={300}
           height={300}
           fill="transparent"
-          aria-label={posing ? t('Glisse pour tourner l’avatar') : undefined}
+          aria-label={building ? undefined : t('Glisse pour tourner l’avatar')}
           onPointerDown={startTurn as never}
           onPointerMove={turn as never}
           onPointerUp={endTurn}

@@ -71,6 +71,13 @@ export const useEditor = () => {
   const [speed, setSpeed] = useState(1)
   const [followsPointer, setFollowsPointer] = useState(false)
   const [pose, setPose] = useState<HandPose>(restPose)
+  // Held: the avatar was taken in hand. What it does waits, paused, until it is played again.
+  const [held, setHeld] = useState(false)
+  const holdPose = (next: HandPose) => {
+    setPose(next)
+    setHeld(true)
+    setPlaying(false)
+  }
   // The photo mode: the avatar posed by hand in a frame, on a background, saved as a file.
   const [photoMode, setPhotoMode] = useState(false)
   const [photoTool, setPhotoTool] = useState<PhotoTool>('frame')
@@ -218,16 +225,21 @@ export const useEditor = () => {
     doing,
     setDoing: (next: Doing) => {
       setStopped(false)
+      setHeld(false)
       setDoing(next)
     },
     run,
     stopped,
     stop: () => {
       setStopped(true)
+      setHeld(false)
       setPlaying(false)
     },
-    /** Leave the stop without starting anew: a clip shown at a time by hand. */
-    clearStop: () => setStopped(false),
+    /** Leave the stop, and the hand, without starting anew: a clip shown at a time by hand. */
+    clearStop: () => {
+      setStopped(false)
+      setHeld(false)
+    },
     face,
     setFace,
     playing,
@@ -236,6 +248,7 @@ export const useEditor = () => {
         setStopped(false)
         setRun(current => current + 1)
       }
+      if (next) setHeld(false)
       setPlaying(next)
     },
     speed,
@@ -243,8 +256,10 @@ export const useEditor = () => {
     followsPointer,
     setFollowsPointer,
     pose,
-    setPose,
-    resetPose: () => setPose(restPose),
+    /** Set the pose by hand: the avatar is held, and what it does waits. */
+    setPose: holdPose,
+    resetPose: () => holdPose(restPose),
+    held,
     photoMode,
     openPhotoMode: () => {
       setPhotoTool('frame')

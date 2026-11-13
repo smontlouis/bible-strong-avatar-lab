@@ -1,10 +1,12 @@
 import { clips, stateGroups, stateNames, states } from '../catalogue'
+import { frameOrientation } from '../turn'
 import {
   advanceEngine,
   createAvatarEngine,
   engineFrame,
   pauseEngine,
   playEngineClip,
+  resumeEngine,
   pokeEngine,
   seedOfName,
   seekEngine,
@@ -14,6 +16,7 @@ import {
   setEngineGaze,
   setEngineGazeAlways,
   setEnginePose,
+  releaseEnginePose,
   setEngineState,
   stopEngine,
   type AvatarEngine,
@@ -251,6 +254,34 @@ describe('gaze', () => {
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before, 6)
     setEngineGazeAlways(engine, true)
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before + 18 * 0.55, 1)
+  })
+})
+
+describe('a pose set by hand that is let go', () => {
+  it('goes back from where it is to the clip, in the time of a join, without a jump', () => {
+    const engine = createAvatarEngine({ seed: 4 })
+    playEngineClip(engine, clips.Working_B, { transition: 'cut' })
+    for (let step = 0; step < 72; step += 1) advanceEngine(engine, STEP)
+    pauseEngine(engine)
+    const paused = engine.player.time
+    setEnginePose(engine, { rotation: [10, 70, 0], position: [0.3, 0], zoom: 0.9 })
+    const held = engineFrame(engine)
+    releaseEnginePose(engine)
+    resumeEngine(engine)
+    const first = engineFrame(engine)
+    expect(first.position).toEqual(held.position)
+    expect(first.zoom).toBeCloseTo(held.zoom)
+    expect(
+      frameOrientation(first).every(
+        (value, index) => Math.abs(value - frameOrientation(held)[index]) < 1e-9
+      )
+    ).toBe(true)
+    for (let step = 0; step < 30; step += 1) advanceEngine(engine, STEP)
+    // The join is over: the clip alone says where the body is.
+    expect(engine.release).toBeNull()
+    expect(engineFrame(engine).orientation).toBeUndefined()
+    // The clip goes on from the time it was paused at.
+    expect(engine.player.time).toBeCloseTo(paused + 30 * STEP)
   })
 })
 

@@ -1,6 +1,7 @@
 import { clips, states, type StateDefinition } from './catalogue'
-import type { ClipDefinition } from './clips'
-import type { Quaternion } from './geometry'
+import { slerpQuaternion, type Quaternion } from './geometry'
+import { clipEaseAt, type ClipDefinition } from './clips'
+import { frameOrientation } from './turn'
 import { inspectEyeScales, inspectLeanOfTurn } from './faces'
 import {
   drawSpinner,
@@ -18,6 +19,8 @@ import {
   pausePlayer,
   stopPlayer,
   seekPlayer,
+  JOIN_EASE,
+  JOIN_SECONDS,
   playClip,
   playerFrame,
   resumePlayer,
@@ -146,6 +149,11 @@ export type AvatarEngine = {
   gaze: Gaze
   /** A pose set by hand: what it gives takes the place of what the clip asks. */
   pose: FreePose | null
+  /** A pose set by hand that was let go: the body goes back from it to what the clip asks. */
+  release: {
+    from: { orientation: Quaternion; position: [number, number]; zoom: number }
+    time: number
+  } | null
 }
 
 export const createAvatarEngine = (
@@ -178,6 +186,7 @@ export const createAvatarEngine = (
   gestures: [],
   gaze: { target: null, at: [0, 0], hold: 0, always: false },
   pose: null,
+  release: null,
 })
 
 const listOf = (engine: Readonly<AvatarEngine>, state: Readonly<StateDefinition>) =>
@@ -283,6 +292,25 @@ export const playEngineClip = (
 /** Place the avatar by hand, or pass `null` to give it back to the clip that plays. */
 export const setEnginePose = (engine: AvatarEngine, pose: FreePose | null) => {
   engine.pose = pose
+  engine.release = null
+}
+
+/**
+ * Let go of a pose set by hand: the body goes back from where it is to what the clip asks, in
+ * the time of a join, instead of jumping there.
+ */
+export const releaseEnginePose = (engine: AvatarEngine) => {
+  if (!engine.pose) return
+  const frame = engineFrame(engine)
+  engine.release = {
+    from: {
+      orientation: frameOrientation(frame),
+      position: [frame.position[0], frame.position[1]],
+      zoom: frame.zoom,
+    },
+    time: 0,
+  }
+  engine.pose = null
 }
 
 export const setEngineFace = (engine: AvatarEngine, face: string | null) =>
@@ -315,6 +343,7 @@ export const stopEngine = (engine: AvatarEngine) => {
   morphing.spinTarget = 0
   morphing.showing = false
   engine.gestures = []
+  engine.release = null
   stopPlayer(engine.player)
 }
 
@@ -440,6 +469,11 @@ export const advanceEngine = (engine: AvatarEngine, seconds: number) => {
   // A body that has turned into a spinner has stopped its choreography.
   advancePlayer(engine.player, step, 1 - morphAmount(engine))
 
+  if (engine.release) {
+    engine.release.time += step
+    if (engine.release.time >= JOIN_SECONDS) engine.release = null
+  }
+
   for (const gesture of engine.gestures) gesture.time += step
   if (engine.gestures.some(gesture => gesture.time >= gestureSeconds(gesture))) {
     engine.gestures = engine.gestures.filter(gesture => gesture.time < gestureSeconds(gesture))
@@ -547,6 +581,19 @@ export const engineFrame = (engine: Readonly<AvatarEngine>): EngineFrame => {
       frame.orientation = pose.orientation
       frame.rotation = [0, 0, 0]
     }
+  }
+
+  const release = engine.release
+  if (release && !pose) {
+    const progress = clipEaseAt(JOIN_EASE, Math.min(1, release.time / JOIN_SECONDS))
+    const { from } = release
+    frame.orientation = slerpQuaternion(from.orientation, frameOrientation(frame), progress)
+    frame.rotation = [0, 0, 0]
+    frame.position = [
+      from.position[0] + (frame.position[0] - from.position[0]) * progress,
+      from.position[1] + (frame.position[1] - from.position[1]) * progress,
+    ]
+    frame.zoom = from.zoom + (frame.zoom - from.zoom) * progress
   }
 
   const gaze = engine.gaze

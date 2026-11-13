@@ -37,7 +37,7 @@ const MIN_ZOOM = 0.25
 const MAX_ZOOM = 2.5
 /** How long a join between two clips takes, in seconds. */
 export const JOIN_SECONDS = 0.35
-const JOIN_EASE: ClipEase = [0.4, 0, 0.2, 1]
+export const JOIN_EASE: ClipEase = [0.4, 0, 0.2, 1]
 /** How long one face takes to turn into another, in seconds. */
 export const FACE_SECONDS = 0.28
 const FACE_EASE: ClipEase = [0.4, 0.06, 0.18, 1]

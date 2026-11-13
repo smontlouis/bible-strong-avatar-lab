@@ -6,15 +6,10 @@ import type {
   AvatarStyleDefinition,
 } from './avatarDefinition'
 import { eyeOutline, eyePointOnFace, eyeReach } from './faces'
-import {
-  multiplyQuaternions,
-  quaternionFromAxisAngle,
-  renderAvatar,
-  type AvatarPose,
-  type EyeOutline,
-} from './geometry'
+import { renderAvatar, type AvatarPose, type EyeOutline } from './geometry'
 import type { EngineFrame, SpinnerFrame } from './engine'
 import { REST_ZOOM, type PlayerFrame } from './player'
+import { frameOrientation } from './turn'
 import type { SpinnerMark } from './spinners'
 import { bodyFromDefinition, expressionFromDefinition, type AvatarScene } from './scene'
 
@@ -76,22 +71,6 @@ export const characterFromLegacyDefinition = (
     },
   }
 }
-
-const RADIANS = Math.PI / 180
-
-/**
- * The turn of the head for a clip's rotation. A clip counts its angles on a screen whose
- * vertical axis points up: about x the face looks down, about y it turns to the right of the
- * screen, about z it rolls anticlockwise. The x turn is made first, then y, then z.
- */
-const orientationOf = (rotation: readonly [number, number, number]) =>
-  multiplyQuaternions(
-    quaternionFromAxisAngle([0, 0, 1], -rotation[2] * RADIANS),
-    multiplyQuaternions(
-      quaternionFromAxisAngle([0, 1, 0], rotation[1] * RADIANS),
-      quaternionFromAxisAngle([1, 0, 0], -rotation[0] * RADIANS)
-    )
-  )
 
 /** An affine transform as SVG writes it: `matrix(a b c d e f)`. */
 export type SceneTransform = [number, number, number, number, number, number]
@@ -315,9 +294,7 @@ export const renderCharacterFrame = (
       perspective: character.face.perspective,
       motion: { eyes: 'none', body: 'none' },
     }),
-    orientation: given
-      ? multiplyQuaternions(orientationOf(frame.rotation), given)
-      : orientationOf(frame.rotation),
+    orientation: frameOrientation({ rotation: frame.rotation, orientation: given }),
   }
   const bodyColor = character.colors.body
   const geometry = renderAvatar(pose, body.primary, 1, {

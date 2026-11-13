@@ -177,7 +177,7 @@ describe('the editor', () => {
     expect(loadLibrary().avatars.at(-1)?.name).toBe('Nouvel avatar')
   })
 
-  it('stops the avatar and lets it be turned by hand in the Pose tab', () => {
+  it('holds the avatar in the Pose tab and lets it be turned by hand', () => {
     const { getByRole, getByLabelText, queryByRole } = open()
     // Gestures are a toy of the pose tool: the stage only offers the photo mode.
     expect(queryByRole('button', { name: 'bounce' })).toBeNull()
@@ -190,6 +190,29 @@ describe('the editor', () => {
     fireEvent.click(getByRole('button', { name: 'bounce' }))
     frames(10)
     expect(getByRole('switch', { name: 'Suit le pointeur' })).toBeTruthy()
+  })
+
+  it('takes the avatar in hand when it is dragged in any tab, and lets it go on play', () => {
+    const { getByRole, container } = open()
+    fireEvent.click(getByRole('button', { name: 'États' }))
+    fireEvent.click(getByRole('button', { name: 'reading' }))
+    frames(30)
+    const bar = () => container.querySelector('.state-player')!.getAttribute('aria-label')
+    const area = container.querySelector('.avatar-wrap svg rect')!
+    fireEvent.pointerDown(area, { clientX: 100, clientY: 100, pointerId: 1 })
+    // A click alone leaves it playing.
+    fireEvent.pointerMove(area, { clientX: 102, clientY: 100, pointerId: 1 })
+    frames(2)
+    expect(bar()).toBe('En lecture : reading')
+    fireEvent.pointerMove(area, { clientX: 160, clientY: 120, pointerId: 1 })
+    fireEvent.pointerUp(area, { pointerId: 1 })
+    frames(2)
+    expect(bar()).toBe('En pause : reading · posé à la main')
+    expect(container.querySelector('.axis-key')).toBeTruthy()
+    fireEvent.click(getByRole('button', { name: 'Reprendre reading · posé à la main' }))
+    frames(30)
+    expect(bar()).toBe('En lecture : reading')
+    expect(container.querySelector('.axis-key')).toBeNull()
   })
 
   it('opens the photo mode from the stage, with its tools, and leaves it', () => {
