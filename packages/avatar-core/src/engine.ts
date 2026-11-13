@@ -100,6 +100,18 @@ type Morphing = {
   rest: [number, number, number]
 }
 
+/**
+ * A pose set by hand, to place the avatar freely: for a picture, or to look at it from a side.
+ * Each field that is given takes the place of what the clip asks; the others are left to it.
+ */
+export type FreePose = {
+  /** About x, y and z, in degrees: looking down, turning to the right of the screen, rolling. */
+  rotation?: [number, number, number]
+  /** Across and up, in body radii. */
+  position?: [number, number]
+  zoom?: number
+}
+
 /** A scenario as it runs: a list of states, each for a time, with what is said meanwhile. */
 type Routine = {
   name: string
@@ -140,6 +152,8 @@ export type AvatarEngine = {
   gaze: Gaze
   /** The scenario that leads the avatar from state to state, when one does. */
   routine: Routine | null
+  /** A pose set by hand: what it gives takes the place of what the clip asks. */
+  pose: FreePose | null
 }
 
 export const createAvatarEngine = (
@@ -172,6 +186,7 @@ export const createAvatarEngine = (
   gestures: [],
   gaze: { target: null, at: [0, 0], hold: 0, always: false },
   routine: null,
+  pose: null,
 })
 
 const listOf = (engine: Readonly<AvatarEngine>, state: Readonly<StateDefinition>) =>
@@ -329,6 +344,11 @@ const advanceRoutine = (engine: AvatarEngine, seconds: number) => {
     enterRoutineStep(engine, routine)
     routine.time = over
   }
+}
+
+/** Place the avatar by hand, or pass `null` to give it back to the clip that plays. */
+export const setEnginePose = (engine: AvatarEngine, pose: FreePose | null) => {
+  engine.pose = pose
 }
 
 export const setEngineFace = (engine: AvatarEngine, face: string | null) =>
@@ -550,6 +570,13 @@ export const engineFrame = (engine: Readonly<AvatarEngine>): EngineFrame => {
     frame.position[1] *= left
     frame.squash[0] = 1 + (frame.squash[0] - 1) * left
     frame.squash[1] = 1 + (frame.squash[1] - 1) * left
+  }
+
+  const pose = engine.pose
+  if (pose) {
+    if (pose.rotation) frame.rotation = [pose.rotation[0], pose.rotation[1], pose.rotation[2]]
+    if (pose.position) frame.position = [pose.position[0], pose.position[1]]
+    if (pose.zoom !== undefined) frame.zoom = pose.zoom
   }
 
   const gaze = engine.gaze

@@ -7,6 +7,7 @@ import {
 } from './clips'
 import {
   faces,
+  faceSmiles,
   inspectEyeScales,
   inspectLeanOfTurn,
   mixEyeShapes,
@@ -149,6 +150,7 @@ export type AvatarPlayer = {
   face: FaceName
   faceFrom: [FaceEye, FaceEye]
   inspectFrom: number
+  smileFrom: number
   /** Seconds since the eyes started turning into `face`. */
   faceTime: number
   /** A clip's eyelids are left open from the moment a face cannot blink until they reopen. */
@@ -177,6 +179,7 @@ export const createAvatarPlayer = (): AvatarPlayer => ({
   face: 'neutral',
   faceFrom: [faces.neutral.eyes[0], faces.neutral.eyes[1]],
   inspectFrom: 0,
+  smileFrom: 0,
   faceTime: FACE_SECONDS,
   lidsBlocked: false,
 })
@@ -199,6 +202,12 @@ const inspectWeight = (player: Readonly<AvatarPlayer>) => {
   const target = player.face === 'inspecting' ? 1 : 0
   if (player.faceTime >= FACE_SECONDS) return target
   return player.inspectFrom + (target - player.inspectFrom) * faceProgress(player)
+}
+
+const smile = (player: Readonly<AvatarPlayer>) => {
+  const target = faceSmiles[player.face]
+  if (player.faceTime >= FACE_SECONDS) return target
+  return player.smileFrom + (target - player.smileFrom) * faceProgress(player)
 }
 
 /** How far the eyelids are closed now, once the faces that do not blink are left alone. */
@@ -379,6 +388,7 @@ export const advancePlayer = (player: AvatarPlayer, seconds: number, clipRate = 
   if (wanted !== player.face && shownLids(player) <= OPEN_LIDS) {
     player.faceFrom = playerEyes(player)
     player.inspectFrom = inspectWeight(player)
+    player.smileFrom = smile(player)
     player.face = wanted
     player.faceTime = 0
     player.lidsBlocked = true
@@ -394,6 +404,8 @@ export type PlayerFrame = PlayerPose & {
   eyeScales: [number, number]
   /** How much of the face is `inspecting`, from 0 to 1. */
   inspectWeight: number
+  /** What the face asks of a mouth, from -1 to 1: corners down, as they are, or up. */
+  smile: number
 }
 
 export const playerFrame = (player: Readonly<AvatarPlayer>): PlayerFrame => {
@@ -411,5 +423,6 @@ export const playerFrame = (player: Readonly<AvatarPlayer>): PlayerFrame => {
     eyes: playerEyes(player),
     eyeScales: inspectEyeScales(inspectWeight(player), lean),
     inspectWeight: inspectWeight(player),
+    smile: smile(player),
   }
 }

@@ -162,6 +162,33 @@ describe('characters', () => {
     }
   })
 
+  it('bends the mouth of a character with the face: up for happy, down for sad', () => {
+    const mouthed: AvatarCharacter = {
+      ...character,
+      face: {
+        ...character.face,
+        perspective: 0,
+        mouth: {
+          enabled: true,
+          shape: 'curve',
+          curve: 0,
+          width: 40,
+          height: 6,
+          x: 0,
+          y: 50,
+          angle: 0,
+        },
+      },
+    }
+    const mouthOf = (smile: number) =>
+      box(renderCharacterFrame(mouthed, { ...resting(), smile }).geometry.mouthPath)
+    const flat = mouthOf(0)
+    // A smile's corners are above its middle: the mouth's box grows upward from the flat line.
+    expect(mouthOf(1).maxY - mouthOf(1).minY).toBeGreaterThan(flat.maxY - flat.minY + 4)
+    expect(mouthOf(1).maxY).toBeGreaterThan(flat.maxY + 2)
+    expect(mouthOf(-1).minY).toBeLessThan(flat.minY - 2)
+  })
+
   it('draws every clip of the catalogue on the character without a broken path', () => {
     for (const clip of Object.values(clips)) {
       const player = createAvatarPlayer()

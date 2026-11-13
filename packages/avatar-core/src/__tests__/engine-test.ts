@@ -11,6 +11,7 @@ import {
   setEngineFace,
   setEngineGaze,
   setEngineGazeAlways,
+  setEnginePose,
   setEngineRoutine,
   setEngineState,
   type AvatarEngine,
@@ -328,5 +329,34 @@ describe('scenarios', () => {
     run(engine, 5)
     expect(engine.routine).toBeNull()
     expect(engine.state).toBe(state)
+  })
+})
+
+describe('a pose set by hand', () => {
+  it('takes the place of what the clip asks, field by field, and gives it back', () => {
+    const engine = createAvatarEngine()
+    playEngineClip(engine, clips.Working_B)
+    run(engine, 1.5)
+    const played = engineFrame(engine)
+    setEnginePose(engine, { rotation: [10, -40, 5] })
+    const posed = engineFrame(engine)
+    expect(posed.rotation).toEqual([10, -40, 5])
+    // What is not given is left to the clip.
+    expect(posed.zoom).toBe(played.zoom)
+    expect(posed.position).toEqual(played.position)
+    setEnginePose(engine, { position: [0.2, 0.1], zoom: 0.8 })
+    expect(engineFrame(engine).zoom).toBe(0.8)
+    expect(engineFrame(engine).position).toEqual([0.2, 0.1])
+    setEnginePose(engine, null)
+    expect(engineFrame(engine).rotation).toEqual(played.rotation)
+  })
+
+  it('still takes a gesture on top', () => {
+    const engine = createAvatarEngine()
+    setEnginePose(engine, { rotation: [0, 30, 0] })
+    pokeEngine(engine, 'nod')
+    run(engine, 0.25)
+    expect(engineFrame(engine).rotation[0]).toBeCloseTo(16, 0)
+    expect(engineFrame(engine).rotation[1]).toBe(30)
   })
 })

@@ -65,6 +65,22 @@ export const faces = Object.fromEntries(
   ])
 ) as Record<FaceName, FaceShape>
 
+/**
+ * What each face asks of a mouth, from -1 to 1: the corners down, as they are on the character,
+ * or up. The eyes are the face; a character that has a mouth has it follow them.
+ */
+export const faceSmiles: Readonly<Record<FaceName, number>> = {
+  neutral: 0,
+  happy: 1,
+  surprised: 0,
+  sad: -1,
+  sleepy: 0.15,
+  squinted: -0.1,
+  calm: 0.4,
+  inspecting: 0,
+  confused: -0.35,
+}
+
 const faceAliases: Record<string, FaceName> = {
   thinking: 'sad',
   strange: 'inspecting',

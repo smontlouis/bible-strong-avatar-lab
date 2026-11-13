@@ -275,6 +275,20 @@ const eyeOutlineOnFace = (
   })
 }
 
+// How far the corners of a mouth go up for a face that smiles, and down for one that does not.
+const SMILING_CURVE = 85
+const FROWNING_CURVE = -70
+
+/** The character's mouth as a face asks for it: only a mouth drawn as a line can bend. */
+const mouthFor = (
+  mouth: NonNullable<CharacterFace['mouth']>,
+  smile: number
+): NonNullable<CharacterFace['mouth']> => {
+  if (mouth.shape !== 'curve' || smile === 0) return mouth
+  const towards = smile > 0 ? SMILING_CURVE : FROWNING_CURVE
+  return { ...mouth, curve: mouth.curve + (towards - mouth.curve) * Math.abs(smile) }
+}
+
 /** Draw a character as the player has it now. */
 export const renderCharacterFrame = (
   character: Readonly<AvatarCharacter>,
@@ -295,7 +309,7 @@ export const renderCharacterFrame = (
         spacing: 0,
       },
       ...(character.face.nose ? { nose: character.face.nose } : {}),
-      ...(character.face.mouth ? { mouth: character.face.mouth } : {}),
+      ...(character.face.mouth ? { mouth: mouthFor(character.face.mouth, frame.smile) } : {}),
       perspective: character.face.perspective,
       motion: { eyes: 'none', body: 'none' },
     }),
