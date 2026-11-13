@@ -86,7 +86,8 @@ Every character plays the same catalogue, exported by `@bible-strong/avatar-core
 | `face`          | `string`           | —             | A face to hold whatever the avatar does.                       |
 | `emphasis`      | `boolean`          | `false`       | A state without a face of its own shows surprise.              |
 | `paused`        | `boolean`          | `false`       | Start still: nothing is computed until `resume()`.             |
-| `followPointer` | `boolean`          | `false`       | The head follows the pointer.                                  |
+| `lookAt`        | `[x, y] \| null`   | `null`        | A point to look at: right and up, each from -1 to 1.           |
+| `followPointer` | `boolean`          | `false`       | The head follows the pointer. `lookAt` comes before it.        |
 | `muted`         | `boolean`          | `false`       | Fades every colour to its grey in 300 ms.                      |
 | `settleAfterMs` | `number`           | `0`           | Holds the pose this long after the last request, eyes open.    |
 | `seed`          | `number`           | from the name | Two avatars with the same seed draw the same clips.            |
@@ -107,11 +108,20 @@ Under 48 pixels an avatar is compact: a state with a shorter list of clips uses 
 | `setEmphasis(on)`       | `void`           | See the option.                                                  |
 | `poke(gesture, turns?)` | `void`           | Lays a gesture over what plays. Gestures add up.                 |
 | `pause()` / `resume()`  | `void`           | Freezes the picture; what is asked meanwhile plays on `resume`.  |
+| `setLookAt(point)`      | `void`           | Looks at a point, or nowhere in particular with `null`.          |
 | `setFollowPointer(on)`  | `void`           | See the option.                                                  |
 | `setMuted(on)`          | `void`           | See the option.                                                  |
 | `setSettleAfterMs(ms)`  | `void`           | See the option. Wakes the avatar.                                |
 | `getState()`            | `AvatarSnapshot` | `{ state, clip, paused }`.                                       |
 | `destroy()`             | `void`           | Stops everything the avatar runs and removes the mounted `span`. |
+
+## Looking at a point
+
+`setLookAt([x, y])` (or the option `lookAt`) turns the head towards a point, `x` to the right and `y` up, each from -1 to 1:
+`[-0.6, 0.2]` is up and to the left. The head turns there smoothly, from one point to the next,
+and back with `setLookAt(null)`, whatever the avatar plays. Over a state or a clip the clip goes
+on: the gaze weighs 0.85 over its turns of the head, so it keeps a little of its own. A spinner has
+no head to turn. A new array of the same point is not a change.
 
 ## Errors thrown by `createAvatar`
 

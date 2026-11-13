@@ -64,6 +64,11 @@ export type AvatarProps = {
   clip?: string
   /** A face to hold whatever the avatar does. Leave it out to let the avatar decide. */
   face?: string
+  /**
+   * A point to look at, `[x, y]`: to the right and up, each from -1 to 1. The head turns there
+   * smoothly whatever the avatar plays, and back when it is `null`.
+   */
+  lookAt?: readonly [number, number] | null
   /** Stop the avatar where it is: nothing is computed until it goes on. */
   paused?: boolean
   /** A state without a face of its own shows surprise. */
@@ -278,6 +283,7 @@ function AvatarInstance(props: AvatarProps): ReactElement {
     state,
     clip,
     face,
+    lookAt = null,
     paused = false,
     emphasis = false,
     seed,
@@ -292,6 +298,9 @@ function AvatarInstance(props: AvatarProps): ReactElement {
 
   const clipId = `${useId().replaceAll(':', '')}-head`
   const compact = size < COMPACT_UNDER
+  // Given as two numbers, so that a new array of the same point is not a new point.
+  const lookX = lookAt?.[0]
+  const lookY = lookAt?.[1]
   const [initial] = useState(() => {
     const created = createAvatarRun({
       seed: seed ?? seedOfName(character.name ?? 'avatar'),
@@ -300,6 +309,7 @@ function AvatarInstance(props: AvatarProps): ReactElement {
       state,
       clip,
       face,
+      lookAt: lookX !== undefined && lookY !== undefined ? [lookX, lookY] : null,
       paused,
     })
     return {
@@ -357,15 +367,43 @@ function AvatarInstance(props: AvatarProps): ReactElement {
   })
 
   // What is given to the avatar after it was made. Its first values made the run.
-  const given = useRef({ state, clip, face, emphasis, compact, paused, settleAfterMs, frameRate })
+  const given = useRef({
+    state,
+    clip,
+    face,
+    lookX,
+    lookY,
+    emphasis,
+    compact,
+    paused,
+    settleAfterMs,
+    frameRate,
+  })
   useEffect(() => {
     const before = given.current
-    given.current = { state, clip, face, emphasis, compact, paused, settleAfterMs, frameRate }
+    given.current = {
+      state,
+      clip,
+      face,
+      lookX,
+      lookY,
+      emphasis,
+      compact,
+      paused,
+      settleAfterMs,
+      frameRate,
+    }
     if (before.state !== state || before.clip !== clip) {
       if (state === undefined && clip !== undefined) send({ type: 'clip', clip })
       else send({ type: 'state', state: state ?? 'idle' })
     }
     if (before.face !== face) send({ type: 'face', face: face ?? null })
+    if (before.lookX !== lookX || before.lookY !== lookY) {
+      send({
+        type: 'look',
+        target: lookX !== undefined && lookY !== undefined ? [lookX, lookY] : null,
+      })
+    }
     if (before.emphasis !== emphasis) send({ type: 'emphasis', emphasis })
     if (before.compact !== compact) send({ type: 'compact', compact })
     if (before.paused !== paused) send({ type: paused ? 'pause' : 'resume' })
@@ -378,7 +416,7 @@ function AvatarInstance(props: AvatarProps): ReactElement {
     }
     // `send` and `settings` are the same for the life of the avatar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, clip, face, emphasis, compact, paused, settleAfterMs, frameRate])
+  }, [state, clip, face, lookX, lookY, emphasis, compact, paused, settleAfterMs, frameRate])
 
   useEffect(() => {
     let mounted = true

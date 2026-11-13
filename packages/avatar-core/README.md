@@ -120,6 +120,8 @@ requestAnimationFrame(tick)
 | `setEngineEmphasis(engine, on)`               | A state without a face of its own holds `surprised`.                   |
 | `pokeEngine(engine, gesture, turns?)`         | Lays a gesture over what plays. Gestures add up and fade away.         |
 | `setEngineGaze(engine, [x, y] \| null)`       | Looks at a point, each axis from -1 to 1.                              |
+| `setEngineLookAt(engine, [x, y] \| null)`     | Looks at a point whatever plays: 0.85 over a clip's turns of the head. |
+| `engineAtRest(engine)`                        | No gesture, no turning gaze, no join back on its way.                  |
 | `setEngineGazeAlways(engine, on)`             | On, the gaze is laid over a clip that plays; off, only a still body.   |
 | `pauseEngine(engine)`, `resumeEngine(engine)` | Stops and restarts the clip where it is.                               |
 | `stopEngine(engine)`                          | Leaves the avatar at rest: no state, no clip, no gesture.              |

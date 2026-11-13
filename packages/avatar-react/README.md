@@ -72,7 +72,8 @@ Every character plays the same catalogue, exported by `@bible-strong/avatar-core
 | `face`          | `string`            | —             | A face to hold whatever the avatar does.                        |
 | `pose`          | `FreePose`          | —             | A pose set by hand, which pauses what plays (for an editor).    |
 | `paused`        | `boolean`           | `false`       | Stops the avatar where it is: nothing is computed meanwhile.    |
-| `followPointer` | `boolean`           | `false`       | The head follows the pointer.                                   |
+| `lookAt`        | `[x, y] \| null`    | `null`        | A point to look at: right and up, each from -1 to 1.            |
+| `followPointer` | `boolean`           | `false`       | The head follows the pointer. `lookAt` comes before it.         |
 | `emphasis`      | `boolean`           | `false`       | A state without a face of its own shows surprise.               |
 | `muted`         | `boolean`           | `false`       | Fades every colour to its grey in 300 ms (a CSS filter).        |
 | `settleAfterMs` | `number`            | `0`           | Holds the pose this long after the last change, eyes open.      |
@@ -86,6 +87,14 @@ Every character plays the same catalogue, exported by `@bible-strong/avatar-core
 
 An unknown state or clip changes nothing. Under 48 pixels an avatar is compact: a state with a
 shorter list of clips uses it.
+
+## Looking at a point
+
+`lookAt={[x, y]}` turns the head towards a point, `x` to the right and `y` up, each from -1 to 1:
+`[-0.6, 0.2]` is up and to the left. The head turns there smoothly, from one point to the next,
+and back when `lookAt` is `null`, whatever the avatar plays. Over a state or a clip the clip goes
+on: the gaze weighs 0.85 over its turns of the head, so it keeps a little of its own. A spinner has
+no head to turn. A new array of the same point is not a change.
 
 ## Behavior to know
 

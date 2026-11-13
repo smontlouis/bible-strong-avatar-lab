@@ -155,6 +155,36 @@ describe('@bible-strong/avatar-react', () => {
     expect(front.getAttribute('clip-path')).toMatch(/^url\(#.*-front-0\)$/)
   })
 
+  it('looks at the point it is given, turning there smoothly over what it plays', () => {
+    const middle = (container: HTMLElement) => {
+      const numbers = (
+        part(container, 'left')
+          .getAttribute('d')!
+          .match(/-?\d+\.?\d*/g) ?? []
+      ).map(Number)
+      const xs = numbers.filter((_, index) => index % 2 === 0)
+      return xs.reduce((sum, x) => sum + x, 0) / xs.length
+    }
+    const { container, rerender } = render(<Avatar character={character} clip="Blocked_B" />)
+    frames(30)
+    const ahead = middle(container)
+    rerender(<Avatar character={character} clip="Blocked_B" lookAt={[1, 0]} />)
+    frames(1)
+    const first = middle(container)
+    frames(90)
+    const right = middle(container)
+    // To the right of the screen, reached over many frames rather than in one.
+    expect(right - ahead).toBeGreaterThan(10)
+    expect(first - ahead).toBeLessThan((right - ahead) / 2)
+    // A new array of the same point changes nothing; null brings the head back.
+    rerender(<Avatar character={character} clip="Blocked_B" lookAt={[1, 0]} />)
+    frames(1)
+    expect(middle(container)).toBeCloseTo(right, 3)
+    rerender(<Avatar character={character} clip="Blocked_B" lookAt={null} />)
+    frames(90)
+    expect(Math.abs(middle(container) - ahead)).toBeLessThan(2)
+  })
+
   it('fades to grey when muted', () => {
     const { container, rerender } = render(<Avatar character={character} />)
     const svg = container.querySelector('svg')!

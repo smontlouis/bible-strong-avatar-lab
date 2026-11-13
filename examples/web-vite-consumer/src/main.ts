@@ -23,6 +23,12 @@ document.querySelectorAll<HTMLButtonElement>('[data-state]').forEach(button => {
 document.querySelectorAll<HTMLButtonElement>('[data-gesture]').forEach(button => {
   button.addEventListener('click', () => avatar.poke(button.dataset.gesture as 'nod'))
 })
+document.querySelectorAll<HTMLButtonElement>('[data-look]').forEach(button => {
+  button.addEventListener('click', () => {
+    const point = button.dataset.look ? button.dataset.look.split(',').map(Number) : null
+    avatar.setLookAt(point ? [point[0], point[1]] : null)
+  })
+})
 let muted = false
 document.querySelector('#mute')?.addEventListener('click', () => {
   muted = !muted

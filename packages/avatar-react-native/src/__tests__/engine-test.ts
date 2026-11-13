@@ -140,6 +140,21 @@ describe('the avatar run of the UI thread', () => {
     expect(run.idle).toBe(false)
   })
 
+  it('looks at the point it is asked, turning there over several frames', () => {
+    const run = createAvatarRun({ ...start, clip: 'Blocked_B' })
+    const ahead = play(run, 1000, 30)
+    send(run, { type: 'look', target: [1, 0] }, 1600)
+    const first = stepAvatarRun(character, run, 1616, moving)
+    const there = play(run, 1616, 90)
+    expect(there.left).not.toBe(ahead.left)
+    expect(first.left).not.toBe(there.left)
+    // It does not settle while the head is still turning.
+    const settle: RunSettings = { reduceMotion: false, settleAfterMs: 1 }
+    send(run, { type: 'look', target: [-1, 0] }, 3200)
+    stepAvatarRun(character, run, 3216, settle)
+    expect(run.idle).toBe(false)
+  })
+
   it('greys a hex colour at the same lightness and leaves any other unchanged', () => {
     expect(greyOf('#ffffff')).toBe('rgb(255, 255, 255)')
     expect(greyOf('#f00')).toBe('rgb(76, 76, 76)')

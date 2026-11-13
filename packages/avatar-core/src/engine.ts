@@ -64,8 +64,12 @@ type Gaze = {
   at: [number, number]
   /** How much the gaze weighs, from 0 to 1: it comes and goes smoothly. */
   hold: number
-  /** Whether the gaze is laid over a clip that plays. If not, it only acts on a still body. */
-  always: boolean
+  /**
+   * How much the gaze weighs over a clip that plays, from 0 to 1. At 0 it only acts on a still
+   * body. `weight` follows it smoothly, so that a change of weight does not jolt the head.
+   */
+  overClip: number
+  weight: number
 }
 
 /** A value that follows its target like a weight on a spring, without overshooting it. */
@@ -189,7 +193,7 @@ export const createAvatarEngine = (
     rest: [0, 0, 0],
   },
   gestures: [],
-  gaze: { target: null, at: [0, 0], hold: 0, always: false },
+  gaze: { target: null, at: [0, 0], hold: 0, overClip: 0, weight: 0 },
   pose: null,
   handover: true,
   release: null,
@@ -390,8 +394,35 @@ export const setEngineGaze = (engine: AvatarEngine, target: [number, number] | n
   gaze.target = clamped
 }
 
+/** Lay the gaze over a clip that plays, with the weight a followed pointer has, or not. */
 export const setEngineGazeAlways = (engine: AvatarEngine, always: boolean) => {
-  engine.gaze.always = always
+  engine.gaze.overClip = always ? GAZE_OVER_CLIP : 0
+}
+
+/**
+ * Make the avatar look at a point, `x` to the right and `y` up, each from -1 to 1, whatever it
+ * plays: over a clip the gaze weighs `LOOK_OVER_CLIP`, so the clip keeps a little of its own
+ * turns. `null` lets it look nowhere in particular. The head turns there smoothly, and back.
+ */
+export const setEngineLookAt = (engine: AvatarEngine, target: [number, number] | null) => {
+  if (target) engine.gaze.overClip = LOOK_OVER_CLIP
+  setEngineGaze(engine, target)
+}
+
+/** Whether nothing the engine adds is on its way: no gesture, no turning gaze, no join back. */
+export const engineAtRest = (engine: Readonly<AvatarEngine>) => {
+  const gaze = engine.gaze
+  const wanted = gaze.target ? 1 : 0
+  const aimed =
+    !gaze.target ||
+    (Math.abs(gaze.target[0] - gaze.at[0]) < 0.005 && Math.abs(gaze.target[1] - gaze.at[1]) < 0.005)
+  return (
+    engine.gestures.length === 0 &&
+    engine.release === null &&
+    gaze.hold === wanted &&
+    aimed &&
+    Math.abs(gaze.overClip - gaze.weight) < 0.005
+  )
 }
 
 const gestureSeconds = (gesture: Readonly<Gesture>) =>
@@ -400,8 +431,10 @@ const gestureSeconds = (gesture: Readonly<Gesture>) =>
 const MAX_STEP_SECONDS = 0.1
 // How much of the way to its target the gaze covers in a sixtieth of a second.
 const GAZE_CATCH_UP = 0.14
-// The gaze weighs this much over a clip that plays: the clip keeps the lead.
+// A followed pointer weighs this much over a clip that plays: the clip keeps the lead.
 const GAZE_OVER_CLIP = 0.55
+/** What a point the avatar is asked to look at weighs over a clip that plays. */
+export const LOOK_OVER_CLIP = 0.85
 
 const advanceDirector = (engine: AvatarEngine, seconds: number) => {
   const state = engine.state === null ? undefined : states[engine.state]
@@ -496,6 +529,8 @@ export const advanceEngine = (engine: AvatarEngine, seconds: number) => {
   const wanted = gaze.target ? 1 : 0
   gaze.hold += (wanted - gaze.hold) * share
   if (Math.abs(wanted - gaze.hold) < 0.001) gaze.hold = wanted
+  gaze.weight += (gaze.overClip - gaze.weight) * share
+  if (Math.abs(gaze.overClip - gaze.weight) < 0.001) gaze.weight = gaze.overClip
   if (gaze.target) {
     gaze.at[0] += (gaze.target[0] - gaze.at[0]) * share
     gaze.at[1] += (gaze.target[1] - gaze.at[1]) * share
@@ -615,8 +650,8 @@ export const engineFrame = (engine: Readonly<AvatarEngine>): EngineFrame => {
     const moveX = 0.03 * gaze.at[0]
     const moveY = 0.024 * gaze.at[1]
     if (engine.player.playing) {
-      if (gaze.always) {
-        const weight = GAZE_OVER_CLIP * gaze.hold
+      if (gaze.weight > 0) {
+        const weight = gaze.weight * gaze.hold
         frame.rotation[0] += turnX * weight
         frame.rotation[1] += turnY * weight
         frame.position[0] += moveX * weight

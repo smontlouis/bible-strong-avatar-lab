@@ -14,6 +14,8 @@ import {
   setEngineFace,
   setEngineGaze,
   setEngineGazeAlways,
+  setEngineLookAt,
+  engineAtRest,
   setEnginePose,
   setEngineState,
   type AvatarCharacter,
@@ -55,6 +57,12 @@ export type AvatarProps = {
   pose?: FreePose
   /** Stop the avatar where it is: nothing is computed until it goes on. */
   paused?: boolean
+  /**
+   * A point to look at, `[x, y]`: to the right and up, each from -1 to 1. The head turns there
+   * smoothly whatever the avatar plays, and back when it is `null`. It comes before
+   * `followPointer`.
+   */
+  lookAt?: readonly [number, number] | null
   /** Let the avatar follow the pointer with its head. */
   followPointer?: boolean
   /** A state without a face of its own shows surprise. */
@@ -110,6 +118,7 @@ export function Avatar({
   face,
   pose,
   paused = false,
+  lookAt = null,
   followPointer = false,
   emphasis = false,
   muted = false,
@@ -232,12 +241,19 @@ export function Avatar({
     else resumeEngine(engine)
   }, [engine, paused])
 
+  // Where the avatar looks: the point it is given, or else the pointer if it follows it. Given
+  // as two numbers, so that a new array of the same point is not a new point.
+  const lookX = lookAt?.[0]
+  const lookY = lookAt?.[1]
   useEffect(() => {
-    setEngineGazeAlways(engine, followPointer)
-    if (!followPointer) {
-      setEngineGaze(engine, null)
+    wake.current()
+    if (lookX !== undefined && lookY !== undefined) {
+      setEngineLookAt(engine, [lookX, lookY])
       return
     }
+    setEngineGazeAlways(engine, followPointer)
+    setEngineGaze(engine, null)
+    if (!followPointer) return
     const look = (event: PointerEvent) => {
       const box = svg.current?.getBoundingClientRect()
       if (!box || box.width === 0) return
@@ -251,7 +267,7 @@ export function Avatar({
     }
     window.addEventListener('pointermove', look)
     return () => window.removeEventListener('pointermove', look)
-  }, [engine, followPointer])
+  }, [engine, followPointer, lookX, lookY])
 
   // The loop. It stops while the avatar is out of sight, once it has settled, and does not start
   // for someone who asked for less motion: they get one settled picture, drawn again when
@@ -289,7 +305,7 @@ export function Avatar({
         settleAfterMs > 0 &&
         now - askedAt >= settleAfterMs &&
         frame.lids < OPEN_LIDS &&
-        engine.gestures.length === 0
+        engineAtRest(engine)
       if (settled) last = undefined
       else if (visible) request = requestAnimationFrame(tick)
     }

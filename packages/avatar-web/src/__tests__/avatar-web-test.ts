@@ -118,6 +118,28 @@ describe('@bible-strong/avatar-web', () => {
     expect(head()).not.toBe(held)
   })
 
+  it('looks at the point it is given, and turns there smoothly', () => {
+    const middle = () => {
+      const left = document.querySelectorAll('#avatar svg > g > g')[1]?.querySelector('path')
+      const numbers = (left?.getAttribute('d')?.match(/-?\d+\.?\d*/g) ?? []).map(Number)
+      const xs = numbers.filter((_, index) => index % 2 === 0)
+      return xs.reduce((sum, x) => sum + x, 0) / xs.length
+    }
+    const avatar = createAvatar('#avatar', { character: legacyJson, clip: 'Blocked_B' })
+    run(30)
+    const ahead = middle()
+    avatar.setLookAt([1, 0])
+    run(1)
+    const first = middle()
+    run(90)
+    const right = middle()
+    expect(right - ahead).toBeGreaterThan(10)
+    expect(first - ahead).toBeLessThan((right - ahead) / 2)
+    avatar.setLookAt(null)
+    run(90)
+    expect(Math.abs(middle() - ahead)).toBeLessThan(2)
+  })
+
   it('fades to grey when muted, and back', () => {
     const avatar = createAvatar('#avatar', { character: legacyJson, muted: true })
     const svg = document.querySelector<SVGSVGElement>('#avatar svg')!

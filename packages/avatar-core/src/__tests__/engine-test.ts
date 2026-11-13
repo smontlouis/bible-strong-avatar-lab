@@ -15,6 +15,9 @@ import {
   setEngineFace,
   setEngineGaze,
   setEngineGazeAlways,
+  setEngineLookAt,
+  engineAtRest,
+  LOOK_OVER_CLIP,
   setEngineHandover,
   setEnginePose,
   releaseEnginePose,
@@ -254,7 +257,57 @@ describe('gaze', () => {
     run(engine, 1)
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before, 6)
     setEngineGazeAlways(engine, true)
+    // Its weight over the clip comes in smoothly, not in one frame.
+    expect(engineFrame(engine).rotation[1]).toBeCloseTo(before, 6)
+    run(engine, 1)
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before + 18 * 0.55, 1)
+  })
+})
+
+describe('looking at a point', () => {
+  it('turns the head there over a clip that plays, nearly all the way', () => {
+    const engine = createAvatarEngine()
+    playEngineClip(engine, clips.Blocked_B)
+    run(engine, 0.5)
+    const before = engineFrame(engine).rotation[1]
+    setEngineLookAt(engine, [1, 0])
+    expect(engineFrame(engine).rotation[1]).toBeCloseTo(before, 6)
+    run(engine, 1)
+    expect(engineFrame(engine).rotation[1]).toBeCloseTo(before + 18 * LOOK_OVER_CLIP, 1)
+  })
+
+  it('goes from one point to the next, and back to the clip, without a jump', () => {
+    const engine = createAvatarEngine()
+    setEngineState(engine, 'idle')
+    setEngineLookAt(engine, [1, 0])
+    run(engine, 1)
+    const right = engineFrame(engine).rotation[1]
+    setEngineLookAt(engine, [-1, 0])
+    advanceEngine(engine, STEP)
+    const step = engineFrame(engine).rotation[1]
+    // One frame moves the head a little of the way, not all of it.
+    expect(right - step).toBeGreaterThan(0)
+    expect(right - step).toBeLessThan(10)
+    run(engine, 1)
+    expect(engineFrame(engine).rotation[1]).toBeLessThan(0)
+    setEngineLookAt(engine, null)
+    const left = engineFrame(engine).rotation[1]
+    advanceEngine(engine, STEP)
+    expect(Math.abs(engineFrame(engine).rotation[1] - left)).toBeLessThan(10)
+  })
+
+  it('is at rest only once the head has reached the point', () => {
+    const engine = createAvatarEngine()
+    setEngineState(engine, 'idle')
+    run(engine, 1)
+    expect(engineAtRest(engine)).toBe(true)
+    setEngineLookAt(engine, [0.8, 0.4])
+    advanceEngine(engine, STEP)
+    expect(engineAtRest(engine)).toBe(false)
+    run(engine, 2)
+    expect(engineAtRest(engine)).toBe(true)
+    pokeEngine(engine, 'nod')
+    expect(engineAtRest(engine)).toBe(false)
   })
 })
 

@@ -16,6 +16,8 @@ import {
   setEngineFace,
   setEngineGaze,
   setEngineGazeAlways,
+  setEngineLookAt,
+  engineAtRest,
   setEngineState,
   states,
   type AvatarCharacter,
@@ -39,6 +41,11 @@ export type CreateAvatarOptions = {
   emphasis?: boolean
   /** Start still, where the clip begins: nothing is computed until `resume`. */
   paused?: boolean
+  /**
+   * A point to look at, `[x, y]`: to the right and up, each from -1 to 1. The head turns there
+   * smoothly whatever the avatar plays. It comes before `followPointer`.
+   */
+  lookAt?: readonly [number, number] | null
   /** Let the avatar follow the pointer with its head. */
   followPointer?: boolean
   /** Fades every colour to its grey in 300 ms, as for a control left idle. */
@@ -79,6 +86,8 @@ export type AvatarController = {
   poke(gesture: GestureName, turns?: number): void
   pause(): void
   resume(): void
+  /** Look at a point, or `null` to look nowhere in particular. The head turns there smoothly. */
+  setLookAt(target: readonly [number, number] | null): void
   setFollowPointer(follow: boolean): void
   setMuted(muted: boolean): void
   /** See the option. Changing it counts as asking the avatar for something. */
@@ -270,6 +279,7 @@ export function createAvatar(
     face,
     emphasis = false,
     paused = false,
+    lookAt = null,
     followPointer = false,
     muted = false,
     settleAfterMs = 0,
@@ -342,7 +352,7 @@ export function createAvatar(
       settleAfter > 0 &&
       now - askedAt >= settleAfter &&
       frame.lids < OPEN_LIDS &&
-      engine.gestures.length === 0
+      engineAtRest(engine)
     if (settled) last = undefined
     else if (visible) request = requestAnimationFrame(tick)
   }
@@ -381,15 +391,20 @@ export function createAvatar(
         })
   observer?.observe(host)
 
+  // Where the avatar looks: the point it is given, or else the pointer if it follows it.
+  let lookTarget: [number, number] | null = lookAt ? [lookAt[0], lookAt[1]] : null
+  let following = followPointer
   let pointerListener: ((event: PointerEvent) => void) | null = null
-  const setFollowPointer = (follow: boolean) => {
-    setEngineGazeAlways(engine, follow)
+  const applyGaze = () => {
     if (pointerListener) window.removeEventListener('pointermove', pointerListener)
     pointerListener = null
-    if (!follow) {
-      setEngineGaze(engine, null)
+    if (lookTarget) {
+      setEngineLookAt(engine, lookTarget)
       return
     }
+    setEngineGazeAlways(engine, following)
+    setEngineGaze(engine, null)
+    if (!following || destroyed) return
     pointerListener = event => {
       const box = picture.svg.getBoundingClientRect()
       if (box.width === 0) return
@@ -403,7 +418,7 @@ export function createAvatar(
     }
     window.addEventListener('pointermove', pointerListener)
   }
-  if (followPointer) setFollowPointer(true)
+  if (lookTarget || following) applyGaze()
 
   draw()
   refresh()
@@ -444,8 +459,14 @@ export function createAvatar(
       resumeEngine(engine)
       ask()
     },
+    setLookAt(target) {
+      lookTarget = target ? [target[0], target[1]] : null
+      applyGaze()
+      ask()
+    },
     setFollowPointer(follow) {
-      setFollowPointer(follow)
+      following = follow
+      applyGaze()
       ask()
     },
     setMuted,
@@ -465,7 +486,7 @@ export function createAvatar(
       destroyed = true
       stopLoop()
       observer?.disconnect()
-      setFollowPointer(false)
+      applyGaze()
       host.remove()
     },
   }

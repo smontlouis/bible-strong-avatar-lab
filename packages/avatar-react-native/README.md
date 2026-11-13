@@ -101,6 +101,7 @@ Every character plays the same catalogue, exported by `@bible-strong/avatar-core
 | `state`              | `string`               | `idle`        | What the avatar is in. Changing it goes there from where it is.    |
 | `clip`               | `string`               | —             | A clip to play alone, round and round. A state wins over it.       |
 | `face`               | `string`               | —             | A face to hold whatever the avatar does.                           |
+| `lookAt`             | `[x, y] \| null`       | `null`        | A point to look at: right and up, each from -1 to 1.               |
 | `paused`             | `boolean`              | `false`       | Stops the avatar where it is: nothing is computed meanwhile.       |
 | `emphasis`           | `boolean`              | `false`       | A state without a face of its own shows surprise.                  |
 | `seed`               | `number`               | from the name | Two avatars with the same seed draw the same clips.                |
@@ -119,6 +120,14 @@ thread changed state. The avatar does not receive touches: wrap it in a `Pressab
 
 The body may move past its box while a clip plays (a jump, a stretch). The SVG is drawn half as
 large again as the box, centred on it, so that nothing is cut: leave some room around the avatar.
+
+## Looking at a point
+
+`lookAt={[x, y]}` turns the head towards a point, `x` to the right and `y` up, each from -1 to 1:
+`[-0.6, 0.2]` is up and to the left. The head turns there smoothly, from one point to the next,
+and back when `lookAt` is `null`, whatever the avatar plays. Over a state or a clip the clip goes
+on: the gaze weighs 0.85 over its turns of the head, so it keeps a little of its own. A spinner has
+no head to turn. A new array of the same point is not a change.
 
 ## When it stops computing
 

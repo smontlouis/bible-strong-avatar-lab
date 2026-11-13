@@ -11,7 +11,9 @@ import {
   setEngineCompact,
   setEngineEmphasis,
   setEngineFace,
+  setEngineLookAt,
   setEngineState,
+  engineAtRest,
   type AvatarCharacter,
   type AvatarEngine,
   type CharacterScene,
@@ -41,6 +43,7 @@ export type AvatarCommand = { seq: number } & (
   | { type: 'pause' }
   | { type: 'resume' }
   | { type: 'poke'; gesture: GestureName; turns: number }
+  | { type: 'look'; target: [number, number] | null }
   // Draw again, for a setting that changed outside the engine.
   | { type: 'wake' }
 )
@@ -100,6 +103,7 @@ export type AvatarStart = {
   state?: string
   clip?: string
   face?: string
+  lookAt?: [number, number] | null
   paused: boolean
 }
 
@@ -113,6 +117,7 @@ export const createAvatarRun = (start: AvatarStart): AvatarRun => {
     setEngineState(engine, start.state ?? 'idle')
   }
   if (start.face !== undefined) setEngineFace(engine, start.face)
+  if (start.lookAt) setEngineLookAt(engine, start.lookAt)
   if (start.paused) pauseEngine(engine)
   return { engine, paused: start.paused, renderedAt: 0, commandAt: 0, idle: false, processed: 0 }
 }
@@ -203,6 +208,9 @@ export const applyAvatarCommand = (run: AvatarRun, command: AvatarCommand, now: 
     case 'poke':
       pokeEngine(engine, command.gesture, command.turns)
       break
+    case 'look':
+      setEngineLookAt(engine, command.target)
+      break
     case 'wake':
       break
   }
@@ -237,7 +245,7 @@ export const stepAvatarRun = (
     settings.settleAfterMs > 0 &&
     now - run.commandAt >= settings.settleAfterMs &&
     frame.lids < OPEN_LIDS &&
-    engine.gestures.length === 0
+    engineAtRest(engine)
   run.idle = run.paused || settings.reduceMotion || held
   return paintCharacterScene(renderCharacterFrame(character, frame))
 }
