@@ -1960,11 +1960,15 @@ export const renderAvatar = (
   options: RenderAvatarOptions = {}
 ): AvatarGeometry => {
   const outlines = options.eyeOutlines
+  // An outline is given as it is seen from the front: each point drops straight onto the
+  // head's surface. It is not wrapped again, as the eyes of a pose are.
+  const onHead = ([x, y]: readonly [number, number]) =>
+    projectLocalSurfacePoint(pose, surfaceFrontSampleAt(surface, x, y))
   const leftSamples = outlines
-    ? outlines.left.map(([x, y]) => projectFacePoint(pose, surface, x, y))
+    ? outlines.left.map(onHead)
     : eyePoints(pose, surface, -1, blink, options.eyeOffset)
   const rightSamples = outlines
-    ? outlines.right.map(([x, y]) => projectFacePoint(pose, surface, x, y))
+    ? outlines.right.map(onHead)
     : eyePoints(pose, surface, 1, blink, options.eyeOffset)
   const left = leftSamples.map(sample => sample.point)
   const right = rightSamples.map(sample => sample.point)
@@ -1982,8 +1986,9 @@ export const renderAvatar = (
     frontNodeIds: accessories.frontNodeIds,
     frontClipPaths: accessories.frontClipPaths,
     headPath: headPath(pose, surface),
-    leftPath: path(left),
-    rightPath: path(right),
+    // An eye given by its outline is a curve through the outline's points, not a polygon.
+    leftPath: outlines ? smoothClosedPath(left) : path(left),
+    rightPath: outlines ? smoothClosedPath(right) : path(right),
     // Like the eyes, the nose and the mouth are on the face: turned away, they are not drawn.
     nosePath: facesViewer(nose) ? path(nose.map(sample => sample.point)) : '',
     mouthPath: facesViewer(mouth)

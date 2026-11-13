@@ -134,6 +134,17 @@ describe('characters', () => {
     expect(scene.transform[3] * 120 + scene.transform[5]).toBeCloseTo(120, 6)
   })
 
+  it('draws a round eye round: the eyes are wrapped on the head once, not twice', () => {
+    const frame = { ...resting(), face: 'inspecting' as const, eyes: faces.inspecting.eyes }
+    const flat: AvatarCharacter = { ...character, face: { ...character.face, perspective: 0 } }
+    const eye = box(renderCharacterFrame(flat, frame).geometry.leftPath)
+    const width = eye.maxX - eye.minX
+    const height = eye.maxY - eye.minY
+    // Set to one side of the face, a circle on a ball is seen a little narrower than tall.
+    expect(width / height).toBeGreaterThan(0.93)
+    expect(width / height).toBeLessThan(1)
+  })
+
   it('never lets the two eyes touch, whatever the face and however close the eyes are set', () => {
     for (const gap of [1, 0.7, 0.45]) {
       const close: AvatarCharacter = {
