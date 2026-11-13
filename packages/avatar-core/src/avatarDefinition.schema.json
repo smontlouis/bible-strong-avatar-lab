@@ -139,6 +139,7 @@
             "required": ["surface", "position", "rotation"],
             "properties": {
               "color": { "$ref": "#/$defs/hexColor" },
+              "followsHead": { "type": "boolean" },
               "surface": { "$ref": "#/$defs/nodeSurface" },
               "position": { "$ref": "#/$defs/position" },
               "rotation": { "$ref": "#/$defs/rotation" }

@@ -97,6 +97,9 @@ const english: Record<string, string> = {
   'Couleur du corps': 'Body color',
   'Couleur de la forme': 'Shape color',
   'Couleur héritée': 'Inherited color',
+  'Suit la rotation du corps': 'Follows the body rotation',
+  'Désactivé, la forme reste en place quand le corps tourne. Elle le suit toujours quand il se déplace.':
+    'When off, the shape stays in place while the body turns. It still follows the body when it moves.',
   'Rotation de la tête': 'Head rotation',
   Yeux: 'Eyes',
   'Forme, placement et orientation propres au regard.': 'Eye shape, placement and orientation.',

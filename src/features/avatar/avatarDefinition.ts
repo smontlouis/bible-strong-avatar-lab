@@ -234,6 +234,7 @@ export const createAvatarDefinition = ({
       primary: mapSurface(avatar.body.primary),
       nodes: avatar.body.nodes.map((node): AvatarBodyNodeDefinition => ({
         ...(node.color ? { color: node.color as HexColor } : {}),
+        ...(node.followsHead === false ? { followsHead: false } : {}),
         surface: mapSurface(node.surface as SurfaceDefinition<BodyNodeSurfaceType>),
         position: [...node.position],
         rotation: [...node.rotation],

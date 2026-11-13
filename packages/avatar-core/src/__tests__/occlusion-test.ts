@@ -258,6 +258,41 @@ describe('occlusion masks', () => {
     }
   )
 
+  it('leaves a static node where it is while the head turns', () => {
+    const following = node([-100, 0, 20])
+    const fixed: BodyNode = { ...following, followsHead: false }
+    const pathOf = (bodyNode: BodyNode, yaw: number) => {
+      const geometry = render(bodyNode, yaw)
+      return [...geometry.backPaths, ...geometry.frontPaths][0]
+    }
+    // At rest both are the same node.
+    expect(pathOf(fixed, 0)).toBe(pathOf(following, 0))
+    // The head turns: the node that follows moves, the static one does not.
+    expect(pathOf(following, 40)).not.toBe(pathOf(following, 0))
+    expect(pathOf(fixed, 40)).toBe(pathOf(fixed, 0))
+  })
+
+  it('moves a static node with the head when the head is moved, not turned', () => {
+    const fixed: BodyNode = { ...node([-100, 0, 20]), followsHead: false }
+    const at = (positionX: number) =>
+      renderAvatar(
+        poseFromExpression({ ...expressionFromDefinition('neutral', expression), positionX }),
+        head,
+        1,
+        { bodyNodes: [fixed], includeWire: false, nodeOcclusion: 'mask', bodyColor }
+      )
+    const still = box([...at(0).backPaths, ...at(0).frontPaths][0])
+    const moved = box([...at(30).backPaths, ...at(30).frontPaths][0])
+    expect(moved.minX - still.minX).toBeGreaterThan(20)
+  })
+
+  it('sinks a static coloured node into the head that turns into it', () => {
+    const fixed: BodyNode = { ...node([-100, 0, 20], '#e5a15b'), followsHead: false }
+    const turned = render(fixed, 40)
+    expect(turned.frontNodeIds).toEqual(['hand'])
+    expect(turned.frontClipPaths[0]).toMatch(/^M.*Z$/)
+  })
+
   it('reaches a rendered definition, with the colour of each copy', () => {
     const source: AvatarDefinition = {
       schema: 'bible-strong/avatar-definition',

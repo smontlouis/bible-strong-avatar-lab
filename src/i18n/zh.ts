@@ -66,6 +66,9 @@ export const chinese: Record<string, string> = {
   'Couleur du corps': '身体颜色',
   'Couleur de la forme': '形状颜色',
   'Couleur héritée': '继承颜色',
+  'Suit la rotation du corps': '跟随身体旋转',
+  'Désactivé, la forme reste en place quand le corps tourne. Elle le suit toujours quand il se déplace.':
+    '关闭后，身体旋转时该形状保持原位。身体移动时它仍会跟随。',
   'Rotation de la tête': '头部旋转',
   Yeux: '眼睛',
   'Forme, placement et orientation propres au regard.': '眼睛的形状、位置和方向。',

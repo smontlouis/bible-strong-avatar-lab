@@ -6,6 +6,11 @@ export type BodyNode = {
   id: string
   name: string
   color?: string
+  /**
+   * Whether the node turns with the head. `false` for a static node: it keeps its place and its
+   * turn while the head rotates, and still moves with it. Absent means `true`.
+   */
+  followsHead?: boolean
   surface: SurfaceConfig
   position: BodyVector
   rotation: BodyVector
@@ -73,6 +78,8 @@ export const parseAvatarBody = (value: unknown, fallbackPrimary: SurfaceConfig):
             ((node as BodyNode).color === undefined ||
               (typeof (node as BodyNode).color === 'string' &&
                 hexColor.test((node as BodyNode).color!))) &&
+            ((node as BodyNode).followsHead === undefined ||
+              typeof (node as BodyNode).followsHead === 'boolean') &&
             surface &&
             bodyPrimitiveTypes.includes(surface.type as (typeof bodyPrimitiveTypes)[number]) &&
             finite(surface.width) &&

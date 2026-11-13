@@ -62,6 +62,7 @@ export const bodyFromDefinition = (body: AvatarBodyDefinition): AvatarBody => ({
     id: `runtime-node-${index}`,
     name: `Runtime node ${index + 1}`,
     ...(node.color ? { color: node.color } : {}),
+    ...(node.followsHead === false ? { followsHead: false } : {}),
     surface: { ...node.surface },
     position: [...node.position],
     rotation: [...node.rotation],

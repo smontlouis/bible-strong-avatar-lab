@@ -210,6 +210,13 @@ colour.
 `surfaceField(surface)` gives the function behind this: zero on the surface, negative inside,
 growing outward, in the surface's own space.
 
+### Static nodes
+
+A body node turns with the head, as if the two were one object. A node with `followsHead: false`
+is static: it keeps its place and its turn while the head rotates, and still moves with the head
+when the head is moved. The head can then turn into a static node, and a coloured one sinks into
+it along the same line as above.
+
 ## Entry points
 
 - `@bible-strong/avatar-core`: everything above.

@@ -51,6 +51,8 @@ export type BodyNodeSurfaceDefinition = SurfaceDefinition<BodyNodeSurfaceType>
 
 export type AvatarBodyNodeDefinition = {
   color?: HexColor
+  /** `false` for a static node, which does not turn with the head. Absent means `true`. */
+  followsHead?: boolean
   surface: BodyNodeSurfaceDefinition
   position: [number, number, number]
   rotation: [number, number, number]

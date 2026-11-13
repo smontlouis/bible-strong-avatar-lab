@@ -415,11 +415,12 @@ export const rotationRing = (pose: AvatarPose, axis: 'x' | 'y' | 'z', radius = 3
   })
 
 export const renderBodyNodeEditor = (
-  pose: AvatarPose,
+  headPose: AvatarPose,
   node: BodyNode,
   axisLength = 34,
   ringRadius = 26
 ): BodyNodeEditorGeometry => {
+  const pose = bodyNodeFrame(headPose, node)
   const projectInHeadSpace = (point: Point3) => projectPosePoint(pose, point)
   const center = projectInHeadSpace(node.position)
   const localOrientation = quaternionFromEuler(
@@ -493,12 +494,22 @@ export const translateBodyNodeAlongLocalAxis = (
   }
 }
 
+const NO_ROTATION: Quaternion = [1, 0, 0, 0]
+
+/**
+ * The pose a node is placed in. A node that follows the head is placed in the head's pose. A
+ * static node is placed where the head is, but without the head's rotation.
+ */
+export const bodyNodeFrame = (pose: AvatarPose, node: BodyNode): AvatarPose =>
+  node.followsHead === false ? { expression: pose.expression, orientation: NO_ROTATION } : pose
+
 export const translateBodyNodeInCameraPlane = (
   node: BodyNode,
-  pose: AvatarPose,
+  headPose: AvatarPose,
   screenDeltaX: number,
   screenDeltaY: number
 ): BodyNode => {
+  const pose = bodyNodeFrame(headPose, node)
   const cameraPosition = rotateWithQuaternion(pose.orientation, node.position)
   const denominator =
     FOCAL_LENGTH - (cameraPosition[2] + pose.expression.positionZ) * pose.expression.perspective
@@ -1443,7 +1454,8 @@ const headPath = (pose: AvatarPose, surface: SurfaceConfig) => {
 }
 
 /** The pose of a node's own surface: the avatar's pose carried to the node's place and turn. */
-const nodePose = (pose: AvatarPose, node: BodyNode): AvatarPose => {
+const nodePose = (headPose: AvatarPose, node: BodyNode): AvatarPose => {
+  const pose = bodyNodeFrame(headPose, node)
   const center = transformPosePoint(pose, node.position)
   return {
     orientation: multiplyQuaternions(
@@ -1471,7 +1483,8 @@ const accessoryPath = (pose: AvatarPose, node: BodyNode) =>
     ? sampledAccessoryPath(pose, node)
     : headPath(nodePose(pose, node), node.surface)
 
-const sampledAccessoryPath = (pose: AvatarPose, node: BodyNode) => {
+const sampledAccessoryPath = (headPose: AvatarPose, node: BodyNode) => {
+  const pose = bodyNodeFrame(headPose, node)
   const key = surfaceCacheKey(node.surface)
   let localSamples = accessorySamplesCache.get(key)
   if (!localSamples) {
@@ -1513,7 +1526,8 @@ const sampledAccessoryPath = (pose: AvatarPose, node: BodyNode) => {
 
 const ACCESSORY_FRONT_CROSSING_RATIO = 0.1
 
-const accessoryCameraDepthRadius = (pose: AvatarPose, node: BodyNode) => {
+const accessoryCameraDepthRadius = (headPose: AvatarPose, node: BodyNode) => {
+  const pose = bodyNodeFrame(headPose, node)
   const localOrientation = quaternionFromEuler(
     radians(node.rotation[0]),
     radians(node.rotation[1]),
@@ -1538,7 +1552,7 @@ const accessoryCameraDepthRadius = (pose: AvatarPose, node: BodyNode) => {
 const accessoryLayers = (pose: AvatarPose, nodes: BodyNode[]) => {
   const layers = nodes
     .map(node => {
-      const depth = rotateWithQuaternion(pose.orientation, node.position)[2]
+      const depth = rotateWithQuaternion(bodyNodeFrame(pose, node).orientation, node.position)[2]
       return {
         id: node.id,
         path: accessoryPath(pose, node),
@@ -1893,7 +1907,7 @@ const maskedAccessoryLayers = (
   // the plain rule, wholly behind or wholly in front, which costs nothing.
   const layers = nodes
     .map(node => {
-      const depth = rotateWithQuaternion(pose.orientation, node.position)[2]
+      const depth = rotateWithQuaternion(bodyNodeFrame(pose, node).orientation, node.position)[2]
       const path = accessoryPath(pose, node)
       const measured = node.color !== undefined && node.color !== bodyColor
       if (!measured) {

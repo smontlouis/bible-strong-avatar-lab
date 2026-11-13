@@ -311,6 +311,7 @@ export const studioAvatarFromDefinition = (value: unknown): ImportedAvatarDefini
         id: `shape-${importId}-${index}`,
         name: `${node.surface.type} ${index + 1}`,
         ...(node.color ? { color: node.color } : {}),
+        ...(node.followsHead === false ? { followsHead: false } : {}),
         surface: node.surface,
         position: node.position,
         rotation: node.rotation,

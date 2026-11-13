@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 
 import { InspectorCard, PanelTitle } from '@/app/components/common'
 import { ColorField, NumericField } from '@/app/components/controls'
@@ -325,6 +326,24 @@ export function BodyConstructionAccordion({ controller }: { controller: StudioCo
                       {t('Couleur héritée')}
                     </Button>
                   </div>
+                  <div className="switch">
+                    <span>{t('Suit la rotation du corps')}</span>
+                    <Switch
+                      checked={selectedBodyNode.followsHead !== false}
+                      onCheckedChange={follows =>
+                        updateSelectedBodyNode(currentNode => {
+                          const { followsHead: _followsHead, ...followingNode } = currentNode
+                          return follows ? followingNode : { ...followingNode, followsHead: false }
+                        })
+                      }
+                      aria-label={t('Suit la rotation du corps')}
+                    />
+                  </div>
+                  <p className="body-gizmo-help">
+                    {t(
+                      'Désactivé, la forme reste en place quand le corps tourne. Elle le suit toujours quand il se déplace.'
+                    )}
+                  </p>
                   <div className="surface-fields">
                     <NumericField
                       label="Échelle"
