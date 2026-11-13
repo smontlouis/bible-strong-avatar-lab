@@ -102,7 +102,12 @@ export function Stage({
 
   useEffect(() => {
     if ('state' in doing) setEngineState(engine.current, doing.state)
-    else if (clips[doing.clip]) playEngineClip(engine.current, clips[doing.clip])
+    else if (clips[doing.clip]) {
+      // A clip the engine already plays alone is left where it is: it was started by hand, at
+      // a time of its own.
+      const alone = engine.current.state === null && engine.current.player.clip?.name === doing.clip
+      if (!alone) playEngineClip(engine.current, clips[doing.clip])
+    }
   }, [doing, engine, activeAvatar.id])
 
   useEffect(() => setEngineFace(engine.current, face), [face, engine])

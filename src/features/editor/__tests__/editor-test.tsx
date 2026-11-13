@@ -99,6 +99,27 @@ describe('the editor', () => {
     expect(getByText(/Utilisé par : reading/)).toBeTruthy()
   })
 
+  it('leaves a state for its clip when a keyframe is picked, until the state is resumed', () => {
+    const { getByRole, getAllByRole, getByText, queryByText } = open()
+    fireEvent.click(getByRole('button', { name: 'États' }))
+    fireEvent.click(getByRole('button', { name: 'finished' }))
+    frames(30)
+    expect(getByText('Clip courant')).toBeTruthy()
+    const keys = getAllByRole('button').filter(button =>
+      button.getAttribute('aria-label')?.startsWith('Étirement · ')
+    )
+    fireEvent.click(keys[1])
+    frames(12)
+    // The state is still the one shown, but its clip now plays alone.
+    expect(getByText('Clip seul')).toBeTruthy()
+    expect(getByRole('heading', { name: 'finished' })).toBeTruthy()
+    expect(getByText('Boucle')).toBeTruthy()
+    fireEvent.click(getByRole('button', { name: 'Reprendre l’état' }))
+    frames(12)
+    expect(queryByText('Clip seul')).toBeNull()
+    expect(getByText('Clip courant')).toBeTruthy()
+  })
+
   it('shows the nine faces and holds the one that is picked', () => {
     const { getByRole, getAllByRole } = open()
     fireEvent.click(getByRole('button', { name: 'Visages' }))

@@ -139,8 +139,6 @@ const english: Record<string, string> = {
   'Explorateur de clips': 'Clip explorer',
   Fermer: 'Close',
   'Image clé': 'Keyframe',
-  'Lecture de l’état · clique une image clé pour inspecter le clip.':
-    'State playing · click a keyframe to inspect the clip.',
   Morphing: 'Morphing',
   'Rechercher un clip': 'Search a clip',
   'Rechercher un clip…': 'Search a clip…',
@@ -162,6 +160,13 @@ const english: Record<string, string> = {
   degrés: 'degrees',
   facteur: 'factor',
   '0 ouvert · 1 fermé': '0 open · 1 closed',
+  'Lecture de l’état · touche la timeline pour passer sur ce clip seul.':
+    'State playing · touch the timeline to switch to this clip alone.',
+  'Mode clip : l’état est en pause, ce clip tourne seul.':
+    'Clip mode: the state is on hold, this clip plays alone.',
+  'Reprendre l’état': 'Resume the state',
+  'Clip seul': 'Clip alone',
+  Clip: 'Clip',
   'Taille des yeux': 'Eye size',
   'Écart des yeux': 'Eye gap',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':

@@ -107,8 +107,6 @@ export const chinese: Record<string, string> = {
   'Explorateur de clips': '片段浏览器',
   Fermer: '关闭',
   'Image clé': '关键帧',
-  'Lecture de l’état · clique une image clé pour inspecter le clip.':
-    '正在播放状态 · 点击关键帧以查看片段。',
   Morphing: '变形',
   'Rechercher un clip': '搜索片段',
   'Rechercher un clip…': '搜索片段…',
@@ -130,6 +128,12 @@ export const chinese: Record<string, string> = {
   degrés: '度',
   facteur: '倍数',
   '0 ouvert · 1 fermé': '0 睁开 · 1 闭合',
+  'Lecture de l’état · touche la timeline pour passer sur ce clip seul.':
+    '正在播放状态 · 触碰时间轴即可切换为单独播放此片段。',
+  'Mode clip : l’état est en pause, ce clip tourne seul.': '片段模式：状态已暂停，此片段单独循环。',
+  'Reprendre l’état': '恢复状态',
+  'Clip seul': '单独片段',
+  Clip: '片段',
   'Taille des yeux': '眼睛大小',
   'Écart des yeux': '眼睛间距',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':

@@ -2,6 +2,7 @@ import {
   clipNames,
   clips,
   pauseEngine,
+  playEngineClip,
   resolveFaceName,
   sampleClipTrack,
   seekEngine,
@@ -74,8 +75,8 @@ const short = (value: number) => {
   return text.replace(/\.?0+$/, '') || '0'
 }
 
-const eyebrow = 'text-[0.68rem] font-semibold tracking-[0.12em] text-neutral-500 uppercase'
-const quiet = 'text-xs text-neutral-500'
+const eyebrow = 'eyebrow'
+const quiet = 'text-xs text-muted-foreground'
 
 /** One number of a track over the whole clip, with its keys as points that can be picked. */
 function Curve({
@@ -117,7 +118,7 @@ function Curve({
   // same place across in both and the playhead runs through them as one line.
   return (
     <div className="grid grid-cols-[5.5rem_1fr] items-stretch">
-      <div className="flex flex-col justify-between py-1 pr-2 pl-2.5 text-[0.6rem] leading-none text-neutral-400 tabular-nums">
+      <div className="flex flex-col justify-between py-1 pr-2 pl-2.5 text-[0.6rem] leading-none text-muted-foreground tabular-nums">
         <span className="flex items-baseline justify-between gap-1">
           <strong className="text-sm" style={{ color }}>
             {label}
@@ -126,7 +127,7 @@ function Curve({
         </span>
         <span className="text-right">{short(low)}</span>
       </div>
-      <div className="relative h-20 cursor-ew-resize rounded-md bg-white ring-1 ring-neutral-200">
+      <div className="relative h-20 cursor-ew-resize rounded-md bg-white ring-1 ring-border">
         <div className="absolute inset-y-2 right-2.5 left-2.5">
           <svg
             className="absolute inset-0 size-full overflow-visible"
@@ -143,7 +144,7 @@ function Curve({
             />
           </svg>
           <span
-            className="pointer-events-none absolute -inset-y-2 w-0.5 -translate-x-1/2 bg-neutral-900/70"
+            className="pointer-events-none absolute -inset-y-2 w-0.5 -translate-x-1/2 bg-ring"
             style={{ left: 'calc(var(--at, 0) * 100%)' }}
           />
           {keys.map((key, index) => (
@@ -176,20 +177,20 @@ function Easing({ ease }: { ease: ClipEase }) {
     <div className="flex items-center gap-3">
       <span className="text-xs font-semibold">Bézier →</span>
       <svg
-        className="h-14 w-20 rounded-lg bg-white ring-1 ring-neutral-200"
+        className="h-14 w-20 rounded-lg bg-white ring-1 ring-border"
         viewBox="-0.12 -0.35 1.24 1.7"
         aria-hidden="true"
       >
-        <path d="M0 1L1 0" stroke="#d4d4d4" strokeWidth={0.015} strokeDasharray="0.04 0.04" />
+        <path d="M0 1L1 0" stroke="var(--border)" strokeWidth={0.015} strokeDasharray="0.04 0.04" />
         <path
           d={`M0 1C${x1} ${1 - y1} ${x2} ${1 - y2} 1 0`}
           fill="none"
-          stroke="#2f855a"
+          stroke="var(--ring)"
           strokeWidth={0.035}
           strokeLinecap="round"
         />
       </svg>
-      <code className="text-[0.7rem] text-neutral-700 tabular-nums">
+      <code className="text-[0.7rem] text-foreground tabular-nums">
         {ease.map(value => value.toFixed(3)).join(' · ')}
       </code>
     </div>
@@ -205,10 +206,13 @@ export function ClipTimeline({
   editor,
   clip,
   live = false,
+  onTouch,
 }: {
   editor: Editor
   clip: ClipDefinition
   live?: boolean
+  /** Called before the timeline of a state's clip is moved by hand. */
+  onTouch?: () => void
 }) {
   const { t, engine, playing, setPlaying, speed, setSpeed, character } = editor
   const root = useRef<HTMLDivElement>(null)
@@ -251,6 +255,7 @@ export function ClipTimeline({
   }, [clip, engine])
 
   const seek = (time: number) => {
+    if (live) onTouch?.()
     setPlaying(false)
     pauseEngine(engine.current)
     seekEngine(engine.current, clamp(time, 0, clip.duration))
@@ -283,7 +288,7 @@ export function ClipTimeline({
   const laneArea = 'absolute inset-y-0 right-2.5 left-2.5'
   const playhead = (
     <span
-      className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-neutral-900/70"
+      className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-ring"
       style={{ left: 'calc(var(--at, 0) * 100%)' }}
     />
   )
@@ -300,7 +305,7 @@ export function ClipTimeline({
           {t('Début')}
         </Button>
         <span className="font-mono text-xs tabular-nums" ref={clock} />
-        <span className="hidden rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-medium text-amber-900 group-data-[joining=true]:inline">
+        <span className="hidden rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold text-secondary-foreground group-data-[joining=true]:inline">
           {t('raccord')}
         </span>
       </div>
@@ -326,8 +331,8 @@ export function ClipTimeline({
         )}
       </div>
       {live && (
-        <p className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-xs text-neutral-600">
-          {t('Lecture de l’état · clique une image clé pour inspecter le clip.')}
+        <p className="rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
+          {t('Lecture de l’état · touche la timeline pour passer sur ce clip seul.')}
         </p>
       )}
 
@@ -355,7 +360,7 @@ export function ClipTimeline({
             <div className={laneArea} ref={lane}>
               {[0, 0.25, 0.5, 0.75, 1].map(share => (
                 <span
-                  className={`absolute bottom-0 text-[0.6rem] whitespace-nowrap text-neutral-400 tabular-nums ${
+                  className={`absolute bottom-0 text-[0.6rem] whitespace-nowrap text-muted-foreground tabular-nums ${
                     share === 0 ? '' : share === 1 ? '-translate-x-full' : '-translate-x-1/2'
                   }`}
                   style={{ left: `${share * 100}%` }}
@@ -365,7 +370,7 @@ export function ClipTimeline({
                 </span>
               ))}
               <span
-                className="pointer-events-none absolute -bottom-1 size-2 -translate-x-1/2 rotate-45 bg-neutral-900"
+                className="pointer-events-none absolute -bottom-1 size-2 -translate-x-1/2 rotate-45 bg-ring"
                 style={{ left: 'calc(var(--at, 0) * 100%)' }}
               />
             </div>
@@ -392,7 +397,7 @@ export function ClipTimeline({
                   />
                   {t(meta.label)}
                 </button>
-                <div className="relative h-7 cursor-ew-resize rounded-md bg-neutral-100">
+                <div className="relative h-7 cursor-ew-resize rounded-md bg-muted">
                   <div className={laneArea}>
                     {playhead}
                     {keys.map((key, index) => (
@@ -410,9 +415,7 @@ export function ClipTimeline({
                       >
                         <span
                           className={`rotate-45 ${
-                            chosen === index
-                              ? 'size-3 ring-2 ring-neutral-900 ring-offset-1'
-                              : 'size-2.5'
+                            chosen === index ? 'size-3 ring-2 ring-ring ring-offset-1' : 'size-2.5'
                           }`}
                           style={{ background: meta.color }}
                         />
@@ -423,7 +426,7 @@ export function ClipTimeline({
               </div>
 
               {isOpen && (
-                <div className="flex flex-col gap-2 rounded-lg bg-neutral-100 py-2.5">
+                <div className="flex flex-col gap-2 rounded-lg bg-muted py-2.5">
                   <div data-still className="flex items-center justify-between px-2.5">
                     <p className="text-xs font-semibold">
                       {t(meta.label)}
@@ -431,19 +434,19 @@ export function ClipTimeline({
                         <>
                           {' · '}
                           {chosen + 1} / {keys.length}{' '}
-                          <span className="font-normal text-neutral-500">
+                          <span className="font-normal text-muted-foreground">
                             {seconds(keys[chosen].t)}
                           </span>
                         </>
                       )}
                       {chosen === null && (
-                        <span className="font-normal text-neutral-500">
+                        <span className="font-normal text-muted-foreground">
                           {' · '}
                           {keys.length} {t('images clés')}
                         </span>
                       )}
                       {meta.hint && (
-                        <span className="font-normal text-neutral-400"> · {t(meta.hint)}</span>
+                        <span className="font-normal text-muted-foreground"> · {t(meta.hint)}</span>
                       )}
                     </p>
                     <Button
@@ -464,7 +467,7 @@ export function ClipTimeline({
                           <button
                             type="button"
                             className={`flex items-center gap-2 rounded-lg bg-white p-1.5 text-left ring-1 ${
-                              chosen === index ? 'ring-2 ring-neutral-900' : 'ring-neutral-200'
+                              chosen === index ? 'ring-2 ring-ring' : 'ring-border'
                             }`}
                             aria-pressed={chosen === index}
                             key={index}
@@ -472,7 +475,9 @@ export function ClipTimeline({
                           >
                             <span className="grid size-10 shrink-0 place-items-center [&_.avatar-preview]:size-full">
                               {key.v === 'blink' || !character ? (
-                                <span className="text-lg leading-none text-neutral-500">– –</span>
+                                <span className="text-lg leading-none text-muted-foreground">
+                                  – –
+                                </span>
                               ) : (
                                 <CharacterPreview
                                   character={character}
@@ -482,7 +487,7 @@ export function ClipTimeline({
                             </span>
                             <span className="min-w-0">
                               <strong className="block truncate text-xs">{key.v}</strong>
-                              <span className="block text-[0.65rem] text-neutral-500 tabular-nums">
+                              <span className="block text-[0.65rem] text-muted-foreground tabular-nums">
                                 {seconds(key.t)}
                                 {key.cut ? ` · ${t('sec')}` : ''}
                               </span>
@@ -500,7 +505,7 @@ export function ClipTimeline({
                         >
                           {meta.parts.map((part, index) => (
                             <div
-                              className="flex items-baseline justify-between rounded-md bg-white px-2 py-1.5 ring-1 ring-neutral-200"
+                              className="flex items-baseline justify-between rounded-md bg-white px-2 py-1.5 ring-1 ring-border"
                               key={part}
                             >
                               <span
@@ -574,7 +579,7 @@ export function ClipTimeline({
           )
         })}
       </div>
-      <p className="flex gap-3 text-[0.65rem] text-neutral-400">
+      <p className="flex gap-3 text-[0.65rem] text-muted-foreground">
         <span>◆ {t('Image clé')}</span>
         <span>│ {t('Temps de lecture')}</span>
       </p>
@@ -598,7 +603,7 @@ function Row({
     <button
       type="button"
       className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-sm ${
-        active ? 'bg-neutral-900 font-semibold text-white' : 'hover:bg-neutral-100'
+        active ? 'bg-secondary font-semibold text-secondary-foreground' : 'hover:bg-muted'
       }`}
       aria-pressed={active}
       aria-label={name}
@@ -606,7 +611,7 @@ function Row({
     >
       <span>{name}</span>
       <span
-        className={`text-[0.7rem] tabular-nums ${active ? 'text-white/70' : 'text-neutral-400'}`}
+        className={`text-[0.7rem] tabular-nums ${active ? 'text-secondary-foreground/70' : 'text-muted-foreground'}`}
       >
         {detail}
       </span>
@@ -651,7 +656,7 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
                   : t('Aucun état ne joue ce clip.')}
               </p>
             </div>
-            <span className="shrink-0 rounded-full bg-neutral-100 px-2.5 py-1 text-xs tabular-nums">
+            <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs tabular-nums">
               {seconds(clip.duration)}
             </span>
           </div>
@@ -729,9 +734,12 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
 const RECENT_CLIPS = 4
 
 export function StatesPanel({ editor, status }: { editor: Editor; status: StageStatus }) {
-  const { t, doing, setDoing, setPlaying } = editor
+  const { t, doing, setDoing, setPlaying, engine } = editor
   const [query, setQuery] = useState('')
-  const name = status.state
+  // The state left for one of its clips: it stays shown until it is taken up again.
+  const [left, setLeft] = useState<string | null>(null)
+  const inspecting = left !== null && 'clip' in doing
+  const name = inspecting ? left : status.state
   const state = name ? states[name] : undefined
   const clip = clips[status.clip]
   // The clips the state has played lately, the newest last.
@@ -740,16 +748,32 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
     clips: [],
   })
   useEffect(() => {
-    if (!status.clip) return
+    if (!status.clip || !status.state) return
     setRecent(before => {
-      const same = before.state === name
+      const same = before.state === status.state
       if (same && before.clips.at(-1) === status.clip) return before
       return {
-        state: name,
+        state: status.state,
         clips: [...(same ? before.clips : []), status.clip].slice(-RECENT_CLIPS),
       }
     })
-  }, [name, status.clip])
+  }, [status.state, status.clip])
+
+  /** Leave the state for one of its clips, which then plays alone, round and round. */
+  const inspect = (item: string, from?: number) => {
+    if (!name) return
+    setLeft(name)
+    playEngineClip(engine.current, clips[item], {
+      phase: from === undefined ? 0 : from / clips[item].duration,
+      transition: 'cut',
+    })
+    setDoing({ clip: item })
+  }
+  const takeUp = (item: string) => {
+    setLeft(null)
+    setPlaying(true)
+    setDoing({ state: item })
+  }
 
   const policy = !state
     ? ''
@@ -768,23 +792,43 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
           <p className={eyebrow}>{t('État')}</p>
           <h3 className="text-xl font-semibold">{name}</h3>
           <p className={quiet}>{policy}</p>
+          {inspecting && (
+            <div className="my-2.5 flex items-center justify-between gap-2 rounded-lg bg-secondary px-2.5 py-2">
+              <p className="text-xs font-semibold text-secondary-foreground">
+                {t('Mode clip : l’état est en pause, ce clip tourne seul.')}
+              </p>
+              <Button size="sm" type="button" onClick={() => takeUp(name)}>
+                <Play fill="currentColor" />
+                {t('Reprendre l’état')}
+              </Button>
+            </div>
+          )}
           <div className="my-2.5 grid grid-cols-2 gap-1.5">
             {state.clips.map((item, index) => (
-              <div
-                className={`rounded-lg px-2.5 py-1.5 ${
-                  item === status.clip ? 'bg-neutral-900 text-white' : 'bg-neutral-100'
+              <button
+                type="button"
+                className={`rounded-lg px-2.5 py-1.5 text-left ${
+                  item === status.clip
+                    ? 'bg-secondary text-secondary-foreground ring-1 ring-ring'
+                    : 'bg-muted hover:ring-1 hover:ring-border'
                 }`}
+                aria-pressed={item === status.clip}
+                aria-label={`${t('Clip')} ${item}`}
                 key={`${item}-${index}`}
+                onClick={() => {
+                  inspect(item)
+                  setPlaying(true)
+                }}
               >
                 <strong className="block truncate text-xs">{item}</strong>
                 <span className="text-[0.65rem] tabular-nums opacity-70">
                   {seconds(clips[item].duration)}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
           <p className={quiet}>
-            {t('Derniers clips')} : {recent.clips.join(' → ') || '—'}
+            {t('Derniers clips')} : {(recent.state === name ? recent.clips : []).join(' → ') || '—'}
           </p>
           <p className={quiet}>
             {t('visage')} {state.face ?? t('automatique')}
@@ -796,14 +840,20 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
         <InspectorCard>
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <p className={eyebrow}>{t('Clip courant')}</p>
+              <p className={eyebrow}>{t(inspecting ? 'Clip seul' : 'Clip courant')}</p>
               <h3 className="text-lg font-semibold">{clip.name}</h3>
             </div>
-            <span className="shrink-0 rounded-full bg-neutral-100 px-2.5 py-1 text-xs tabular-nums">
+            <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs tabular-nums">
               {seconds(clip.duration)}
             </span>
           </div>
-          <ClipTimeline editor={editor} clip={clip} live key={clip.name} />
+          <ClipTimeline
+            editor={editor}
+            clip={clip}
+            live={!inspecting}
+            key={clip.name}
+            onTouch={() => inspect(clip.name, engine.current.player.time)}
+          />
         </InspectorCard>
       )}
       <InspectorCard>
@@ -837,10 +887,7 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
                       : `${states[item].clips.length} ${t(states[item].clips.length > 1 ? 'clips' : 'clip')}`
                   }
                   key={item}
-                  onClick={() => {
-                    setPlaying(true)
-                    setDoing({ state: item })
-                  }}
+                  onClick={() => takeUp(item)}
                 />
               ))}
             </div>
