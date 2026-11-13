@@ -100,17 +100,23 @@ import { RuntimePreviewDialog } from '@/features/studio/components/RuntimePrevie
 import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
 import type { StudioController } from '@/features/studio/useStudioController'
 
-const TalkModePanel = lazy(() =>
-  import('@/features/talk/components/TalkModePanel').then(module => ({
-    default: module.TalkModePanel,
-  }))
-)
+// Only the development server loads these panels. The test is written out here, not read from
+// `liveModesAvailable`, so that a production build drops the two imports and their chunks.
+const TalkModePanel = import.meta.env.DEV
+  ? lazy(() =>
+      import('@/features/talk/components/TalkModePanel').then(module => ({
+        default: module.TalkModePanel,
+      }))
+    )
+  : null
 
-const StreamModePanel = lazy(() =>
-  import('@/features/talk/components/StreamModePanel').then(module => ({
-    default: module.StreamModePanel,
-  }))
-)
+const StreamModePanel = import.meta.env.DEV
+  ? lazy(() =>
+      import('@/features/talk/components/StreamModePanel').then(module => ({
+        default: module.StreamModePanel,
+      }))
+    )
+  : null
 
 const reactQuickStartInstall = 'npm install @bible-strong/avatar-react react react-dom'
 const webQuickStartInstall = 'npm install @bible-strong/avatar-web'
@@ -1938,17 +1944,21 @@ export function StudioInspector({ controller }: { controller: StudioController }
               </div>
             )}
 
-            {!sequenceEditing && !editing && !bodyEditing && mode === 'talk' && (
+            {TalkModePanel && !sequenceEditing && !editing && !bodyEditing && mode === 'talk' && (
               <Suspense fallback={<div className="talk-panel-loading">{t('Chargement…')}</div>}>
                 <TalkModePanel key={activeAvatar.id} controller={controller} />
               </Suspense>
             )}
 
-            {!sequenceEditing && !editing && !bodyEditing && mode === 'stream' && (
-              <Suspense fallback={<div className="talk-panel-loading">{t('Chargement…')}</div>}>
-                <StreamModePanel key={activeAvatar.id} controller={controller} />
-              </Suspense>
-            )}
+            {StreamModePanel &&
+              !sequenceEditing &&
+              !editing &&
+              !bodyEditing &&
+              mode === 'stream' && (
+                <Suspense fallback={<div className="talk-panel-loading">{t('Chargement…')}</div>}>
+                  <StreamModePanel key={activeAvatar.id} controller={controller} />
+                </Suspense>
+              )}
 
             {!sequenceEditing && !editing && !bodyEditing && mode === 'export' && (
               <Accordion className="export-panel" defaultValue={['avatar']}>

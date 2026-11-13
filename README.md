@@ -137,7 +137,7 @@ The deployable site is written to `dist/`. Serve it locally before publishing:
 pnpm preview
 ```
 
-The application is a client-only Vite site with no server runtime or environment variables. The build uses relative asset paths, so the contents of `dist/` can be hosted at a domain root or a subpath, including a GitHub Pages project URL. Any static host that serves `index.html` can deploy it.
+The application is a client-only Vite site with no server runtime or environment variables. Talk Mode and Stream Mode exist only on the development server (`pnpm dev`), which serves the `/api/direct-dialogue` route they need: a production build leaves them out. The build uses relative asset paths, so the contents of `dist/` can be hosted at a domain root or a subpath, including a GitHub Pages project URL. Any static host that serves `index.html` can deploy it.
 
 Vercel Web Analytics and Speed Insights are integrated in the React entry point. Enable both products in the Vercel project dashboard, then redeploy so their collection routes become available.
 

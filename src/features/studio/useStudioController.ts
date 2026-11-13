@@ -147,6 +147,7 @@ import {
   talkExpressionTransformFields,
   type TalkExpressionTransformOverride,
 } from '@/features/talk/talkTransform'
+import { liveModesAvailable } from '@/features/talk/availability'
 
 const mouthShapeGeometryFieldSet = new Set<string>(['mouthCurve', 'mouthWidth', 'mouthHeight'])
 
@@ -608,6 +609,7 @@ export function useStudioController() {
   }
 
   const openTalkMode = () => {
+    if (!liveModesAvailable) return
     freezeLivePreviewForManipulation()
     setTalkBubbleText('')
     setTalkPlaybackStatus('idle')
@@ -615,6 +617,7 @@ export function useStudioController() {
   }
 
   const openStreamMode = () => {
+    if (!liveModesAvailable) return
     freezeLivePreviewForManipulation()
     setTalkBubbleText('')
     setTalkPlaybackStatus('idle')

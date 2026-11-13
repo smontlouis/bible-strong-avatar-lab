@@ -19,6 +19,7 @@ import { AvatarCanvas } from '@/features/rendering/components/AvatarCanvas'
 import { PhotoStageFrame } from '@/features/studio/components/PhotoStageFrame'
 import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
 import type { StudioController } from '@/features/studio/useStudioController'
+import { liveModesAvailable } from '@/features/talk/availability'
 
 const talkBubbleFollowSpring = {
   stiffness: 180,
@@ -173,7 +174,7 @@ function StageModeControls({
                   {t(photoMode ? 'Prendre une photo' : 'Mode photo')}
                 </span>
               </Button>
-              {!photoMode && (
+              {!photoMode && liveModesAvailable && (
                 <>
                   <Button
                     className="photo-capture-button talk-mode-button"
