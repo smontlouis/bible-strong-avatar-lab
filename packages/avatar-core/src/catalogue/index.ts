@@ -35,3 +35,18 @@ const stateCatalogue = statesData as unknown as {
 export const states: Readonly<Record<string, StateDefinition>> = stateCatalogue.states
 export const stateGroups: readonly { label: string; states: string[] }[] = stateCatalogue.groups
 export const stateNames: readonly string[] = Object.keys(states)
+
+/**
+ * Names of states that play exactly what another state plays. The catalogue the engine comes
+ * from listed its spinners twice, once by what the assistant does and once by the pattern
+ * drawn; these names are kept for the second list and lead to the first.
+ */
+export const stateAliases: Readonly<Record<string, string>> = {
+  dots: 'thinking',
+  radar: 'searching',
+  orbit: 'waiting',
+  loading: 'progress',
+}
+
+/** The state a name stands for: itself, or the state an alias leads to. */
+export const resolveStateName = (name: string) => stateAliases[name] ?? name

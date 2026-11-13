@@ -1,4 +1,4 @@
-import { clips, states, type StateDefinition } from './catalogue'
+import { clips, resolveStateName, states, type StateDefinition } from './catalogue'
 import { slerpQuaternion, type Quaternion } from './geometry'
 import { clipEaseAt, type ClipDefinition } from './clips'
 import { frameOrientation } from './turn'
@@ -270,7 +270,8 @@ export const setEngineMorph = (engine: AvatarEngine, mode: string | null) => {
 }
 
 /** Put the avatar in a state of the catalogue. An unknown name changes nothing. */
-export const setEngineState = (engine: AvatarEngine, name: string) => {
+export const setEngineState = (engine: AvatarEngine, asked: string) => {
+  const name = resolveStateName(asked)
   const state = states[name]
   if (!state) return
   engine.state = name

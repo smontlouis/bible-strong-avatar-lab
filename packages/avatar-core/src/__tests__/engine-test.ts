@@ -1,4 +1,4 @@
-import { clips, stateGroups, stateNames, states } from '../catalogue'
+import { clips, stateAliases, stateGroups, stateNames, states } from '../catalogue'
 import { frameOrientation } from '../turn'
 import {
   advanceEngine,
@@ -46,8 +46,8 @@ const run = (engine: AvatarEngine, seconds: number) => {
 }
 
 describe('the catalogue of states', () => {
-  it('has the 54 states, all of which name clips that exist', () => {
-    expect(stateNames).toHaveLength(54)
+  it('has the 50 states, all of which name clips that exist', () => {
+    expect(stateNames).toHaveLength(50)
     for (const name of stateNames) {
       for (const clip of [...states[name].clips, ...(states[name].compactClips ?? [])]) {
         expect(clips[clip]).toBeDefined()
@@ -255,6 +255,25 @@ describe('gaze', () => {
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before, 6)
     setEngineGazeAlways(engine, true)
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before + 18 * 0.55, 1)
+  })
+})
+
+describe('states named twice', () => {
+  it('has no two spinners that play the same thing', () => {
+    // States that only move the body may share a recipe and differ in meaning: `reading` and
+    // `coding` look alike. A spinner is listed once.
+    const spinners = stateNames.filter(name => states[name].morph)
+    const recipes = spinners.map(name => JSON.stringify(states[name]))
+    expect(new Set(recipes).size).toBe(recipes.length)
+  })
+
+  it('leads an alias to the state it stands for', () => {
+    for (const [alias, name] of Object.entries(stateAliases)) {
+      expect(states[alias]).toBeUndefined()
+      const engine = createAvatarEngine()
+      setEngineState(engine, alias)
+      expect(engine.state).toBe(name)
+    }
   })
 })
 

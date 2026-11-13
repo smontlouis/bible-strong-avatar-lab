@@ -5,6 +5,7 @@ import {
   playEngineClip,
   resolveFaceName,
   sampleClipTrack,
+  spinnerOfMode,
   seekEngine,
   stateGroups,
   stateNames,
@@ -807,7 +808,7 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
         )}
         {state.morph && (
           <Pill icon={LoaderCircle} title={t('Se transforme en spinner')}>
-            {state.morph}
+            {spinnerOfMode[state.morph] ?? state.morph}
           </Pill>
         )}
         {inspecting && (
@@ -874,7 +875,7 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
           sections={stateSections}
           detail={item =>
             states[item].morph
-              ? states[item].morph
+              ? (spinnerOfMode[states[item].morph!] ?? states[item].morph)
               : clipsOfState(item).length > 1
                 ? `${clipsOfState(item).length} clips`
                 : undefined
