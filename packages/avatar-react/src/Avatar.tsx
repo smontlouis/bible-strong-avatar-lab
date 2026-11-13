@@ -1,655 +1,398 @@
 import {
-  advanceAvatarPlayback,
-  createAvatarPlaybackState,
-  nextAvatarFrameAt,
-  playAvatarAnimation,
-  pauseAvatarPlayback,
-  renderAvatarDefinition,
-  renderAvatarSample,
-  resolveAnimation,
-  resolveExpression,
-  resumeAvatarPlayback,
-  sampleAvatarFrame,
-  validateAvatarDefinition,
-  type AnimationKey,
-  type AvatarDefinition,
-  type AvatarPlaybackState as CorePlaybackState,
-  type AvatarRuntimeError as CoreRuntimeError,
-  type ExpressionKey,
+  advanceEngine,
+  clips,
+  createAvatarEngine,
+  engineFrame,
+  pauseEngine,
+  playEngineClip,
+  pokeEngine,
+  renderCharacterFrame,
+  resumeEngine,
+  seedOfName,
+  setEngineCompact,
+  setEngineEmphasis,
+  setEngineFace,
+  setEngineGaze,
+  setEngineGazeAlways,
+  setEnginePose,
+  setEngineRoutine,
+  setEngineState,
+  type AvatarCharacter,
+  type AvatarEngine,
+  type CharacterScene,
+  type FreePose,
+  type GestureName,
 } from '@bible-strong/avatar-core'
 import {
   useEffect,
   useId,
   useImperativeHandle,
   useLayoutEffect,
+  useMemo,
   useRef,
-  useState,
   type CSSProperties,
   type ReactElement,
   type Ref,
 } from 'react'
 
-import './styles.css'
-
-const validatedDefinitions = new WeakSet<object>()
-const controlledExpressionTransitionMs = 420
-
-// One media query for every avatar of the page, read each frame rather than created each frame.
-let reducedMotion: { source: typeof window.matchMedia; query: MediaQueryList } | undefined
-const runtimeEnvironment = () => {
-  if (reducedMotion?.source !== window.matchMedia) {
-    reducedMotion = {
-      source: window.matchMedia,
-      query: window.matchMedia('(prefers-reduced-motion: reduce)'),
-    }
-  }
-  return { random: Math.random, reduceMotion: reducedMotion.query.matches }
-}
-
-const shouldRunFrameLoop = (
-  definition: AvatarDefinition,
-  playback: Readonly<CorePlaybackState>,
-  environment: ReturnType<typeof runtimeEnvironment>
-) => {
-  if (playback.status === 'playing') return true
-  const activeExpression = definition.expressions[playback.activeExpression]
-  const motion = activeExpression?.motion
-  return (
-    playback.status === 'stopped' &&
-    !environment.reduceMotion &&
-    (activeExpression?.blinking === true ||
-      (motion !== undefined && (motion.eyes !== 'none' || motion.body !== 'none')))
-  )
-}
-
-export const markAvatarDefinitionValidated = (definition: object) => {
-  validatedDefinitions.add(definition)
-}
-
-const assertValidDefinition = (definition: AvatarDefinition) => {
-  if (validatedDefinitions.has(definition)) return
-  const result = validateAvatarDefinition(definition)
-  if (!result.ok) {
-    throw new Error(`Invalid avatar definition: ${result.errors[0]?.message}`)
-  }
-  validatedDefinitions.add(definition)
-}
-
-export type AvatarRuntimeError =
-  | CoreRuntimeError
-  | {
-      code: 'controlled_by_props'
-      key: string
-      message: string
-    }
-
-export type AvatarCommandResult = { ok: true } | { ok: false; error: AvatarRuntimeError }
-
-export type AvatarPlaybackState = Pick<
-  CorePlaybackState,
-  'activeAnimation' | 'activeExpression' | 'status'
->
-
-export type AvatarController = {
-  play(animation: AnimationKey): AvatarCommandResult
-  setExpression(expression: ExpressionKey): AvatarCommandResult
-  pause(): void
-  stop(): void
-  getState(): AvatarPlaybackState
+/** What can be asked of an avatar from outside, through its `ref`. */
+export type AvatarHandle = {
+  /** Lay a gesture over what the avatar is doing. */
+  poke: (gesture: GestureName, turns?: number) => void
 }
 
 export type AvatarProps = {
-  definition: AvatarDefinition
-  ref?: Ref<AvatarController>
-  /** Controlled animation timeline. Mutually exclusive with `expression`. */
-  animation?: AnimationKey
-  /** Controlled expression target. Mutually exclusive with `animation`. */
-  expression?: ExpressionKey
-  /** Uncontrolled initial animation. Mutually exclusive with `defaultExpression`. */
-  defaultAnimation?: AnimationKey
-  /** Uncontrolled initial expression. Mutually exclusive with `defaultAnimation`. */
-  defaultExpression?: ExpressionKey
-  autoplay?: boolean
+  character: AvatarCharacter
+  ref?: Ref<AvatarHandle>
+  /**
+   * What the avatar does. A scenario leads it from state to state; a state draws its own clips;
+   * a clip plays alone, round and round. The first that is given wins, in that order. With none
+   * the avatar is `idle`.
+   */
+  routine?: string
+  state?: string
+  clip?: string
+  /** A face to hold whatever the avatar does. Leave it out to let the avatar decide. */
+  face?: string
+  /** A pose set by hand: what it gives takes the place of what the clip asks. */
+  pose?: FreePose
+  /** Stop the avatar where it is. */
+  paused?: boolean
+  /** Let the avatar follow the pointer with its head. */
+  followPointer?: boolean
+  /** A state without a face of its own shows surprise. */
+  emphasis?: boolean
+  /**
+   * Two avatars with the same seed draw the same clips at the same time. By default the seed
+   * comes from the character's name.
+   */
+  seed?: number
+  /** Width and height. A number is in pixels. */
   size?: number | string
   className?: string
   style?: CSSProperties
   ariaLabel?: string
-  /** Receives invalid animation or expression targets supplied through props. */
-  onError?: (error: AvatarRuntimeError) => void
-  onAnimationEnd?: (animation: AnimationKey) => void
-  onExpressionChange?: (expression: ExpressionKey) => void
+  /** Called when the avatar goes into another state, by itself or because it was asked to. */
+  onStateChange?: (state: string | null) => void
+  /** Called with what a scenario says at each of its steps, and `null` when it says nothing. */
+  onText?: (text: string | null) => void
 }
 
-const samePlayback = (left: CorePlaybackState, right: CorePlaybackState) =>
-  left.activeAnimation === right.activeAnimation &&
-  left.activeExpression === right.activeExpression &&
-  left.status === right.status &&
-  left.stepIndex === right.stepIndex &&
-  left.direction === right.direction &&
-  left.phase === right.phase &&
-  left.phaseStartedAt === right.phaseStartedAt &&
-  left.transitionFrom === right.transitionFrom &&
-  left.blinkDueAt === right.blinkDueAt &&
-  left.blinkStartedAt === right.blinkStartedAt &&
-  left.transitionSnapshot === right.transitionSnapshot &&
-  left.directTransition?.from === right.directTransition?.from &&
-  left.directTransition?.startedAt === right.directTransition?.startedAt &&
-  left.directTransition?.durationMs === right.directTransition?.durationMs &&
-  left.directTransition?.transition === right.directTransition?.transition
+// A spinner draws at most this many marks at once, two patterns crossing included.
+const MARK_SLOTS = 12
+// Under this size an avatar is shown compact: a state with a shorter list of clips uses it.
+const COMPACT_UNDER = 48
+// How long the avatar is run to find a pose to hold for someone who asked for less motion.
+const SETTLE_STEPS = 60
+const SETTLE_STEP_SECONDS = 0.1
 
-const assertPlaybackProps = ({
-  animation,
-  expression,
-  defaultAnimation,
-  defaultExpression,
-}: Pick<AvatarProps, 'animation' | 'expression' | 'defaultAnimation' | 'defaultExpression'>) => {
-  if (animation !== undefined && expression !== undefined) {
-    throw new Error(
-      'Avatar accepts either animation or expression, not both. Animation controls a timeline; expression controls a single target.'
-    )
-  }
-  if (defaultAnimation !== undefined && defaultExpression !== undefined) {
-    throw new Error(
-      'Avatar accepts either defaultAnimation or defaultExpression, not both. Choose one uncontrolled initial target.'
-    )
-  }
-}
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const createInitialPlayback = (
-  definition: AvatarDefinition,
-  animation: AnimationKey | undefined,
-  expression: ExpressionKey | undefined,
-  defaultAnimation: AnimationKey | undefined,
-  defaultExpression: ExpressionKey | undefined
-): CorePlaybackState => {
-  const animationKey = animation ?? (expression === undefined ? defaultAnimation : undefined)
-  if (animationKey) {
-    const result = resolveAnimation(definition, animationKey)
-    if (result.ok) {
-      return {
-        ...createAvatarPlaybackState(),
-        activeExpression: result.value.steps[0]?.expression ?? 'neutral',
-      }
-    }
+const applyDoing = (
+  engine: AvatarEngine,
+  routine: string | undefined,
+  state: string | undefined,
+  clip: string | undefined
+) => {
+  if (routine !== undefined) {
+    setEngineRoutine(engine, routine)
+    return
   }
-  const expressionKey =
-    expression ?? (animation === undefined ? defaultExpression : undefined) ?? 'neutral'
-  const resolved = resolveExpression(definition, expressionKey)
-  return {
-    ...createAvatarPlaybackState(),
-    activeExpression: resolved.ok ? expressionKey : 'neutral',
-  }
+  setEngineRoutine(engine, null)
+  if (state === undefined && clip !== undefined && clips[clip]) playEngineClip(engine, clips[clip])
+  else setEngineState(engine, state ?? 'idle')
 }
 
 export function Avatar({
-  definition,
+  character,
   ref,
-  animation,
-  expression,
-  defaultAnimation,
-  defaultExpression,
-  autoplay,
+  routine,
+  state,
+  clip,
+  face,
+  pose,
+  paused = false,
+  followPointer = false,
+  emphasis = false,
+  seed,
   size = 240,
   className,
   style,
-  ariaLabel = 'Procedural avatar',
-  onError,
-  onAnimationEnd,
-  onExpressionChange,
+  ariaLabel = 'Avatar',
+  onStateChange,
+  onText,
 }: AvatarProps): ReactElement {
-  assertPlaybackProps({ animation, expression, defaultAnimation, defaultExpression })
-  assertValidDefinition(definition)
+  const id = useId().replace(/:/g, '')
+  const compact = typeof size === 'number' && size < COMPACT_UNDER
+  const resolvedSeed = seed ?? seedOfName(character.name ?? 'avatar')
+  const nodeSlots = character.body.nodes.length + 2
 
-  const clipId = `${useId().replaceAll(':', '')}-head`
-  // A body node is drawn behind or in front of the head depending on the pose.
-  const bodyPathSlots = definition.body.nodes.length + 2
-  const wrapperRef = useRef<HTMLDivElement>(null)
-  const visibleRef = useRef(true)
-  const clipPathRef = useRef<SVGPathElement>(null)
-  const headPathRef = useRef<SVGPathElement>(null)
-  const leftPathRef = useRef<SVGPathElement>(null)
-  const rightPathRef = useRef<SVGPathElement>(null)
-  const nosePathRef = useRef<SVGPathElement>(null)
-  const mouthPathRef = useRef<SVGPathElement>(null)
-  const headOutlineRef = useRef<SVGPathElement>(null)
-  const backOutlineRefs = useRef<(SVGPathElement | null)[]>([])
-  const frontOutlineRefs = useRef<(SVGPathElement | null)[]>([])
-  const backPathRefs = useRef<(SVGPathElement | null)[]>([])
-  const frontPathRefs = useRef<(SVGPathElement | null)[]>([])
-  const frontClipRefs = useRef<(SVGPathElement | null)[]>([])
-  const defaultPlaybackStarted = useRef(false)
-  const completedAnimation = useRef<AnimationKey | undefined>(undefined)
-  const playbackRef = useRef<CorePlaybackState | null>(null)
-  const paintedFrameRef = useRef<ReturnType<typeof sampleAvatarFrame> | null>(null)
-  const previousDefinitionRef = useRef(definition)
-  const [playback, setPlayback] = useState<CorePlaybackState>(() =>
-    createInitialPlayback(definition, animation, expression, defaultAnimation, defaultExpression)
+  // The engine is made once for a seed. What the avatar does, and how, is then set on it: on the
+  // first render so that the first picture is right, and in effects after that.
+  const engine = useMemo(() => {
+    const created = createAvatarEngine({ seed: resolvedSeed, compact })
+    setEngineEmphasis(created, emphasis)
+    applyDoing(created, routine, state, clip)
+    setEngineFace(created, face ?? null)
+    setEnginePose(created, pose ?? null)
+    return created
+    // Only the seed makes a new engine: everything else is set on the one that lives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedSeed])
+  const first = useMemo(
+    () => renderCharacterFrame(character, engineFrame(engine)),
+    [character, engine]
   )
 
-  const paintScene = (frameScene: ReturnType<typeof renderAvatarSample>) => {
-    headPathRef.current?.setAttribute('d', frameScene.geometry.headPath)
-    clipPathRef.current?.setAttribute('d', frameScene.geometry.headPath)
-    headPathRef.current?.setAttribute('fill', frameScene.colors.body)
-    leftPathRef.current?.setAttribute('d', frameScene.geometry.leftPath)
-    leftPathRef.current?.setAttribute('fill', frameScene.colors.eyes)
-    leftPathRef.current?.setAttribute('opacity', frameScene.geometry.leftVisible ? '1' : '0')
-    rightPathRef.current?.setAttribute('d', frameScene.geometry.rightPath)
-    rightPathRef.current?.setAttribute('fill', frameScene.colors.eyes)
-    rightPathRef.current?.setAttribute('opacity', frameScene.geometry.rightVisible ? '1' : '0')
-    nosePathRef.current?.setAttribute('d', frameScene.geometry.nosePath)
-    nosePathRef.current?.setAttribute('fill', frameScene.colors.eyes)
-    mouthPathRef.current?.setAttribute('d', frameScene.geometry.mouthPath)
-    mouthPathRef.current?.setAttribute(
-      'fill',
-      frameScene.geometry.mouthStrokeWidth > 0 ? 'none' : frameScene.colors.eyes
-    )
-    mouthPathRef.current?.setAttribute(
-      'stroke',
-      frameScene.geometry.mouthStrokeWidth > 0 ? frameScene.colors.eyes : 'none'
-    )
-    mouthPathRef.current?.setAttribute('stroke-width', String(frameScene.geometry.mouthStrokeWidth))
-    headOutlineRef.current?.setAttribute('d', frameScene.geometry.headPath)
-    backOutlineRefs.current.forEach((element, index) => {
-      element?.setAttribute('d', frameScene.geometry.backPaths[index] ?? '')
-    })
-    frontOutlineRefs.current.forEach((element, index) => {
-      element?.setAttribute('d', frameScene.geometry.frontPaths[index] ?? '')
-    })
-    backPathRefs.current.forEach((element, index) => {
-      element?.setAttribute('d', frameScene.geometry.backPaths[index] ?? '')
-      element?.setAttribute('fill', frameScene.bodyColors.back[index] ?? frameScene.colors.body)
-    })
-    frontPathRefs.current.forEach((element, index) => {
-      element?.setAttribute('d', frameScene.geometry.frontPaths[index] ?? '')
-      element?.setAttribute('fill', frameScene.bodyColors.front[index] ?? frameScene.colors.body)
-      // A node of another colour than the body shows in front only where it is nearer than
-      // the head: its copy in front is clipped to that region.
-      const clip = frameScene.geometry.frontClipPaths[index] ?? ''
-      frontClipRefs.current[index]?.setAttribute('d', clip)
-      if (clip) element?.setAttribute('clip-path', `url(#${clipId}-front-${index})`)
-      else element?.removeAttribute('clip-path')
-    })
+  const svg = useRef<SVGSVGElement | null>(null)
+  const callbacks = useRef({ onStateChange, onText })
+  callbacks.current = { onStateChange, onText }
+
+  useImperativeHandle(
+    ref,
+    () => ({ poke: (gesture, turns) => pokeEngine(engine, gesture, turns) }),
+    [engine]
+  )
+
+  // Write a scene to the elements that React made once: a frame does not go through React.
+  const draw = (scene: CharacterScene) => {
+    const root = svg.current
+    if (!root) return
+    const set = (name: string, attribute: string, value: string) =>
+      root.querySelector(`[data-part="${name}"]`)?.setAttribute(attribute, value)
+    const { geometry, colors, bodyColors, transform, spinner } = scene
+    const round = spinner?.round ?? 0
+    const fading = String(1 - round)
+    set('body', 'transform', `matrix(${transform.join(' ')})`)
+    set('body', 'opacity', String(spinner?.opacity ?? 1))
+    set('head', 'd', geometry.headPath)
+    set('head', 'fill', colors.body)
+    set('head', 'visibility', round >= 0.999 ? 'hidden' : 'visible')
+    set('head-clip', 'd', geometry.headPath)
+    set('left', 'd', geometry.leftVisible ? geometry.leftPath : '')
+    set('right', 'd', geometry.rightVisible ? geometry.rightPath : '')
+    set('nose', 'd', geometry.nosePath)
+    set('mouth', 'd', geometry.mouthPath)
+    set('face', 'fill', colors.eyes)
+    set('face', 'opacity', fading)
+    set('back', 'opacity', fading)
+    set('front', 'opacity', fading)
+    for (let index = 0; index < nodeSlots; index += 1) {
+      set(`back-${index}`, 'd', geometry.backPaths[index] ?? '')
+      set(`back-${index}`, 'fill', bodyColors.back[index] ?? colors.body)
+      const clipped = geometry.frontClipPaths[index] ?? ''
+      set(`front-${index}`, 'd', geometry.frontPaths[index] ?? '')
+      set(`front-${index}`, 'fill', bodyColors.front[index] ?? colors.body)
+      set(`front-clip-${index}`, 'd', clipped)
+      const front = root.querySelector(`[data-part="front-${index}"]`)
+      if (clipped) front?.setAttribute('clip-path', `url(#${id}-front-${index})`)
+      else front?.removeAttribute('clip-path')
+    }
+    set('disc', 'd', spinner && round > 0 ? spinner.disc : '')
+    set('disc', 'fill', colors.body)
+    set('disc', 'opacity', String(round))
+    for (let index = 0; index < MARK_SLOTS; index += 1) {
+      const mark = spinner?.marks[index]
+      const element = root.querySelector(`[data-part="mark-${index}"]`)
+      if (!element) continue
+      element.setAttribute('d', mark?.d ?? '')
+      if (!mark) continue
+      element.setAttribute('opacity', String(mark.opacity))
+      if (mark.strokeWidth === undefined) {
+        element.setAttribute('fill', colors.body)
+        element.setAttribute('stroke', 'none')
+      } else {
+        element.setAttribute('fill', 'none')
+        element.setAttribute('stroke', colors.body)
+        element.setAttribute('stroke-width', String(mark.strokeWidth))
+      }
+    }
   }
 
-  const renderPlaybackFrame = (
-    current: Readonly<CorePlaybackState>,
-    now: number,
-    environment: ReturnType<typeof runtimeEnvironment>
-  ) => {
-    const frame = sampleAvatarFrame(definition, current, now, environment)
-    paintedFrameRef.current = frame
-    return renderAvatarSample(definition, frame, environment)
-  }
+  // What the avatar does, set on the engine that lives.
+  const doing = useRef({ routine, state, clip })
+  useEffect(() => {
+    const before = doing.current
+    if (before.routine === routine && before.state === state && before.clip === clip) return
+    doing.current = { routine, state, clip }
+    applyDoing(engine, routine, state, clip)
+  }, [engine, routine, state, clip])
+  useEffect(() => setEngineFace(engine, face ?? null), [engine, face])
+  useEffect(() => setEnginePose(engine, pose ?? null), [engine, pose])
+  useEffect(() => setEngineEmphasis(engine, emphasis), [engine, emphasis])
+  useEffect(() => setEngineCompact(engine, compact), [engine, compact])
+  useEffect(() => {
+    if (paused) pauseEngine(engine)
+    else resumeEngine(engine)
+  }, [engine, paused])
 
+  useEffect(() => {
+    setEngineGazeAlways(engine, followPointer)
+    if (!followPointer) {
+      setEngineGaze(engine, null)
+      return
+    }
+    const look = (event: PointerEvent) => {
+      const box = svg.current?.getBoundingClientRect()
+      if (!box || box.width === 0) return
+      // Twice the width of the avatar away is as far as the gaze goes.
+      setEngineGaze(engine, [
+        (event.clientX - (box.left + box.width / 2)) / (box.width * 2),
+        -(event.clientY - (box.top + box.height / 2)) / (box.width * 2),
+      ])
+    }
+    window.addEventListener('pointermove', look)
+    return () => window.removeEventListener('pointermove', look)
+  }, [engine, followPointer])
+
+  // The loop. It stops while the avatar is out of sight, and does not start for someone who
+  // asked for less motion: they get one settled picture, drawn again when something changes.
+  const reduced = prefersReducedMotion()
   useLayoutEffect(() => {
-    const current = playbackRef.current ?? playback
-    const now = performance.now()
-    const environment = runtimeEnvironment()
-    paintScene(renderPlaybackFrame(current, now, environment))
-  })
-
-  useEffect(() => {
-    playbackRef.current = playback
-  }, [playback])
-
-  // An avatar scrolled out of view keeps its timeline but is not drawn.
-  useEffect(() => {
-    const element = wrapperRef.current
-    if (!element || typeof IntersectionObserver === 'undefined') return
-    const observer = new IntersectionObserver(entries => {
-      visibleRef.current = entries[entries.length - 1]?.isIntersecting ?? true
-    })
-    observer.observe(element)
-    return () => {
-      observer.disconnect()
-      visibleRef.current = true
+    let reported = { state: engine.state, text: engine.routine?.text ?? null }
+    const report = () => {
+      const text = engine.routine?.text ?? null
+      if (engine.state !== reported.state) callbacks.current.onStateChange?.(engine.state)
+      if (text !== reported.text) callbacks.current.onText?.(text)
+      reported = { state: engine.state, text }
     }
-  }, [])
-
-  useEffect(() => {
-    if (previousDefinitionRef.current === definition) return
-    previousDefinitionRef.current = definition
-    paintedFrameRef.current = null
-    defaultPlaybackStarted.current = false
-    completedAnimation.current = undefined
-    const next = createInitialPlayback(
-      definition,
-      animation,
-      expression,
-      defaultAnimation,
-      defaultExpression
-    )
-    playbackRef.current = next
-    setPlayback(next)
-  }, [animation, defaultAnimation, defaultExpression, definition, expression])
-
-  useEffect(() => {
-    if (animation !== undefined || expression !== undefined) return
-    const result = defaultAnimation
-      ? resolveAnimation(definition, defaultAnimation)
-      : defaultExpression
-        ? resolveExpression(definition, defaultExpression)
-        : null
-    if (result && !result.ok) {
-      if (onError) onError(result.error)
-      else console.error(`[Avatar] ${result.error.message}`)
-    }
-  }, [animation, defaultAnimation, defaultExpression, definition, expression, onError])
-
-  useEffect(() => {
-    if (
-      defaultPlaybackStarted.current ||
-      animation !== undefined ||
-      expression !== undefined ||
-      defaultAnimation === undefined ||
-      autoplay === false
-    ) {
+    if (reduced) {
+      for (let step = 0; step < SETTLE_STEPS; step += 1) advanceEngine(engine, SETTLE_STEP_SECONDS)
+      draw(renderCharacterFrame(character, engineFrame(engine)))
+      report()
       return
     }
-    defaultPlaybackStarted.current = true
-    const result = playAvatarAnimation(definition, defaultAnimation, performance.now())
-    if (result.ok) {
-      playbackRef.current = result.value
-      setPlayback(result.value)
-    }
-  }, [animation, autoplay, defaultAnimation, definition, expression])
-
-  useEffect(() => {
-    if (expression !== undefined) {
-      const resolved = resolveExpression(definition, expression)
-      if (resolved.ok) {
-        const current = playbackRef.current ?? createAvatarPlaybackState()
-        const now = performance.now()
-        const from =
-          paintedFrameRef.current ??
-          sampleAvatarFrame(definition, current, now, runtimeEnvironment())
-        const next = {
-          ...createAvatarPlaybackState(),
-          activeExpression: expression,
-          ...(current.activeExpression === expression
-            ? {}
-            : {
-                status: 'playing' as const,
-                directTransition: {
-                  from,
-                  startedAt: now,
-                  durationMs: controlledExpressionTransitionMs,
-                  transition: 'smooth' as const,
-                },
-              }),
-        }
-        playbackRef.current = next
-        setPlayback(next)
-      } else if (onError) onError(resolved.error)
-      else console.error(`[Avatar] ${resolved.error.message}`)
-      return
-    }
-    if (animation !== undefined) {
-      const current = playbackRef.current ?? createAvatarPlaybackState()
-      const now = performance.now()
-      const from =
-        paintedFrameRef.current ?? sampleAvatarFrame(definition, current, now, runtimeEnvironment())
-      const result = playAvatarAnimation(definition, animation, now, from)
-      if (result.ok) {
-        playbackRef.current = result.value
-        setPlayback(result.value)
-      } else if (onError) onError(result.error)
-      else console.error(`[Avatar] ${result.error.message}`)
-    }
-  }, [animation, definition, expression, onError])
-
-  useEffect(() => {
-    onExpressionChange?.(playback.activeExpression)
-  }, [playback.activeExpression, onExpressionChange])
-
-  useEffect(() => {
-    if (!shouldRunFrameLoop(definition, playback, runtimeEnvironment())) return
-    let frame = 0
-    // The state last handled, until when its picture stays the same, and whether it was drawn.
-    let handled: CorePlaybackState | null = null
-    let nextFrameAt = 0
-    let drawn = true
+    let request = 0
+    let last: number | undefined
+    let visible = true
     const tick = (now: number) => {
-      const current = playbackRef.current
-      if (!current) return
-      const visible = visibleRef.current
-      if (current === handled && now < nextFrameAt && (drawn || !visible)) {
-        frame = requestAnimationFrame(tick)
-        return
-      }
-      const environment = runtimeEnvironment()
-      const next = advanceAvatarPlayback(definition, current, now, environment)
-      playbackRef.current = next
-      if (!samePlayback(current, next)) setPlayback(next)
-      if (
-        current.status === 'playing' &&
-        next.status === 'stopped' &&
-        current.activeAnimation &&
-        completedAnimation.current !== current.activeAnimation
-      ) {
-        completedAnimation.current = current.activeAnimation
-        onAnimationEnd?.(current.activeAnimation)
-      }
-      if (visible) paintScene(renderPlaybackFrame(next, now, environment))
-      // A target set while out of view starts from a fresh sample, not from an old picture.
-      else paintedFrameRef.current = null
-      handled = next
-      drawn = visible
-      nextFrameAt = nextAvatarFrameAt(definition, next, now, environment)
-      if (shouldRunFrameLoop(definition, next, environment)) {
-        frame = requestAnimationFrame(tick)
-      }
+      // A frame that comes late does not throw the avatar: the engine caps its own step.
+      advanceEngine(engine, last === undefined ? 0 : (now - last) / 1000)
+      last = now
+      draw(renderCharacterFrame(character, engineFrame(engine)))
+      report()
+      if (visible) request = requestAnimationFrame(tick)
     }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
-  }, [definition, playback.activeExpression, playback.status, onAnimationEnd])
+    request = requestAnimationFrame(tick)
+    const observer =
+      typeof IntersectionObserver === 'undefined' || !svg.current
+        ? null
+        : new IntersectionObserver(entries => {
+            const seen = entries[entries.length - 1]?.isIntersecting ?? true
+            if (seen === visible) return
+            visible = seen
+            cancelAnimationFrame(request)
+            last = undefined
+            if (visible) request = requestAnimationFrame(tick)
+          })
+    if (observer && svg.current) observer.observe(svg.current)
+    return () => {
+      cancelAnimationFrame(request)
+      observer?.disconnect()
+    }
+    // `draw` reads the latest refs; the loop only restarts for what it closes over.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, character, reduced, routine, state, clip, face, pose, paused])
 
-  const controlled = animation !== undefined || expression !== undefined
-  useImperativeHandle(ref, () => ({
-    play(key) {
-      if (controlled) {
-        return {
-          ok: false,
-          error: {
-            code: 'controlled_by_props',
-            key,
-            message: 'Playback is controlled by Avatar props.',
-          },
-        }
-      }
-      const current = playbackRef.current ?? createAvatarPlaybackState()
-      if (
-        current.status === 'paused' &&
-        current.activeAnimation === key &&
-        current.pausedAt !== undefined
-      ) {
-        const now = performance.now()
-        const resumed = resumeAvatarPlayback(current, now)
-        playbackRef.current = resumed
-        setPlayback(resumed)
-        return { ok: true }
-      }
-      const now = performance.now()
-      const from =
-        paintedFrameRef.current ?? sampleAvatarFrame(definition, current, now, runtimeEnvironment())
-      const result = playAvatarAnimation(definition, key, now, from)
-      if (!result.ok) return { ok: false, error: result.error }
-      completedAnimation.current = undefined
-      playbackRef.current = result.value
-      setPlayback(result.value)
-      return { ok: true }
-    },
-    setExpression(key) {
-      if (controlled) {
-        return {
-          ok: false,
-          error: {
-            code: 'controlled_by_props',
-            key,
-            message: 'Expression is controlled by Avatar props.',
-          },
-        }
-      }
-      const result = resolveExpression(definition, key)
-      if (!result.ok) return { ok: false, error: result.error }
-      const current = playbackRef.current ?? createAvatarPlaybackState()
-      const now = performance.now()
-      const from =
-        paintedFrameRef.current ?? sampleAvatarFrame(definition, current, now, runtimeEnvironment())
-      const next = {
-        ...createAvatarPlaybackState(),
-        activeExpression: key,
-        ...(current.activeExpression === key
-          ? {}
-          : {
-              status: 'playing' as const,
-              directTransition: {
-                from,
-                startedAt: now,
-                durationMs: controlledExpressionTransitionMs,
-                transition: 'smooth' as const,
-              },
-            }),
-      }
-      playbackRef.current = next
-      setPlayback(next)
-      return { ok: true }
-    },
-    pause() {
-      const current = playbackRef.current
-      if (!current || current.status !== 'playing') return
-      const next = pauseAvatarPlayback(current, performance.now())
-      playbackRef.current = next
-      setPlayback(next)
-    },
-    stop() {
-      if (!controlled) {
-        const next = createAvatarPlaybackState()
-        playbackRef.current = next
-        setPlayback(next)
-      }
-    },
-    getState() {
-      const current = playbackRef.current ?? createAvatarPlaybackState()
-      return {
-        ...(current.activeAnimation ? { activeAnimation: current.activeAnimation } : {}),
-        activeExpression: current.activeExpression,
-        status: current.status,
-      }
-    },
-  }))
-
-  const scene = renderAvatarDefinition(definition)
-  const outline = definition.style?.outline?.enabled ? definition.style.outline : undefined
-  const outlineProps = outline
+  const outline = character.style?.outline?.enabled ? character.style.outline : null
+  const stroke = outline
     ? {
-        fill: 'none',
         stroke: outline.color,
         strokeWidth: outline.width,
         strokeOpacity: outline.opacity,
         strokeLinejoin: 'round' as const,
       }
     : {}
+  const { geometry, colors, bodyColors, transform, spinner } = first
+  const round = spinner?.round ?? 0
+  const slots = Array.from({ length: nodeSlots }, (_, index) => index)
+
   return (
-    <div
-      ref={wrapperRef}
-      className={['bs-avatar', className ?? ''].filter(Boolean).join(' ')}
-      style={{
-        ...style,
-        width: size,
-        height: size,
-      }}
+    <svg
+      ref={svg}
       role="img"
       aria-label={ariaLabel}
+      viewBox="-150 -150 300 300"
+      className={className}
+      style={{ width: size, height: size, overflow: 'visible', ...style }}
     >
-      <svg className="bs-avatar__svg" viewBox="-150 -150 300 300" aria-hidden="true">
-        <defs>
-          {Array.from({ length: bodyPathSlots }, (_, index) => (
-            <clipPath id={`${clipId}-front-${index}`} key={`front-clip-${index}`}>
-              <path
-                ref={element => {
-                  frontClipRefs.current[index] = element
-                }}
-                d={scene.geometry.frontClipPaths[index] ?? ''}
-              />
-            </clipPath>
-          ))}
-          <clipPath id={clipId}>
-            <path ref={clipPathRef} d={scene.geometry.headPath} />
+      <defs>
+        <clipPath id={`${id}-head`}>
+          <path data-part="head-clip" d={geometry.headPath} />
+        </clipPath>
+        {slots.map(index => (
+          <clipPath id={`${id}-front-${index}`} key={index}>
+            <path data-part={`front-clip-${index}`} d={geometry.frontClipPaths[index] ?? ''} />
           </clipPath>
-        </defs>
-        {outline && (
-          <g aria-hidden="true" pointerEvents="none">
-            {Array.from({ length: bodyPathSlots }, (_, index) => (
-              <path
-                {...outlineProps}
-                ref={element => {
-                  backOutlineRefs.current[index] = element
-                }}
-                d={scene.geometry.backPaths[index] ?? ''}
-                key={`outline-back-${index}`}
-              />
-            ))}
-            <path {...outlineProps} ref={headOutlineRef} d={scene.geometry.headPath} />
-            {Array.from({ length: bodyPathSlots }, (_, index) => (
-              <path
-                {...outlineProps}
-                ref={element => {
-                  frontOutlineRefs.current[index] = element
-                }}
-                d={scene.geometry.frontPaths[index] ?? ''}
-                key={`outline-front-${index}`}
-              />
-            ))}
-          </g>
-        )}
-        {Array.from({ length: bodyPathSlots }, (_, index) => (
-          <path
-            ref={element => {
-              backPathRefs.current[index] = element
-            }}
-            d={scene.geometry.backPaths[index] ?? ''}
-            fill={scene.bodyColors.back[index] ?? scene.colors.body}
-            key={`back-${index}`}
-          />
         ))}
-        <path ref={headPathRef} d={scene.geometry.headPath} fill={scene.colors.body} />
-        <g clipPath={`url(#${clipId})`} fill={scene.colors.eyes}>
+      </defs>
+      {Array.from({ length: MARK_SLOTS }, (_, index) => {
+        const mark = spinner?.marks[index]
+        return (
           <path
-            ref={leftPathRef}
-            d={scene.geometry.leftPath}
-            opacity={scene.geometry.leftVisible ? 1 : 0}
-          />
-          <path
-            ref={rightPathRef}
-            d={scene.geometry.rightPath}
-            opacity={scene.geometry.rightVisible ? 1 : 0}
-          />
-          <path ref={nosePathRef} d={scene.geometry.nosePath} />
-          <path
-            ref={mouthPathRef}
-            d={scene.geometry.mouthPath}
-            fill={scene.geometry.mouthStrokeWidth > 0 ? 'none' : scene.colors.eyes}
-            stroke={scene.geometry.mouthStrokeWidth > 0 ? scene.colors.eyes : 'none'}
+            data-part={`mark-${index}`}
+            d={mark?.d ?? ''}
+            opacity={mark?.opacity ?? 0}
+            fill={mark && mark.strokeWidth === undefined ? colors.body : 'none'}
+            stroke={mark && mark.strokeWidth !== undefined ? colors.body : 'none'}
+            strokeWidth={mark?.strokeWidth}
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth={scene.geometry.mouthStrokeWidth}
+            key={index}
           />
+        )
+      })}
+      <g
+        data-part="body"
+        transform={`matrix(${transform.join(' ')})`}
+        opacity={spinner?.opacity ?? 1}
+      >
+        <g data-part="back" opacity={1 - round}>
+          {slots.map(index => (
+            <path
+              data-part={`back-${index}`}
+              d={geometry.backPaths[index] ?? ''}
+              fill={bodyColors.back[index] ?? colors.body}
+              {...stroke}
+              key={index}
+            />
+          ))}
         </g>
-        {Array.from({ length: bodyPathSlots }, (_, index) => (
-          <path
-            ref={element => {
-              frontPathRefs.current[index] = element
-            }}
-            d={scene.geometry.frontPaths[index] ?? ''}
-            clipPath={
-              scene.geometry.frontClipPaths[index] ? `url(#${clipId}-front-${index})` : undefined
-            }
-            fill={scene.bodyColors.front[index] ?? scene.colors.body}
-            key={`front-${index}`}
-          />
-        ))}
-      </svg>
-    </div>
+        <path
+          data-part="head"
+          d={geometry.headPath}
+          fill={colors.body}
+          visibility={round >= 0.999 ? 'hidden' : 'visible'}
+          {...stroke}
+        />
+        <g data-part="face" clipPath={`url(#${id}-head)`} fill={colors.eyes} opacity={1 - round}>
+          <path data-part="left" d={geometry.leftVisible ? geometry.leftPath : ''} />
+          <path data-part="right" d={geometry.rightVisible ? geometry.rightPath : ''} />
+          <path data-part="nose" d={geometry.nosePath} />
+          <path data-part="mouth" d={geometry.mouthPath} />
+        </g>
+        <g data-part="front" opacity={1 - round}>
+          {slots.map(index => (
+            <path
+              data-part={`front-${index}`}
+              d={geometry.frontPaths[index] ?? ''}
+              fill={bodyColors.front[index] ?? colors.body}
+              clipPath={geometry.frontClipPaths[index] ? `url(#${id}-front-${index})` : undefined}
+              {...stroke}
+              key={index}
+            />
+          ))}
+        </g>
+        <path
+          data-part="disc"
+          d={spinner && round > 0 ? spinner.disc : ''}
+          fill={colors.body}
+          opacity={round}
+        />
+      </g>
+    </svg>
   )
 }

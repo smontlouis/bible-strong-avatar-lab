@@ -1,7 +1,11 @@
 import { Eye, Pause, Play, RotateCcw, Square, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 
-import { Avatar, type AvatarController, type AvatarRuntimeError } from '@bible-strong/avatar-react'
+import {
+  Avatar,
+  type AvatarController,
+  type AvatarRuntimeError,
+} from '../../../../packages/avatar-react/src/legacy'
 import type { AnimationKey, AvatarDefinition, ExpressionKey } from '@bible-strong/avatar-core'
 
 import { Button } from '@/components/ui/button'
