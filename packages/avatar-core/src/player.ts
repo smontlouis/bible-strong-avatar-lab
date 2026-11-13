@@ -392,6 +392,8 @@ export type PlayerFrame = PlayerPose & {
   eyes: [FaceEye, FaceEye]
   /** The size of each eye about its middle: `inspecting` makes one large and one small. */
   eyeScales: [number, number]
+  /** How much of the face is `inspecting`, from 0 to 1. */
+  inspectWeight: number
 }
 
 export const playerFrame = (player: Readonly<AvatarPlayer>): PlayerFrame => {
@@ -408,5 +410,6 @@ export const playerFrame = (player: Readonly<AvatarPlayer>): PlayerFrame => {
     face: player.face,
     eyes: playerEyes(player),
     eyeScales: inspectEyeScales(inspectWeight(player), lean),
+    inspectWeight: inspectWeight(player),
   }
 }
