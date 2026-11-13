@@ -70,7 +70,33 @@ function BodyStructureThumbnail({
   )
 }
 
-export function BodyConstructionAccordion({ controller }: { controller: StudioController }) {
+/** What the body's construction needs from whoever holds the avatar. */
+export type BodyConstructionController = Pick<
+  StudioController,
+  | 'addBodyNode'
+  | 'bodyNodes'
+  | 'deleteSelectedBodyNode'
+  | 'duplicateSelectedBodyNode'
+  | 'expression'
+  | 'selectBodyNode'
+  | 'selectedBodyNode'
+  | 'selectedBodyNodeId'
+  | 'surface'
+  | 't'
+  | 'updateNodeVector'
+  | 'updateSelectedBodyNode'
+  | 'updateSurface'
+> & {
+  activeAvatar: Pick<StudioController['activeAvatar'], 'colors'>
+  /** Shown on the stage while a field is being changed. Optional: a holder may not show it. */
+  updateHighlight?: StudioController['updateHighlight']
+}
+
+export function BodyConstructionAccordion({
+  controller,
+}: {
+  controller: BodyConstructionController
+}) {
   const [addOpen, setAddOpen] = useState(false)
   const {
     addBodyNode,
@@ -188,7 +214,7 @@ export function BodyConstructionAccordion({ controller }: { controller: StudioCo
                   min={0}
                   max={surface.type === 'trapezoid' ? 5 : 2}
                   step={0.01}
-                  onActiveChange={active => controller.updateHighlight(active ? 'head' : null)}
+                  onActiveChange={active => controller.updateHighlight?.(active ? 'head' : null)}
                   onChange={roundness => updateSurface({ ...surface, roundness })}
                 />
               )}
@@ -199,7 +225,7 @@ export function BodyConstructionAccordion({ controller }: { controller: StudioCo
                   min={0}
                   max={2}
                   step={0.01}
-                  onActiveChange={active => controller.updateHighlight(active ? 'head' : null)}
+                  onActiveChange={active => controller.updateHighlight?.(active ? 'head' : null)}
                   onChange={roundness => updateSurface({ ...surface, roundness })}
                 />
               )}
@@ -210,7 +236,7 @@ export function BodyConstructionAccordion({ controller }: { controller: StudioCo
                   min={0}
                   max={2}
                   step={0.01}
-                  onActiveChange={active => controller.updateHighlight(active ? 'head' : null)}
+                  onActiveChange={active => controller.updateHighlight?.(active ? 'head' : null)}
                   onChange={morphRoundness => updateSurface({ ...surface, morphRoundness })}
                 />
               )}
@@ -222,7 +248,7 @@ export function BodyConstructionAccordion({ controller }: { controller: StudioCo
                     min={0}
                     max={2}
                     step={0.01}
-                    onActiveChange={active => controller.updateHighlight(active ? 'head' : null)}
+                    onActiveChange={active => controller.updateHighlight?.(active ? 'head' : null)}
                     onChange={tipRoundness => updateSurface({ ...surface, tipRoundness })}
                   />
                   <NumericField
@@ -231,7 +257,7 @@ export function BodyConstructionAccordion({ controller }: { controller: StudioCo
                     min={0}
                     max={2}
                     step={0.01}
-                    onActiveChange={active => controller.updateHighlight(active ? 'head' : null)}
+                    onActiveChange={active => controller.updateHighlight?.(active ? 'head' : null)}
                     onChange={baseRoundness => updateSurface({ ...surface, baseRoundness })}
                   />
                 </>
