@@ -183,6 +183,9 @@ const english: Record<string, string> = {
   'Sort 2 fois plus souvent': 'Comes out 2 times as often',
   'Sort 3 fois plus souvent': 'Comes out 3 times as often',
   'Sort 4 fois plus souvent': 'Comes out 4 times as often',
+  'Tire ses clips au hasard, chacun une fois par tour, sans fin':
+    'Draws its clips at random, each once a round, without end',
+  'Joue son clip en boucle, sans fin': 'Plays its clip round and round, without end',
   'Taille des yeux': 'Eye size',
   'Écart des yeux': 'Eye gap',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':
@@ -1066,6 +1069,12 @@ const frenchStates: Record<string, string> = {
 }
 
 const dynamicTranslations: [RegExp, string][] = [
+  [/^Passe à (.+) après (.+) s$/, 'Goes on to $1 after $2 s'],
+  [
+    /^Joue ses clips une fois chacun, dans l’ordre, puis passe à (.+)$/,
+    'Plays its clips once each, in order, then goes on to $1',
+  ],
+  [/^Joue son clip une fois, puis passe à (.+)$/, 'Plays its clip once, then goes on to $1'],
   [/^Modifier l’expression (.+)$/, 'Edit expression $1'],
   [/^Modifier (.+)$/, 'Edit $1'],
   [/^Supprimer (.+) \?$/, 'Delete $1?'],

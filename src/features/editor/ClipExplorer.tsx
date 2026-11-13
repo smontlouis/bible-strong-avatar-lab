@@ -14,7 +14,20 @@ import {
   type ClipFaceKey,
   type ClipKey,
 } from '@bible-strong/avatar-core'
-import { ChevronRight, LoaderCircle, Smile, Pause, Play, Repeat, SkipBack, X } from 'lucide-react'
+import {
+  ChevronRight,
+  Clock,
+  ListOrdered,
+  LoaderCircle,
+  Shuffle,
+  SkipForward,
+  Smile,
+  Pause,
+  Play,
+  Repeat,
+  SkipBack,
+  X,
+} from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -730,21 +743,48 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
     setDoing({ state: item })
   }
 
-  const policy = !state
-    ? ''
-    : state.next && state.holdSeconds !== undefined
-      ? `${state.holdSeconds} s → ${state.next}`
-      : state.next
-        ? `${t('Dans l’ordre')} → ${state.next}`
-        : name && clipsOfState(name).length > 1
-          ? t('Mélangé')
-          : t('Un seul clip')
+  // How the state plays its clips, said short on the pill and in full over it.
+  const policy = (() => {
+    if (!state || !name) return null
+    const distinct = clipsOfState(name).length
+    if (state.next && state.holdSeconds !== undefined) {
+      return {
+        icon: Clock,
+        label: `${state.holdSeconds} s → ${state.next}`,
+        title: t(`Passe à ${state.next} après ${state.holdSeconds} s`),
+      }
+    }
+    if (state.next) {
+      return distinct > 1
+        ? {
+            icon: ListOrdered,
+            label: `${t('Dans l’ordre')} → ${state.next}`,
+            title: t(`Joue ses clips une fois chacun, dans l’ordre, puis passe à ${state.next}`),
+          }
+        : {
+            icon: SkipForward,
+            label: `${t('Une fois')} → ${state.next}`,
+            title: t(`Joue son clip une fois, puis passe à ${state.next}`),
+          }
+    }
+    return distinct > 1
+      ? {
+          icon: Shuffle,
+          label: t('Mélangé'),
+          title: t('Tire ses clips au hasard, chacun une fois par tour, sans fin'),
+        }
+      : { icon: Repeat, label: t('Un seul clip'), title: t('Joue son clip en boucle, sans fin') }
+  })()
 
   const tiles = state && name && (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-1.5">
         <h3 className="mr-1 text-lg font-semibold">{name}</h3>
-        <Pill>{policy}</Pill>
+        {policy && (
+          <Pill icon={policy.icon} title={policy.title}>
+            {policy.label}
+          </Pill>
+        )}
         {state.face && (
           <Pill icon={Smile} title={t('Visage tenu par l’état')}>
             {state.face}
