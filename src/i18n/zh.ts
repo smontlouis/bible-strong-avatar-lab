@@ -147,6 +147,8 @@ export const chinese: Record<string, string> = {
   'Place l’avatar librement : glisse sur la scène pour le tourner, sers-toi du gizmo de rotation, ou règle les valeurs. Le clip est arrêté.':
     '自由摆放头像：在舞台上拖动旋转，使用旋转控件，或直接设置数值。片段已停止。',
   visages: '个表情',
+  'Un geste se pose par-dessus la pose, puis s’efface. Plusieurs gestes s’additionnent.':
+    '手势叠加在姿势之上，随后消失。多个手势会相加。',
   'Couleur héritée': '继承颜色',
   'Suit la rotation du corps': '跟随身体旋转',
   'Désactivé, la forme reste en place quand le corps tourne. Elle le suit toujours quand il se déplace.':

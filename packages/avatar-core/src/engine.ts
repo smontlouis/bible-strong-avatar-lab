@@ -110,7 +110,7 @@ export type FreePose = {
   rotation?: [number, number, number]
   /**
    * The turn of the head given whole, as a tool that turns the avatar freely has it. It takes
-   * the place of `rotation`, and of the turns that gestures and the gaze would add.
+   * the place of `rotation`; gestures and the gaze still turn the avatar on top of it.
    */
   orientation?: Quaternion
   /** Across and up, in body radii. */
@@ -523,7 +523,10 @@ export type SpinnerFrame = {
 
 export type EngineFrame = PlayerFrame & {
   spinner: SpinnerFrame | null
-  /** The turn of the head when a pose set by hand gives it whole. */
+  /**
+   * The turn of the head when a pose set by hand gives it whole. `rotation` is then only what
+   * gestures and the gaze add to it.
+   */
   orientation?: Quaternion
 }
 
@@ -587,7 +590,12 @@ export const engineFrame = (engine: Readonly<AvatarEngine>): EngineFrame => {
     if (pose.rotation) frame.rotation = [pose.rotation[0], pose.rotation[1], pose.rotation[2]]
     if (pose.position) frame.position = [pose.position[0], pose.position[1]]
     if (pose.zoom !== undefined) frame.zoom = pose.zoom
-    if (pose.orientation) frame.orientation = pose.orientation
+    if (pose.orientation) {
+      // The turn is given whole. What gestures and the gaze add is kept apart, counted from
+      // nothing, and laid over that turn when the avatar is drawn.
+      frame.orientation = pose.orientation
+      frame.rotation = [0, 0, 0]
+    }
   }
 
   const gaze = engine.gaze

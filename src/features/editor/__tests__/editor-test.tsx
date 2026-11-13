@@ -107,13 +107,17 @@ describe('the editor', () => {
 
   it('stops the avatar and lets it be turned by hand in the Pose tab', () => {
     const { getByRole, getByLabelText, queryByRole } = open()
+    // Gestures are a toy of the pose tool: the stage only offers the photo mode.
+    expect(queryByRole('button', { name: 'bounce' })).toBeNull()
+    expect(getByRole('button', { name: 'Ouvrir le mode photo' })).toBeTruthy()
     fireEvent.click(getByRole('button', { name: 'Pose' }))
     frames(4)
     fireEvent.change(getByLabelText('Rotation Y'), { target: { value: '40' } })
     frames(4)
-    // The rotation gizmo is on the stage; the gestures are for an avatar that plays.
     expect(getByLabelText('Gizmo de rotation')).toBeTruthy()
-    expect(queryByRole('button', { name: 'bounce' })).toBeNull()
+    fireEvent.click(getByRole('button', { name: 'bounce' }))
+    frames(10)
+    expect(getByRole('switch', { name: 'Suit le pointeur' })).toBeTruthy()
   })
 
   it('opens the photo mode from the stage, with its tools, and leaves it', () => {

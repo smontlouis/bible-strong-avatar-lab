@@ -359,6 +359,19 @@ describe('a pose set by hand', () => {
     expect(engineFrame(engine).orientation).toBeUndefined()
   })
 
+  it('keeps a gesture apart from a turn given whole, to be laid over it', () => {
+    const engine = createAvatarEngine()
+    setEnginePose(engine, { orientation: [0.7071, 0, 0.7071, 0] })
+    pokeEngine(engine, 'nod')
+    run(engine, 0.25)
+    const frame = engineFrame(engine)
+    expect(frame.orientation).toEqual([0.7071, 0, 0.7071, 0])
+    expect(frame.rotation[0]).toBeCloseTo(16, 0)
+    expect(frame.rotation[1]).toBe(0)
+    run(engine, 0.3)
+    expect(engineFrame(engine).rotation).toEqual([0, 0, 0])
+  })
+
   it('still takes a gesture on top', () => {
     const engine = createAvatarEngine()
     setEnginePose(engine, { rotation: [0, 30, 0] })

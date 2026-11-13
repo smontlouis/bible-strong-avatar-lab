@@ -25,7 +25,6 @@ import {
   Download,
   Film,
   ListChecks,
-  MousePointer2,
   Move3D,
   Pencil,
   Play,
@@ -424,6 +423,31 @@ function PosePanel({ editor }: { editor: EditorState }) {
         )}
       </p>
       <PoseControls editor={editor} />
+      <InspectorCard>
+        <PanelTitle
+          level={3}
+          title="Gestes"
+          subtitle="Un geste se pose par-dessus la pose, puis s’efface. Plusieurs gestes s’additionnent."
+        />
+        <Chips>
+          {gestureNames.map(name => (
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
+              key={name}
+              onClick={() => pokeEngine(editor.engine.current, name)}
+            >
+              {name}
+            </Button>
+          ))}
+        </Chips>
+        <SwitchRow
+          label="Suit le pointeur"
+          checked={editor.followsPointer}
+          onChange={editor.setFollowsPointer}
+        />
+      </InspectorCard>
       <Group title="Visage">
         <FaceChips editor={editor} />
       </Group>
@@ -866,35 +890,6 @@ export function Editor() {
               {t(photoMode ? 'Prendre une photo' : 'Mode photo')}
             </span>
           </Button>
-          {!stopped && (
-            <>
-              {gestureNames.map(name => (
-                <Button
-                  className="photo-capture-button"
-                  variant="secondary"
-                  type="button"
-                  style={{ minWidth: 0, paddingInline: 14 }}
-                  key={name}
-                  onClick={() => pokeEngine(engine.current, name)}
-                >
-                  <span className="photo-capture-label">{name}</span>
-                </Button>
-              ))}
-              <Button
-                className="photo-capture-button"
-                variant={editor.followsPointer ? 'default' : 'secondary'}
-                type="button"
-                size="icon"
-                style={{ minWidth: 0 }}
-                aria-pressed={editor.followsPointer}
-                aria-label={t('Suit le pointeur')}
-                title={t('Suit le pointeur')}
-                onClick={() => editor.setFollowsPointer(!editor.followsPointer)}
-              >
-                <MousePointer2 />
-              </Button>
-            </>
-          )}
         </div>
       )}
       <p className="stage-credit">

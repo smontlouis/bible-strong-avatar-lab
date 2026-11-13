@@ -130,7 +130,8 @@ export function Stage({
   }, [building, posing, pose, turned, playing, engine])
 
   useEffect(() => {
-    const follows = followsPointer && !building && !posing
+    // The gaze is a toy of the pose tool: the avatar turns to the pointer from the pose it has.
+    const follows = followsPointer && tab === 'pose' && !building && !photoMode
     setEngineGazeAlways(engine.current, follows)
     if (!follows) {
       setEngineGaze(engine.current, null)
@@ -146,7 +147,7 @@ export function Stage({
     }
     window.addEventListener('pointermove', look)
     return () => window.removeEventListener('pointermove', look)
-  }, [followsPointer, building, posing, engine])
+  }, [followsPointer, building, tab, photoMode, engine])
 
   useEffect(() => {
     if (!character) return

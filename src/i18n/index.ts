@@ -180,6 +180,8 @@ const english: Record<string, string> = {
   'Place l’avatar librement : glisse sur la scène pour le tourner, sers-toi du gizmo de rotation, ou règle les valeurs. Le clip est arrêté.':
     'Place the avatar freely: drag on the stage to turn it, use the rotation gizmo, or set the values. The clip is stopped.',
   visages: 'faces',
+  'Un geste se pose par-dessus la pose, puis s’efface. Plusieurs gestes s’additionnent.':
+    'A gesture is laid over the pose, then goes away. Several gestures add up.',
   'Couleur héritée': 'Inherited color',
   'Suit la rotation du corps': 'Follows the body rotation',
   'Désactivé, la forme reste en place quand le corps tourne. Elle le suit toujours quand il se déplace.':

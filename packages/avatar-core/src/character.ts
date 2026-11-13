@@ -298,6 +298,8 @@ export const renderCharacterFrame = (
   // Halfway to a spinner the body has no face left.
   const faceless = spinner !== null && spinner.amount >= 0.5
   const body = bodyFromDefinition(character.body)
+  // A turn given whole by a pose set by hand: gestures and the gaze turn the avatar over it.
+  const given = 'orientation' in frame ? frame.orientation : undefined
   const pose: AvatarPose = {
     // The pose only carries what the face is built of: where the head is and how it is turned
     // come from the frame.
@@ -313,8 +315,9 @@ export const renderCharacterFrame = (
       perspective: character.face.perspective,
       motion: { eyes: 'none', body: 'none' },
     }),
-    orientation:
-      ('orientation' in frame ? frame.orientation : undefined) ?? orientationOf(frame.rotation),
+    orientation: given
+      ? multiplyQuaternions(orientationOf(frame.rotation), given)
+      : orientationOf(frame.rotation),
   }
   const bodyColor = character.colors.body
   const geometry = renderAvatar(pose, body.primary, 1, {
