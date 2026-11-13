@@ -115,7 +115,15 @@ export type RenderAvatarOptions = {
   /** The body's colour, for `mask`: a node of that colour, or of none, is not measured. */
   bodyColor?: string
   eyeOffset?: Readonly<{ x: number; y: number }>
+  /**
+   * The outline of each eye on the face, seen from the front: across and down from the middle
+   * of the face. When given, the eyes are these shapes laid on the head, and the eyes of the
+   * pose are not drawn.
+   */
+  eyeOutlines?: Readonly<{ left: EyeOutline; right: EyeOutline }>
 }
+
+export type EyeOutline = readonly (readonly [number, number])[]
 
 export type EyeEditorGeometry = {
   visible: boolean
@@ -1951,8 +1959,13 @@ export const renderAvatar = (
   blink = 1,
   options: RenderAvatarOptions = {}
 ): AvatarGeometry => {
-  const leftSamples = eyePoints(pose, surface, -1, blink, options.eyeOffset)
-  const rightSamples = eyePoints(pose, surface, 1, blink, options.eyeOffset)
+  const outlines = options.eyeOutlines
+  const leftSamples = outlines
+    ? outlines.left.map(([x, y]) => projectFacePoint(pose, surface, x, y))
+    : eyePoints(pose, surface, -1, blink, options.eyeOffset)
+  const rightSamples = outlines
+    ? outlines.right.map(([x, y]) => projectFacePoint(pose, surface, x, y))
+    : eyePoints(pose, surface, 1, blink, options.eyeOffset)
   const left = leftSamples.map(sample => sample.point)
   const right = rightSamples.map(sample => sample.point)
   const nose = nosePoints(pose, surface)

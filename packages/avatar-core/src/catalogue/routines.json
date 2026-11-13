@@ -1,0 +1,115 @@
+{
+  "chat": [
+    [
+      "working",
+      1.6,
+      [
+        "Getting it done",
+        "Making progress",
+        "Working on it",
+        "Handling it",
+        "Chipping away",
+        "Concocting"
+      ]
+    ],
+    ["thinking", 2.8, ["Thinking it through", "Mulling it over", "Putting it together", "Brewing"]],
+    ["searching", 2.8, "Digging around"],
+    ["reading", 3.2, "Doing some reading"],
+    ["thinking", 2.4, ["Thinking it through", "Mulling it over", "Putting it together", "Brewing"]],
+    ["streaming", 3.2, "Typing\u2026"],
+    ["finished", 2.4],
+    ["idle", 1.2],
+    ["thinking", 2.6, ["Thinking it through", "Mulling it over", "Putting it together", "Brewing"]],
+    ["writing", 3, "Jotting it down"],
+    ["streaming", 3, "Typing\u2026"],
+    ["finished", 2.4],
+    ["idle", 1.2]
+  ],
+  "code": [
+    [
+      "working",
+      1.6,
+      [
+        "Getting it done",
+        "Making progress",
+        "Working on it",
+        "Handling it",
+        "Chipping away",
+        "Concocting"
+      ]
+    ],
+    ["thinking", 2.6, ["Thinking it through", "Mulling it over", "Putting it together", "Brewing"]],
+    ["reading", 2.8, "Reading the file"],
+    ["running", 2.8, "Running a few commands"],
+    ["writing", 3, "Jotting it down"],
+    ["running", 3, "Running a few commands"],
+    ["waiting", 3, ["Waiting on results", "Fermenting"]],
+    ["thinking", 2.4, ["Thinking it through", "Mulling it over", "Putting it together", "Brewing"]],
+    ["writing", 2.8, "Jotting it down"],
+    ["streaming", 3, "Typing\u2026"],
+    ["finished", 2.4],
+    ["idle", 1.2]
+  ],
+  "research": [
+    [
+      "working",
+      1.6,
+      [
+        "Getting it done",
+        "Making progress",
+        "Working on it",
+        "Handling it",
+        "Chipping away",
+        "Concocting"
+      ]
+    ],
+    ["thinking", 2.6, ["Thinking it through", "Mulling it over", "Putting it together", "Brewing"]],
+    ["searching", 3, "Digging around"],
+    ["reading", 3, "Doing some reading"],
+    ["reading", 2.8, "Clicking through pages"],
+    ["thinking", 2.4, ["Thinking it through", "Mulling it over", "Putting it together", "Brewing"]],
+    ["searching", 2.8, "Digging around"],
+    ["reading", 3, "Doing some reading"],
+    ["sending", 3, "Checking with another Bot"],
+    ["thinking", 2.4, ["Thinking it through", "Mulling it over", "Putting it together", "Brewing"]],
+    ["streaming", 3.4, "Typing\u2026"],
+    ["finished", 2.4],
+    ["idle", 1.2]
+  ],
+  "computer-use": [
+    [
+      "working",
+      2,
+      [
+        "Getting it done",
+        "Making progress",
+        "Working on it",
+        "Handling it",
+        "Chipping away",
+        "Concocting"
+      ]
+    ],
+    ["computing", 3, ["Clicking around", "Canoodling"]],
+    ["reading", 2.8, "Clicking through pages"],
+    ["thinking", 2.6, ["Thinking it through", "Mulling it over", "Putting it together", "Brewing"]],
+    ["controlling", 3, "Working on your computer"],
+    ["waiting", 3, "Needs your input"],
+    ["blocked", 3],
+    [
+      "working",
+      2,
+      [
+        "Getting it done",
+        "Making progress",
+        "Working on it",
+        "Handling it",
+        "Chipping away",
+        "Concocting"
+      ]
+    ],
+    ["computing", 3, "Clicking around"],
+    ["streaming", 3, "Typing\u2026"],
+    ["finished", 2.4],
+    ["idle", 1.2]
+  ]
+}
