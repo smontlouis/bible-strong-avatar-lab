@@ -118,6 +118,39 @@ describe('@bible-strong/avatar-web', () => {
     expect(head()).not.toBe(held)
   })
 
+  it('fades to grey when muted, and back', () => {
+    const avatar = createAvatar('#avatar', { character: legacyJson, muted: true })
+    const svg = document.querySelector<SVGSVGElement>('#avatar svg')!
+    expect(svg.style.filter).toBe('grayscale(1)')
+    expect(svg.style.transition).toContain('filter')
+    avatar.setMuted(false)
+    expect(svg.style.filter).toBe('')
+  })
+
+  it('stops computing once settled, eyes open, and wakes when asked for something', () => {
+    const avatar = createAvatar('#avatar', { character: legacyJson, settleAfterMs: 500 })
+    run(20)
+    expect(frames.size).toBe(1)
+    // Within a few seconds the eyes are open past the delay: the loop stops.
+    run(60 * 6)
+    expect(frames.size).toBe(0)
+    const held = head()
+
+    avatar.setState('happy')
+    expect(frames.size).toBe(1)
+    run(60 * 6)
+    expect(frames.size).toBe(0)
+
+    avatar.poke('nod')
+    expect(frames.size).toBe(1)
+    run(10)
+    expect(head()).not.toBe(held)
+
+    avatar.setSettleAfterMs(0)
+    run(60 * 6)
+    expect(frames.size).toBe(1)
+  })
+
   it('stops its frames while out of sight', () => {
     let notify: IntersectionObserverCallback = () => undefined
     vi.stubGlobal(

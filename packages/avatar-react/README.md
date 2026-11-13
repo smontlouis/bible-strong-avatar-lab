@@ -74,6 +74,8 @@ Every character plays the same catalogue, exported by `@bible-strong/avatar-core
 | `paused`        | `boolean`           | `false`       | Stops the avatar where it is: nothing is computed meanwhile.    |
 | `followPointer` | `boolean`           | `false`       | The head follows the pointer.                                   |
 | `emphasis`      | `boolean`           | `false`       | A state without a face of its own shows surprise.               |
+| `muted`         | `boolean`           | `false`       | Fades every colour to its grey in 300 ms (a CSS filter).        |
+| `settleAfterMs` | `number`            | `0`           | Holds the pose this long after the last change, eyes open.      |
 | `seed`          | `number`            | from the name | Two avatars with the same seed draw the same clips.             |
 | `size`          | `number \| string`  | `240`         | Width and height. A number is in pixels.                        |
 | `className`     | `string`            | —             | Class of the `svg`.                                             |
@@ -88,7 +90,10 @@ shorter list of clips uses it.
 ## Behavior to know
 
 - The avatar always moves: `idle` plays its clips round and round. The frame loop stops while the
-  avatar is out of view, and while it is paused.
+  avatar is out of view, while it is paused, and once `settleAfterMs` has passed since the last
+  change, at a moment its eyes are open and no gesture plays. A prop change, a `poke`, or the
+  pointer it follows wakes it. Give `settleAfterMs` to an avatar that decorates a row, a card or
+  a list.
 - With `prefers-reduced-motion: reduce`, the avatar holds one settled picture, drawn again when a
   prop changes.
 - The body may move past its box while a clip plays: the `svg` has `overflow: visible`. Leave some

@@ -41,6 +41,14 @@ export type CreateAvatarOptions = {
   paused?: boolean
   /** Let the avatar follow the pointer with its head. */
   followPointer?: boolean
+  /** Fades every colour to its grey in 300 ms, as for a control left idle. */
+  muted?: boolean
+  /**
+   * Hold the pose this long after the avatar was last asked for something, eyes open, and stop
+   * computing frames: for an avatar set in a row or a card, which need not move for as long as
+   * it is on screen. Asking it for something else wakes it. 0 keeps it moving.
+   */
+  settleAfterMs?: number
   /** Two avatars with the same seed draw the same clips. By default it comes from the name. */
   seed?: number
   /** Width and height. A number is in pixels. */
@@ -72,6 +80,9 @@ export type AvatarController = {
   pause(): void
   resume(): void
   setFollowPointer(follow: boolean): void
+  setMuted(muted: boolean): void
+  /** See the option. Changing it counts as asking the avatar for something. */
+  setSettleAfterMs(ms: number): void
   getState(): AvatarSnapshot
   /** Remove the avatar from the page and stop everything it runs. */
   destroy(): void
@@ -85,6 +96,8 @@ const COMPACT_UNDER = 48
 // How long the avatar is run to find a pose to hold for someone who asked for less motion.
 const SETTLE_STEPS = 60
 const SETTLE_STEP_SECONDS = 0.1
+// Below this the eyelids are open: a pose the avatar can hold.
+const OPEN_LIDS = 0.05
 
 let instances = 0
 
@@ -258,6 +271,8 @@ export function createAvatar(
     emphasis = false,
     paused = false,
     followPointer = false,
+    muted = false,
+    settleAfterMs = 0,
     seed,
     size = 240,
     ariaLabel = 'Avatar',
@@ -277,6 +292,11 @@ export function createAvatar(
   host.setAttribute('role', 'img')
   host.setAttribute('aria-label', ariaLabel)
   const picture = buildPicture(character, id)
+  picture.svg.style.transition = 'filter 300ms ease-out'
+  const setMuted = (on: boolean) => {
+    picture.svg.style.filter = on ? 'grayscale(1)' : ''
+  }
+  setMuted(muted)
   host.append(picture.svg)
   mount.append(host)
 
@@ -297,8 +317,12 @@ export function createAvatar(
   let request: number | null = null
   let last: number | undefined
   let reported = engine.state
+  let settleAfter = settleAfterMs
+  // When the avatar was last asked for something: the first frame after it.
+  let askedAt: number | undefined
 
-  const draw = () => paint(picture, renderCharacterFrame(character, engineFrame(engine)), id)
+  const draw = (frame = engineFrame(engine)) =>
+    paint(picture, renderCharacterFrame(character, frame), id)
   const report = () => {
     if (engine.state === reported) return
     reported = engine.state
@@ -310,9 +334,17 @@ export function createAvatar(
     // A frame that comes late does not throw the avatar: the engine caps its own step.
     advanceEngine(engine, last === undefined ? 0 : (now - last) / 1000)
     last = now
-    draw()
+    askedAt ??= now
+    const frame = engineFrame(engine)
+    draw(frame)
     report()
-    if (visible) request = requestAnimationFrame(tick)
+    const settled =
+      settleAfter > 0 &&
+      now - askedAt >= settleAfter &&
+      frame.lids < OPEN_LIDS &&
+      engine.gestures.length === 0
+    if (settled) last = undefined
+    else if (visible) request = requestAnimationFrame(tick)
   }
   const stopLoop = () => {
     if (request !== null) cancelAnimationFrame(request)
@@ -330,6 +362,11 @@ export function createAvatar(
       return
     }
     if (request === null && visible) request = requestAnimationFrame(tick)
+  }
+  // The avatar was asked for something: it moves again, and its wait to settle starts over.
+  const ask = () => {
+    askedAt = undefined
+    refresh()
   }
 
   const observer =
@@ -361,6 +398,8 @@ export function createAvatar(
         (event.clientX - (box.left + box.width / 2)) / (box.width * 2),
         -(event.clientY - (box.top + box.height / 2)) / (box.width * 2),
       ])
+      // A settled avatar looks up when the pointer moves.
+      ask()
     }
     window.addEventListener('pointermove', pointerListener)
   }
@@ -373,27 +412,27 @@ export function createAvatar(
     setState(name) {
       if (!states[resolveStateName(name)]) return false
       setEngineState(engine, name)
-      refresh()
+      ask()
       return true
     },
     playClip(name) {
       const asked = clips[name]
       if (!asked) return false
       playEngineClip(engine, asked)
-      refresh()
+      ask()
       return true
     },
     setFace(name) {
       setEngineFace(engine, name)
-      refresh()
+      ask()
     },
     setEmphasis(on) {
       setEngineEmphasis(engine, on)
-      refresh()
+      ask()
     },
     poke(gesture, turns) {
       pokeEngine(engine, gesture, turns)
-      refresh()
+      ask()
     },
     pause() {
       held = true
@@ -403,11 +442,16 @@ export function createAvatar(
     resume() {
       held = false
       resumeEngine(engine)
-      refresh()
+      ask()
     },
     setFollowPointer(follow) {
       setFollowPointer(follow)
-      refresh()
+      ask()
+    },
+    setMuted,
+    setSettleAfterMs(ms) {
+      settleAfter = ms
+      ask()
     },
     getState() {
       return {

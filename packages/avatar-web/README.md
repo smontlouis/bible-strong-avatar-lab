@@ -87,6 +87,8 @@ Every character plays the same catalogue, exported by `@bible-strong/avatar-core
 | `emphasis`      | `boolean`          | `false`       | A state without a face of its own shows surprise.              |
 | `paused`        | `boolean`          | `false`       | Start still: nothing is computed until `resume()`.             |
 | `followPointer` | `boolean`          | `false`       | The head follows the pointer.                                  |
+| `muted`         | `boolean`          | `false`       | Fades every colour to its grey in 300 ms.                      |
+| `settleAfterMs` | `number`           | `0`           | Holds the pose this long after the last request, eyes open.    |
 | `seed`          | `number`           | from the name | Two avatars with the same seed draw the same clips.            |
 | `size`          | `number \| string` | `240`         | Number of pixels, or a CSS value, for the width and height.    |
 | `className`     | `string`           | —             | Class added to the mounted `span`, next to `bs-avatar`.        |
@@ -106,6 +108,8 @@ Under 48 pixels an avatar is compact: a state with a shorter list of clips uses 
 | `poke(gesture, turns?)` | `void`           | Lays a gesture over what plays. Gestures add up.                 |
 | `pause()` / `resume()`  | `void`           | Freezes the picture; what is asked meanwhile plays on `resume`.  |
 | `setFollowPointer(on)`  | `void`           | See the option.                                                  |
+| `setMuted(on)`          | `void`           | See the option.                                                  |
+| `setSettleAfterMs(ms)`  | `void`           | See the option. Wakes the avatar.                                |
 | `getState()`            | `AvatarSnapshot` | `{ state, clip, paused }`.                                       |
 | `destroy()`             | `void`           | Stops everything the avatar runs and removes the mounted `span`. |
 
@@ -120,7 +124,10 @@ Under 48 pixels an avatar is compact: a state with a shorter list of clips uses 
 ## Behavior to know
 
 - The avatar always moves: `idle` plays its clips round and round. The frame loop stops while the
-  avatar is out of view, and while it is paused.
+  avatar is out of view, while it is paused, and once `settleAfterMs` has passed since it was
+  last asked for something, at a moment its eyes are open and no gesture plays. Any method but
+  `getState` and `setMuted` wakes it, and so does the pointer when it follows it. Give
+  `settleAfterMs` to an avatar that decorates a row, a card or a list.
 - With `prefers-reduced-motion: reduce`, the avatar holds one settled picture, drawn again when it
   is asked for something.
 - The body may move past its box while a clip plays (a jump, a stretch): the SVG does not clip

@@ -155,6 +155,38 @@ describe('@bible-strong/avatar-react', () => {
     expect(front.getAttribute('clip-path')).toMatch(/^url\(#.*-front-0\)$/)
   })
 
+  it('fades to grey when muted', () => {
+    const { container, rerender } = render(<Avatar character={character} />)
+    const svg = container.querySelector('svg')!
+    expect(svg.style.filter).toBe('')
+    rerender(<Avatar character={character} muted />)
+    expect(svg.style.filter).toBe('grayscale(1)')
+    expect(svg.style.transition).toContain('filter')
+  })
+
+  it('stops computing once settled, eyes open, and wakes when asked for something', () => {
+    const handle = createRef<AvatarHandle>()
+    const { container, rerender } = render(
+      <Avatar character={character} ref={handle} settleAfterMs={500} />
+    )
+    frames(20)
+    expect(pending).toHaveLength(1)
+    // Within a few seconds the eyes are open past the delay: the loop stops.
+    frames(60 * 6)
+    expect(pending).toHaveLength(0)
+    const held = part(container, 'left').getAttribute('d')
+
+    rerender(<Avatar character={character} ref={handle} settleAfterMs={500} state="happy" />)
+    expect(pending).toHaveLength(1)
+    frames(60 * 6)
+    expect(pending).toHaveLength(0)
+
+    act(() => handle.current!.poke('nod'))
+    expect(pending).toHaveLength(1)
+    frames(10)
+    expect(part(container, 'left').getAttribute('d')).not.toBe(held)
+  })
+
   it('makes a component for one character', () => {
     const Fixture = createAvatar(character)
     const { getByRole } = render(<Fixture ariaLabel="Mine" size={32} />)

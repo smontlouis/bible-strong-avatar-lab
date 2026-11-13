@@ -64,6 +64,14 @@ export type AvatarProps = {
    * comes from the character's name.
    */
   seed?: number
+  /** Fades every colour to its grey in 300 ms, as for a control left idle. */
+  muted?: boolean
+  /**
+   * Hold the pose this long after the avatar was last asked for something, eyes open, and stop
+   * computing frames: for an avatar set in a row or a card, which need not move for as long as
+   * it is on screen. Asking it for something else wakes it. 0 keeps it moving.
+   */
+  settleAfterMs?: number
   /** Width and height. A number is in pixels. */
   size?: number | string
   className?: string
@@ -80,6 +88,9 @@ const COMPACT_UNDER = 48
 // How long the avatar is run to find a pose to hold for someone who asked for less motion.
 const SETTLE_STEPS = 60
 const SETTLE_STEP_SECONDS = 0.1
+// Below this the eyelids are open: a pose the avatar can hold.
+const OPEN_LIDS = 0.05
+const MUTE_TRANSITION = 'filter 300ms ease-out'
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
@@ -101,6 +112,8 @@ export function Avatar({
   paused = false,
   followPointer = false,
   emphasis = false,
+  muted = false,
+  settleAfterMs = 0,
   seed,
   size = 240,
   className,
@@ -133,10 +146,17 @@ export function Avatar({
   const svg = useRef<SVGSVGElement | null>(null)
   const callbacks = useRef({ onStateChange })
   callbacks.current = { onStateChange }
+  // Starts the loop again once the avatar has settled: something was asked of it.
+  const wake = useRef(() => {})
 
   useImperativeHandle(
     ref,
-    () => ({ poke: (gesture, turns) => pokeEngine(engine, gesture, turns) }),
+    () => ({
+      poke: (gesture, turns) => {
+        pokeEngine(engine, gesture, turns)
+        wake.current()
+      },
+    }),
     [engine]
   )
 
@@ -226,13 +246,16 @@ export function Avatar({
         (event.clientX - (box.left + box.width / 2)) / (box.width * 2),
         -(event.clientY - (box.top + box.height / 2)) / (box.width * 2),
       ])
+      // A settled avatar looks up when the pointer moves.
+      wake.current()
     }
     window.addEventListener('pointermove', look)
     return () => window.removeEventListener('pointermove', look)
   }, [engine, followPointer])
 
-  // The loop. It stops while the avatar is out of sight, and does not start for someone who
-  // asked for less motion: they get one settled picture, drawn again when something changes.
+  // The loop. It stops while the avatar is out of sight, once it has settled, and does not start
+  // for someone who asked for less motion: they get one settled picture, drawn again when
+  // something changes.
   const reduced = prefersReducedMotion()
   useLayoutEffect(() => {
     let reported = engine.state
@@ -248,18 +271,33 @@ export function Avatar({
     }
     // Paused, nothing is computed: what is asked meanwhile plays once the avatar goes on.
     if (paused) return
-    let request = 0
+    let request: number | null = null
     let last: number | undefined
     let visible = true
+    // When the avatar was last asked for something: the first frame after it.
+    let askedAt: number | undefined
     const tick = (now: number) => {
+      request = null
       // A frame that comes late does not throw the avatar: the engine caps its own step.
       advanceEngine(engine, last === undefined ? 0 : (now - last) / 1000)
       last = now
-      draw(renderCharacterFrame(character, engineFrame(engine)))
+      askedAt ??= now
+      const frame = engineFrame(engine)
+      draw(renderCharacterFrame(character, frame))
       report()
-      if (visible) request = requestAnimationFrame(tick)
+      const settled =
+        settleAfterMs > 0 &&
+        now - askedAt >= settleAfterMs &&
+        frame.lids < OPEN_LIDS &&
+        engine.gestures.length === 0
+      if (settled) last = undefined
+      else if (visible) request = requestAnimationFrame(tick)
     }
     request = requestAnimationFrame(tick)
+    wake.current = () => {
+      askedAt = undefined
+      if (request === null && visible) request = requestAnimationFrame(tick)
+    }
     const observer =
       typeof IntersectionObserver === 'undefined' || !svg.current
         ? null
@@ -267,18 +305,20 @@ export function Avatar({
             const seen = entries[entries.length - 1]?.isIntersecting ?? true
             if (seen === visible) return
             visible = seen
-            cancelAnimationFrame(request)
+            if (request !== null) cancelAnimationFrame(request)
+            request = null
             last = undefined
             if (visible) request = requestAnimationFrame(tick)
           })
     if (observer && svg.current) observer.observe(svg.current)
     return () => {
-      cancelAnimationFrame(request)
+      if (request !== null) cancelAnimationFrame(request)
       observer?.disconnect()
+      wake.current = () => {}
     }
     // `draw` reads the latest refs; the loop only restarts for what it closes over.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, character, reduced, state, clip, face, pose, paused])
+  }, [engine, character, reduced, state, clip, face, pose, paused, emphasis, settleAfterMs])
 
   const outline = character.style?.outline?.enabled ? character.style.outline : null
   const stroke = outline
@@ -300,7 +340,14 @@ export function Avatar({
       aria-label={ariaLabel}
       viewBox="-150 -150 300 300"
       className={className}
-      style={{ width: size, height: size, overflow: 'visible', ...style }}
+      style={{
+        width: size,
+        height: size,
+        overflow: 'visible',
+        filter: muted ? 'grayscale(1)' : undefined,
+        transition: MUTE_TRANSITION,
+        ...style,
+      }}
     >
       <defs>
         <clipPath id={`${id}-head`}>

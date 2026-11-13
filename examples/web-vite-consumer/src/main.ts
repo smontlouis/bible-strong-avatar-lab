@@ -23,6 +23,11 @@ document.querySelectorAll<HTMLButtonElement>('[data-state]').forEach(button => {
 document.querySelectorAll<HTMLButtonElement>('[data-gesture]').forEach(button => {
   button.addEventListener('click', () => avatar.poke(button.dataset.gesture as 'nod'))
 })
+let muted = false
+document.querySelector('#mute')?.addEventListener('click', () => {
+  muted = !muted
+  avatar.setMuted(muted)
+})
 let paused = false
 document.querySelector('#pause')?.addEventListener('click', () => {
   paused = !paused
