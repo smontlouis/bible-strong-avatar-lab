@@ -54,6 +54,8 @@ export const emptyStatus: StageStatus = {
 
 // The pose the body is built in: at rest, facing the viewer, at its own size.
 const BUILD_POSE = { rotation: [0, 0, 0], position: [0, 0], zoom: 0.6 } as const
+// The turn it is shown with while its perspective is set: from the front, depth does not show.
+const DEPTH_TURN = [-12, 38, 0] as const
 const STATUS_EVERY_FRAMES = 6
 
 export function Stage({
@@ -83,6 +85,7 @@ export function Stage({
     speed,
     t,
     tab,
+    showsDepth,
   } = editor
   const svg = useRef<SVGSVGElement>(null)
   const [scene, setScene] = useState<CharacterScene | null>(null)
@@ -117,7 +120,11 @@ export function Stage({
   // The body is built at rest, and a pose is set by hand on a body that has stopped.
   useEffect(() => {
     if (building)
-      setEnginePose(engine.current, { ...BUILD_POSE, rotation: [0, 0, 0], position: [0, 0] })
+      setEnginePose(engine.current, {
+        ...BUILD_POSE,
+        rotation: showsDepth ? [...DEPTH_TURN] : [0, 0, 0],
+        position: [0, 0],
+      })
     else if (posing) {
       setEnginePose(engine.current, {
         orientation: poseFromExpression(turned).orientation,
@@ -127,7 +134,7 @@ export function Stage({
     } else setEnginePose(engine.current, null)
     if (playing && !building && !posing) resumeEngine(engine.current)
     else pauseEngine(engine.current)
-  }, [building, posing, pose, turned, playing, engine])
+  }, [building, showsDepth, posing, pose, turned, playing, engine])
 
   useEffect(() => {
     // The gaze is a toy of the pose tool: the avatar turns to the pointer from the pose it has.

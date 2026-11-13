@@ -94,6 +94,8 @@ export const chinese: Record<string, string> = {
     '身体、颜色和面部。片段、状态和表情随库提供。',
   'Les yeux gardent leurs proportions sur tous les avatars. Leur taille, leur écart et leur hauteur se règlent.':
     '眼睛在所有头像上保持比例。可以调整大小、间距和高度。',
+  'À 0, l’avatar est vu à plat : rien ne grossit en venant vers l’avant. À 1, la vue habituelle.':
+    '为 0 时头像以平面方式显示：靠前的部分不会变大。为 1 时为通常视图。',
   'Taille des yeux': '眼睛大小',
   'Écart des yeux': '眼睛间距',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':

@@ -25,6 +25,8 @@ export type AvatarFeatures = {
   eyeScale: number
   /** The distance between the eyes against the standard one. */
   eyeGap: number
+  /** How much nearer things look bigger: 0 for none (orthographic), 1 for the usual view. */
+  perspective: number
   noseEnabled: boolean
   noseShape: (typeof noseShapes)[number]
   noseRoundness: number
@@ -67,6 +69,7 @@ export const defaultAvatarFeatures: AvatarFeatures = {
   positionYRight: -7,
   eyeScale: 1,
   eyeGap: 1,
+  perspective: 1,
   noseEnabled: false,
   noseShape: 'inverted-triangle',
   noseRoundness: 50,
@@ -118,6 +121,7 @@ const parseRenderStyle = (value: unknown): AvatarRenderStyle => {
 // How far the size and the gap of the eyes may go from the standard ones.
 export const EYE_BUILD_MIN = 0.6
 export const EYE_BUILD_MAX = 1.6
+export const PERSPECTIVE_MAX = 1.5
 
 const parseFeatures = (value: unknown): AvatarFeatures => {
   const candidate = (value ?? {}) as Record<string, unknown>
@@ -130,6 +134,7 @@ const parseFeatures = (value: unknown): AvatarFeatures => {
   const features = parsed as AvatarFeatures
   features.eyeScale = numberOr(candidate.eyeScale, 1, EYE_BUILD_MIN, EYE_BUILD_MAX)
   features.eyeGap = numberOr(candidate.eyeGap, 1, EYE_BUILD_MIN, EYE_BUILD_MAX)
+  features.perspective = numberOr(candidate.perspective, 1, 0, PERSPECTIVE_MAX)
   if (noseShapes.includes(candidate.noseShape as never)) {
     features.noseShape = candidate.noseShape as AvatarFeatures['noseShape']
   }
@@ -226,7 +231,7 @@ export const characterOfAvatar = (avatar: StudioAvatar): AvatarCharacter => {
         y: features.mouthY,
         angle: features.mouthAngle,
       },
-      perspective: 1,
+      perspective: features.perspective,
     },
   } as AvatarCharacter
 }
@@ -284,6 +289,7 @@ export const avatarFromSource = (source: string): StudioAvatar => {
       positionYRight: shiftY,
       eyeScale: face.eyes?.width,
       eyeGap: face.eyes?.gap,
+      perspective: face.perspective,
       noseEnabled: nose.enabled,
       noseShape: nose.shape,
       noseRoundness: nose.roundness,

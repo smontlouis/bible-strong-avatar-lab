@@ -197,7 +197,8 @@
         "positionYLeft": -7,
         "positionYRight": -7,
         "leftAngle": 0,
-        "rightAngle": 0
+        "rightAngle": 0,
+        "perspective": 0
       }
     },
     {

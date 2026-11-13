@@ -126,6 +126,8 @@ const english: Record<string, string> = {
     'The body, the colors and the face. Clips, states and faces come with the library.',
   'Les yeux gardent leurs proportions sur tous les avatars. Leur taille, leur écart et leur hauteur se règlent.':
     'Eyes keep their proportions on every avatar. Their size, gap and height can be set.',
+  'À 0, l’avatar est vu à plat : rien ne grossit en venant vers l’avant. À 1, la vue habituelle.':
+    'At 0 the avatar is seen flat: nothing grows as it comes forward. At 1, the usual view.',
   'Taille des yeux': 'Eye size',
   'Écart des yeux': 'Eye gap',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':

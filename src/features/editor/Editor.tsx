@@ -54,7 +54,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Switch } from '@/components/ui/switch'
-import { characterOfAvatar, EYE_BUILD_MAX, EYE_BUILD_MIN } from '@/features/editor/avatar'
+import {
+  characterOfAvatar,
+  EYE_BUILD_MAX,
+  EYE_BUILD_MIN,
+  PERSPECTIVE_MAX,
+} from '@/features/editor/avatar'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
 import { PhotoPanel, PoseControls, slugOf, takePicture } from '@/features/editor/PhotoPanel'
 import { Scene } from '@/features/editor/Scene'
@@ -243,6 +248,25 @@ function CharacterPanel({ editor }: { editor: EditorState }) {
   return (
     <div className="panel-stack">
       <BodyConstructionAccordion controller={editor} />
+
+      <InspectorCard>
+        <PanelTitle
+          level={3}
+          title="Perspective"
+          subtitle="À 0, l’avatar est vu à plat : rien ne grossit en venant vers l’avant. À 1, la vue habituelle."
+        />
+        <div className="surface-fields">
+          <NumericField
+            label="Perspective"
+            value={features.perspective}
+            min={0}
+            max={PERSPECTIVE_MAX}
+            step={0.05}
+            onChange={perspective => editor.updateFeatures({ perspective })}
+            onActiveChange={editor.setShowsDepth}
+          />
+        </div>
+      </InspectorCard>
 
       <InspectorCard>
         <PanelTitle level={3} title="Couleurs" subtitle="Le corps et le visage." />

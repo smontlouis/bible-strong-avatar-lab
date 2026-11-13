@@ -214,6 +214,14 @@ describe('an avatar saved as a file', () => {
     })
   })
 
+  it('carries the perspective, flat for the bot drawn after the reference', () => {
+    const avatars = loadLibrary().avatars
+    expect(characterOfAvatar(avatars[0]).face.perspective).toBe(1)
+    const flat = characterOfAvatar(avatars.find(avatar => avatar.name === 'Grok bot')!)
+    expect(flat.face.perspective).toBe(0)
+    expect(avatarFromSource(JSON.stringify(flat)).eyes.perspective).toBe(0)
+  })
+
   it('refuses a file that holds no avatar', () => {
     expect(() => avatarFromSource('not json')).toThrow()
     expect(() => avatarFromSource('{"version":2}')).toThrow()

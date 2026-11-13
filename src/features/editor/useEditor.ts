@@ -61,6 +61,8 @@ export type PhotoSettings = {
   composition: SnapshotComposition
 }
 
+const DEPTH_LINGER_MS = 2500
+
 export const useEditor = () => {
   const { t, language } = useStudioLanguage()
   const [library, setLibrary] = useState<AvatarLibrary>(() => loadLibrary())
@@ -86,6 +88,9 @@ export const useEditor = () => {
     size: '1024',
     composition: defaultSnapshotComposition,
   })
+  // Whether the avatar being built is shown turned, so that a change of perspective is seen.
+  const [showsDepth, setShowsDepth] = useState(false)
+  const depthTimer = useRef<number | undefined>(undefined)
   const [selectedBodyNodeId, setSelectedBodyNodeId] = useState<'primary' | string>('primary')
 
   const avatars = library.avatars
@@ -258,6 +263,13 @@ export const useEditor = () => {
     deleteSelectedBodyNode,
     duplicateSelectedBodyNode,
     updateColors,
+    showsDepth,
+    // The turn stays a moment after the field is left: a typed value only applies then.
+    setShowsDepth: (active: boolean) => {
+      window.clearTimeout(depthTimer.current)
+      if (active) setShowsDepth(true)
+      else depthTimer.current = window.setTimeout(() => setShowsDepth(false), DEPTH_LINGER_MS)
+    },
     updateFeatures,
     outline,
     updateOutline,
