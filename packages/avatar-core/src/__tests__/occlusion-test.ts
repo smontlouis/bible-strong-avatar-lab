@@ -258,6 +258,22 @@ describe('occlusion masks', () => {
     }
   )
 
+  it('hides the nose and the mouth with the eyes when the head is turned away', () => {
+    const face = {
+      ...expressionFromDefinition('neutral', expression),
+      noseEnabled: true,
+      mouthEnabled: true,
+    }
+    const at = (yaw: number) =>
+      renderAvatar(poseFromExpression({ ...face, headY: yaw }), head, 1, { includeWire: false })
+    expect(at(0).nosePath).not.toBe('')
+    expect(at(0).mouthPath).not.toBe('')
+    const away = at(180)
+    expect(away.leftVisible).toBe(false)
+    expect(away.nosePath).toBe('')
+    expect(away.mouthPath).toBe('')
+  })
+
   it('leaves a static node where it is while the head turns', () => {
     const following = node([-100, 0, 20])
     const fixed: BodyNode = { ...following, followsHead: false }

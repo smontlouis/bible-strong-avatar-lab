@@ -1941,6 +1941,10 @@ const maskedAccessoryLayers = (
   }
 }
 
+/** Whether a feature drawn on the head's surface is, on the whole, turned to the viewer. */
+const facesViewer = (samples: { normal: Point3 }[]) =>
+  samples.reduce((total, sample) => total + sample.normal[2], 0) > 0
+
 export const renderAvatar = (
   pose: AvatarPose,
   surface: SurfaceConfig,
@@ -1967,14 +1971,17 @@ export const renderAvatar = (
     headPath: headPath(pose, surface),
     leftPath: path(left),
     rightPath: path(right),
-    nosePath: path(nose.map(sample => sample.point)),
-    mouthPath: path(
-      mouth.map(sample => sample.point),
-      true
-    ),
+    // Like the eyes, the nose and the mouth are on the face: turned away, they are not drawn.
+    nosePath: facesViewer(nose) ? path(nose.map(sample => sample.point)) : '',
+    mouthPath: facesViewer(mouth)
+      ? path(
+          mouth.map(sample => sample.point),
+          true
+        )
+      : '',
     mouthStrokeWidth: 0,
-    leftVisible: leftSamples.reduce((total, sample) => total + sample.normal[2], 0) > 0,
-    rightVisible: rightSamples.reduce((total, sample) => total + sample.normal[2], 0) > 0,
+    leftVisible: facesViewer(leftSamples),
+    rightVisible: facesViewer(rightSamples),
     wirePaths: options.includeWire === false ? [] : wirePaths(pose, surface),
   }
 }
