@@ -140,6 +140,13 @@ export const chinese: Record<string, string> = {
   Étirement: '拉伸',
   'Le corps, les couleurs et le visage de cet avatar seront définitivement supprimés.':
     '该头像的身体、颜色和面部将被永久删除。',
+  'Orientation, position et taille de l’avatar.': '头像的朝向、位置和大小。',
+  'Choisis le visage visible sur la photo.': '选择照片中显示的表情。',
+  'Pose l’avatar, cadre-le, choisis un fond et enregistre-le en PNG ou en SVG.':
+    '摆好头像姿势、取景、选择背景，然后保存为 PNG 或 SVG。',
+  'Place l’avatar librement : glisse sur la scène pour le tourner, sers-toi du gizmo de rotation, ou règle les valeurs. Le clip est arrêté.':
+    '自由摆放头像：在舞台上拖动旋转，使用旋转控件，或直接设置数值。片段已停止。',
+  visages: '个表情',
   'Couleur héritée': '继承颜色',
   'Suit la rotation du corps': '跟随身体旋转',
   'Désactivé, la forme reste en place quand le corps tourne. Elle le suit toujours quand il se déplace.':

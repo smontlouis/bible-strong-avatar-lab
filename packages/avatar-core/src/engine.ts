@@ -1,5 +1,6 @@
 import { clips, routines, states, type StateDefinition } from './catalogue'
 import type { ClipDefinition } from './clips'
+import type { Quaternion } from './geometry'
 import { inspectEyeScales, inspectLeanOfTurn } from './faces'
 import {
   drawSpinner,
@@ -107,6 +108,11 @@ type Morphing = {
 export type FreePose = {
   /** About x, y and z, in degrees: looking down, turning to the right of the screen, rolling. */
   rotation?: [number, number, number]
+  /**
+   * The turn of the head given whole, as a tool that turns the avatar freely has it. It takes
+   * the place of `rotation`, and of the turns that gestures and the gaze would add.
+   */
+  orientation?: Quaternion
   /** Across and up, in body radii. */
   position?: [number, number]
   zoom?: number
@@ -515,7 +521,11 @@ export type SpinnerFrame = {
   marks: SpinnerMark[]
 }
 
-export type EngineFrame = PlayerFrame & { spinner: SpinnerFrame | null }
+export type EngineFrame = PlayerFrame & {
+  spinner: SpinnerFrame | null
+  /** The turn of the head when a pose set by hand gives it whole. */
+  orientation?: Quaternion
+}
 
 const ROUND_BY = 0.62
 
@@ -577,6 +587,7 @@ export const engineFrame = (engine: Readonly<AvatarEngine>): EngineFrame => {
     if (pose.rotation) frame.rotation = [pose.rotation[0], pose.rotation[1], pose.rotation[2]]
     if (pose.position) frame.position = [pose.position[0], pose.position[1]]
     if (pose.zoom !== undefined) frame.zoom = pose.zoom
+    if (pose.orientation) frame.orientation = pose.orientation
   }
 
   const gaze = engine.gaze

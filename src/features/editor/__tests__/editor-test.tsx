@@ -111,8 +111,23 @@ describe('the editor', () => {
     frames(4)
     fireEvent.change(getByLabelText('Rotation Y'), { target: { value: '40' } })
     frames(4)
-    // The gestures of the stage are for an avatar that plays.
+    // The rotation gizmo is on the stage; the gestures are for an avatar that plays.
+    expect(getByLabelText('Gizmo de rotation')).toBeTruthy()
     expect(queryByRole('button', { name: 'bounce' })).toBeNull()
+  })
+
+  it('opens the photo mode from the stage, with its tools, and leaves it', () => {
+    const { getByRole, getAllByRole, queryByRole, getByText } = open()
+    fireEvent.click(getByRole('button', { name: 'Ouvrir le mode photo' }))
+    frames(4)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe('Mode photo')
+    expect(getByText('Cadrage')).toBeTruthy()
+    expect(getByText('Arrière-plan')).toBeTruthy()
+    expect(getAllByRole('button', { name: /Prendre une photo/ }).length).toBeGreaterThan(0)
+    // The tabs give way to the photo mode until it is left.
+    expect(queryByRole('button', { name: 'États' })).toBeNull()
+    fireEvent.click(getAllByRole('button', { name: 'Quitter' })[0])
+    expect(getByRole('button', { name: 'États' })).toBeTruthy()
   })
 })
 
@@ -125,24 +140,51 @@ describe('the picture of an avatar', () => {
   if (!definition.ok) throw new Error('The fixture avatar has no definition.')
   const character = characterFromLegacyDefinition(definition.value)
 
-  it('is a standalone SVG of the avatar as the engine has it, on a background or on none', () => {
+  const plain = {
+    background: 'transparent',
+    colorFrom: '#f5f7fc',
+    colorTo: '#dde4f5',
+    size: 1024,
+    composition: { x: 0, y: 0, scale: 1, cornerRadius: 0 },
+  } as const
+
+  it('is a standalone SVG of the avatar as the engine has it', () => {
     const engine = createAvatarEngine()
     setEnginePose(engine, { rotation: [0, 30, 0] })
-    const bare = pictureSvg(character, engine, null)
+    const bare = pictureSvg(character, engine, plain)
     expect(bare.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true)
+    expect(bare).toContain('width="1024"')
     expect(bare).toContain(`fill="${character.colors.body}"`)
-    expect(bare).not.toContain('<rect')
     expect(bare).not.toContain('NaN')
-    expect(pictureSvg(character, engine, '#eef1f8')).toContain('<rect')
     // Another pose gives another picture.
     setEnginePose(engine, { rotation: [0, -30, 0] })
-    expect(pictureSvg(character, engine, null)).not.toBe(bare)
+    expect(pictureSvg(character, engine, plain)).not.toBe(bare)
+  })
+
+  it('takes the background, the framing and the round corners of the photo mode', () => {
+    const engine = createAvatarEngine()
+    expect(pictureSvg(character, engine, plain)).not.toContain('<linearGradient')
+    const solid = pictureSvg(character, engine, { ...plain, background: 'solid' })
+    expect(solid).toContain('fill="#f5f7fc"')
+    const framed = pictureSvg(character, engine, {
+      ...plain,
+      background: 'linear',
+      size: 512,
+      composition: { x: 12, y: -8, scale: 1.5, cornerRadius: 20 },
+    })
+    expect(framed).toContain('<linearGradient id="background"')
+    expect(framed).toContain('translate(12 -8) scale(1.5)')
+    expect(framed).toContain('rx="60"')
+    expect(framed).toContain('width="512"')
+    expect(pictureSvg(character, engine, { ...plain, background: 'radial' })).toContain(
+      '<radialGradient'
+    )
   })
 
   it('draws a spinner too', () => {
     const engine = createAvatarEngine()
     setEngineState(engine, 'radar')
     for (let step = 0; step < 90; step += 1) advanceEngine(engine, 1 / 60)
-    expect(pictureSvg(character, engine, null)).toContain('stroke-linecap="round"')
+    expect(pictureSvg(character, engine, plain)).toContain('stroke-linecap="round"')
   })
 })

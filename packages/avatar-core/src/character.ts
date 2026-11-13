@@ -313,7 +313,8 @@ export const renderCharacterFrame = (
       perspective: character.face.perspective,
       motion: { eyes: 'none', body: 'none' },
     }),
-    orientation: orientationOf(frame.rotation),
+    orientation:
+      ('orientation' in frame ? frame.orientation : undefined) ?? orientationOf(frame.rotation),
   }
   const bodyColor = character.colors.body
   const geometry = renderAvatar(pose, body.primary, 1, {

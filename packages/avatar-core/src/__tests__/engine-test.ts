@@ -351,6 +351,14 @@ describe('a pose set by hand', () => {
     expect(engineFrame(engine).rotation).toEqual(played.rotation)
   })
 
+  it('carries a turn given whole to the frame', () => {
+    const engine = createAvatarEngine()
+    setEnginePose(engine, { orientation: [0.7071, 0, 0.7071, 0] })
+    expect(engineFrame(engine).orientation).toEqual([0.7071, 0, 0.7071, 0])
+    setEnginePose(engine, null)
+    expect(engineFrame(engine).orientation).toBeUndefined()
+  })
+
   it('still takes a gesture on top', () => {
     const engine = createAvatarEngine()
     setEnginePose(engine, { rotation: [0, 30, 0] })

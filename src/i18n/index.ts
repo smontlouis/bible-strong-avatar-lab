@@ -173,6 +173,13 @@ const english: Record<string, string> = {
   Étirement: 'Stretch',
   'Le corps, les couleurs et le visage de cet avatar seront définitivement supprimés.':
     'The body, colors and face of this avatar will be permanently deleted.',
+  'Orientation, position et taille de l’avatar.': 'Orientation, position and size of the avatar.',
+  'Choisis le visage visible sur la photo.': 'Choose the face shown in the picture.',
+  'Pose l’avatar, cadre-le, choisis un fond et enregistre-le en PNG ou en SVG.':
+    'Pose the avatar, frame it, choose a background and save it as PNG or SVG.',
+  'Place l’avatar librement : glisse sur la scène pour le tourner, sers-toi du gizmo de rotation, ou règle les valeurs. Le clip est arrêté.':
+    'Place the avatar freely: drag on the stage to turn it, use the rotation gizmo, or set the values. The clip is stopped.',
+  visages: 'faces',
   'Couleur héritée': 'Inherited color',
   'Suit la rotation du corps': 'Follows the body rotation',
   'Désactivé, la forme reste en place quand le corps tourne. Elle le suit toujours quand il se déplace.':

@@ -11,7 +11,6 @@ import {
   type bodyPrimitiveTypes,
   type BodyNode,
   type Expression,
-  type FreePose,
   type SurfaceConfig,
 } from '@bible-strong/avatar-core'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -26,6 +25,11 @@ import {
   type StudioAvatar,
 } from '@/features/avatar/avatars'
 import { studioAvatarFromDefinitionSource } from '@/features/avatar/importAvatarDefinition'
+import {
+  defaultSnapshotComposition,
+  type SnapshotComposition,
+} from '@/features/export/snapshotComposition'
+import type { SnapshotBackground } from '@/features/export/snapshotExporter'
 import {
   loadStudioDocument,
   persistStudioDocument,
@@ -47,7 +51,23 @@ export type EditorTab = (typeof editorTabs)[number]
 /** What the avatar on the stage does: a scenario, a state, or one clip. */
 export type Doing = { routine: string } | { state: string } | { clip: string }
 
-const restPose: Required<FreePose> = { rotation: [0, 0, 0], position: [0, 0], zoom: 0.6 }
+/**
+ * The pose set by hand. The head's turn is kept as the three angles the rotation gizmo works
+ * with; the engine is given the turn they make.
+ */
+export type HandPose = { head: [number, number, number]; position: [number, number]; zoom: number }
+
+const restPose: HandPose = { head: [0, 0, 0], position: [0, 0], zoom: 0.6 }
+
+export type PhotoTool = 'pose' | 'frame'
+export type PhotoSettings = {
+  background: SnapshotBackground
+  colorFrom: string
+  colorTo: string
+  format: 'png' | 'svg'
+  size: '512' | '1024' | '2048'
+  composition: SnapshotComposition
+}
 
 /** The character of an avatar of the Studio: what it is, apart from what it does. */
 export const characterOfAvatar = (avatar: StudioAvatar): AvatarCharacter | null => {
@@ -69,7 +89,20 @@ export const useEditor = () => {
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
   const [followsPointer, setFollowsPointer] = useState(false)
-  const [pose, setPose] = useState<Required<FreePose>>(restPose)
+  const [pose, setPose] = useState<HandPose>(restPose)
+  // The photo mode: the avatar posed by hand in a frame, on a background, saved as a file.
+  const [photoMode, setPhotoMode] = useState(false)
+  const [photoTool, setPhotoTool] = useState<PhotoTool>('frame')
+  const [photoSections, setPhotoSections] = useState<PhotoTool[]>([])
+  const [photoFlash, setPhotoFlash] = useState(0)
+  const [photo, setPhoto] = useState<PhotoSettings>({
+    background: 'transparent',
+    colorFrom: '#F5F7FC',
+    colorTo: '#DDE4F5',
+    format: 'png',
+    size: '1024',
+    composition: defaultSnapshotComposition,
+  })
   const [selectedBodyNodeId, setSelectedBodyNodeId] = useState<'primary' | string>('primary')
 
   const avatars = document.library.avatars
@@ -235,6 +268,23 @@ export const useEditor = () => {
     pose,
     setPose,
     resetPose: () => setPose(restPose),
+    photoMode,
+    openPhotoMode: () => {
+      setPhotoTool('frame')
+      setPhotoSections([])
+      setBuilding(false)
+      setPhotoMode(true)
+    },
+    closePhotoMode: () => setPhotoMode(false),
+    photoTool,
+    setPhotoTool,
+    photoSections,
+    setPhotoSections,
+    photoFlash,
+    flashPhoto: () => setPhotoFlash(current => current + 1),
+    photo,
+    updatePhoto: (changes: Partial<PhotoSettings>) =>
+      setPhoto(current => ({ ...current, ...changes })),
     surface,
     bodyNodes,
     expression,

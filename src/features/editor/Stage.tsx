@@ -14,13 +14,18 @@ import {
   setEngineRoutine,
   setEngineState,
   type CharacterScene,
+  type Expression,
 } from '@bible-strong/avatar-core'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { PlaybackIdentity } from '@/app/components/common'
 import { Scene } from '@/features/editor/Scene'
 import type { Editor } from '@/features/editor/useEditor'
-import { BodyNodeGizmo } from '@/features/rendering/components/AvatarCanvas'
+import { BodyNodeGizmo, RotationGizmo } from '@/features/rendering/components/AvatarCanvas'
+import {
+  createRenderedRotationGizmo,
+  paintRenderedRotationGizmo,
+} from '@/features/rendering/renderedRotationGizmo'
 
 /** What the stage tells the panels about the avatar, a few times a second. */
 export type StageStatus = {
@@ -70,6 +75,7 @@ export function Stage({
     expression,
     face,
     followsPointer,
+    photoMode,
     playing,
     pose,
     selectedBodyNode,
@@ -85,7 +91,16 @@ export function Stage({
   const report = useRef(onStatus)
   report.current = onStatus
   const building = editor.building
-  const posing = tab === 'pose' && !building
+  const posing = (tab === 'pose' || photoMode) && !building
+  // The head's turn as the gizmo has it: a face at rest, turned by the three angles.
+  const turned = useMemo(
+    () => ({ ...expression, headX: pose.head[0], headY: pose.head[1], headZ: pose.head[2] }),
+    [expression, pose.head]
+  )
+  const rotationGizmo = useMemo(() => createRenderedRotationGizmo(turned), [])
+  useEffect(() => paintRenderedRotationGizmo(rotationGizmo, turned), [rotationGizmo, turned])
+  const setHead = (next: Expression) =>
+    setPose({ ...pose, head: [next.headX, next.headY, next.headZ] })
 
   useEffect(() => {
     if ('routine' in doing) {
@@ -103,11 +118,16 @@ export function Stage({
   useEffect(() => {
     if (building)
       setEnginePose(engine.current, { ...BUILD_POSE, rotation: [0, 0, 0], position: [0, 0] })
-    else if (posing) setEnginePose(engine.current, pose)
-    else setEnginePose(engine.current, null)
+    else if (posing) {
+      setEnginePose(engine.current, {
+        orientation: poseFromExpression(turned).orientation,
+        position: pose.position,
+        zoom: pose.zoom,
+      })
+    } else setEnginePose(engine.current, null)
     if (playing && !building && !posing) resumeEngine(engine.current)
     else pauseEngine(engine.current)
-  }, [building, posing, pose, playing, engine])
+  }, [building, posing, pose, turned, playing, engine])
 
   useEffect(() => {
     const follows = followsPointer && !building && !posing
@@ -160,10 +180,10 @@ export function Stage({
   }, [character, engine])
 
   // In the pose tool, dragging the stage turns the avatar.
-  const drag = useRef<{ x: number; y: number; rotation: [number, number, number] } | null>(null)
+  const drag = useRef<{ x: number; y: number; head: [number, number, number] } | null>(null)
   const startTurn = (event: React.PointerEvent<SVGSVGElement>) => {
     if (!posing) return
-    drag.current = { x: event.clientX, y: event.clientY, rotation: pose.rotation }
+    drag.current = { x: event.clientX, y: event.clientY, head: pose.head }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
   const turn = (event: React.PointerEvent<SVGSVGElement>) => {
@@ -171,10 +191,10 @@ export function Stage({
     if (!from) return
     setPose({
       ...pose,
-      rotation: [
-        from.rotation[0] + (event.clientY - from.y) * 0.4,
-        from.rotation[1] + (event.clientX - from.x) * 0.4,
-        from.rotation[2],
+      head: [
+        from.head[0] - (event.clientY - from.y) * 0.4,
+        from.head[1] + (event.clientX - from.x) * 0.4,
+        from.head[2],
       ],
     })
   }
@@ -216,6 +236,21 @@ export function Stage({
           />
         )}
       </Scene>
+      {posing && (
+        <>
+          <RotationGizmo
+            expression={turned}
+            rendered={rotationGizmo}
+            onPreview={setHead}
+            onChange={setHead}
+            onActiveChange={() => {}}
+            onReset={() => setPose({ ...pose, head: [0, 0, 0] })}
+          />
+          <div className="axis-key">
+            <i className="x" />X <i className="y" />Y <i className="z" />Z
+          </div>
+        </>
+      )}
     </div>
   )
 }

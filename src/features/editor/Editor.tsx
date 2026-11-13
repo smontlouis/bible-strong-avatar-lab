@@ -20,6 +20,7 @@ import {
 import {
   Activity,
   ArrowLeft,
+  Camera,
   Copy,
   Download,
   Film,
@@ -34,7 +35,8 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { motion } from 'motion/react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
 import { InspectorCard, PanelTitle, StatePlayer } from '@/app/components/common'
 import { ColorField, NumericField } from '@/app/components/controls'
@@ -53,7 +55,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Switch } from '@/components/ui/switch'
-import { downloadPicture, pictureSvg } from '@/features/editor/picture'
+import { CharacterPreview } from '@/features/editor/CharacterPreview'
+import { PhotoPanel, PoseControls, slugOf, takePicture } from '@/features/editor/PhotoPanel'
 import { Scene } from '@/features/editor/Scene'
 import { emptyStatus, Stage, type StageStatus } from '@/features/editor/Stage'
 import {
@@ -64,6 +67,7 @@ import {
   type EditorTab,
 } from '@/features/editor/useEditor'
 import { BodyConstructionAccordion } from '@/features/studio/components/BodyConstructionAccordion'
+import { PhotoStageFrame } from '@/features/studio/components/PhotoStageFrame'
 import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
 import { useStudioLanguage } from '@/i18n'
 
@@ -143,33 +147,6 @@ function SwitchRow({
       <Switch checked={checked} onCheckedChange={onChange} aria-label={t(label)} />
     </div>
   )
-}
-
-const restFrame = playerFrame(createAvatarPlayer())
-
-/** A small picture of a character at rest, or with a face, as the gallery's cards show them. */
-function CharacterPreview({
-  character,
-  face = 'neutral',
-  turned = false,
-}: {
-  character: AvatarCharacter
-  face?: FaceName
-  turned?: boolean
-}) {
-  const scene = useMemo(
-    () =>
-      renderCharacterFrame(character, {
-        ...restFrame,
-        face,
-        eyes: faces[face].eyes,
-        smile: faceSmiles[face],
-        inspectWeight: face === 'inspecting' ? 1 : 0,
-        rotation: turned ? [-8, 32, 0] : [0, 0, 0],
-      }),
-    [character, face, turned]
-  )
-  return <Scene scene={scene} character={character} className="avatar-preview" />
 }
 
 function AvatarsPanel({ editor }: { editor: EditorState }) {
@@ -438,77 +415,15 @@ function FaceChips({ editor }: { editor: EditorState }) {
 }
 
 function PosePanel({ editor }: { editor: EditorState }) {
-  const { t, pose, setPose } = editor
-  const turn = (index: 0 | 1 | 2, value: number) => {
-    const rotation: [number, number, number] = [...pose.rotation]
-    rotation[index] = value
-    setPose({ ...pose, rotation })
-  }
-  const move = (index: 0 | 1, value: number) => {
-    const position: [number, number] = [...pose.position]
-    position[index] = value
-    setPose({ ...pose, position })
-  }
+  const { t } = editor
   return (
     <div className="panel-stack">
       <p className={note}>
         {t(
-          'Place l’avatar librement : glisse sur la scène pour le tourner, ou règle les valeurs. Le clip est arrêté ; l’image de l’onglet Export reprend cette pose.'
+          'Place l’avatar librement : glisse sur la scène pour le tourner, sers-toi du gizmo de rotation, ou règle les valeurs. Le clip est arrêté.'
         )}
       </p>
-      <InspectorCard>
-        <PanelTitle level={3} title="Rotation" subtitle="En degrés, autour de X, Y et Z." />
-        <div className="surface-fields">
-          {(['X', 'Y', 'Z'] as const).map((axis, index) => (
-            <NumericField
-              label={`Rotation ${axis}`}
-              value={pose.rotation[index]}
-              min={-360}
-              max={360}
-              step={1}
-              unit="°"
-              key={axis}
-              onChange={value => turn(index as 0 | 1 | 2, value)}
-            />
-          ))}
-        </div>
-      </InspectorCard>
-      <InspectorCard>
-        <PanelTitle
-          level={3}
-          title="Position et taille"
-          subtitle="En rayons du corps ; la taille de repos vaut 0,6."
-        />
-        <div className="surface-fields">
-          <NumericField
-            label="Position X"
-            value={pose.position[0]}
-            min={-1.5}
-            max={1.5}
-            step={0.01}
-            onChange={value => move(0, value)}
-          />
-          <NumericField
-            label="Position Y"
-            value={pose.position[1]}
-            min={-1.5}
-            max={1.5}
-            step={0.01}
-            onChange={value => move(1, value)}
-          />
-          <NumericField
-            label="Zoom"
-            value={pose.zoom}
-            min={0.25}
-            max={1.2}
-            step={0.01}
-            onChange={zoom => setPose({ ...pose, zoom })}
-          />
-        </div>
-        <Button variant="secondary" size="sm" type="button" onClick={editor.resetPose}>
-          {t('Remettre au repos')}
-        </Button>
-      </InspectorCard>
+      <PoseControls editor={editor} />
       <Group title="Visage">
         <FaceChips editor={editor} />
       </Group>
@@ -811,14 +726,9 @@ import ${name} from './${name}.character.json'
 <Avatar character={${name}} routine="chat" followPointer />`
 
 function ExportPanel({ editor }: { editor: EditorState }) {
-  const { t, character, activeAvatar, engine } = editor
-  const [background, setBackground] = useState<string | null>(null)
+  const { t, character, activeAvatar } = editor
   if (!character) return null
-  const slug =
-    activeAvatar.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') || 'avatar'
+  const slug = slugOf(activeAvatar.name)
   const identifier = slug.replace(/-([a-z0-9])/g, (_, letter: string) => letter.toUpperCase())
   const saveCharacter = () => {
     const link = window.document.createElement('a')
@@ -838,6 +748,7 @@ function ExportPanel({ editor }: { editor: EditorState }) {
           subtitle="Le corps, les couleurs et le visage. Les clips, les états et les visages viennent avec la bibliothèque."
         />
         <Button type="button" onClick={saveCharacter}>
+          <Download />
           {t('Télécharger le personnage (.json)')}
         </Button>
         <pre className="mt-3 overflow-x-auto rounded-lg bg-neutral-900 p-3 text-xs leading-relaxed text-neutral-100">
@@ -848,35 +759,12 @@ function ExportPanel({ editor }: { editor: EditorState }) {
         <PanelTitle
           level={3}
           title="Image"
-          subtitle="L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose."
+          subtitle="Pose l’avatar, cadre-le, choisis un fond et enregistre-le en PNG ou en SVG."
         />
-        <SwitchRow
-          label="Fond de couleur"
-          checked={background !== null}
-          onChange={enabled => setBackground(enabled ? '#eef1f8' : null)}
-        />
-        {background !== null && (
-          <div className="color-panel">
-            <ColorField label="Couleur du fond" value={background} onChange={setBackground} />
-          </div>
-        )}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(['png', 'svg'] as const).map(format => (
-            <Button
-              variant="secondary"
-              type="button"
-              key={format}
-              onClick={() =>
-                void downloadPicture(
-                  pictureSvg(character, engine.current, background),
-                  `${slug}.${format}`
-                )
-              }
-            >
-              {t('Télécharger')} .{format}
-            </Button>
-          ))}
-        </div>
+        <Button variant="secondary" type="button" onClick={editor.openPhotoMode}>
+          <Camera />
+          {t('Ouvrir le mode photo')}
+        </Button>
       </InspectorCard>
     </div>
   )
@@ -899,11 +787,12 @@ export function Editor() {
   // What the avatar is doing, as the stage and the bar at the bottom name it.
   const doingName =
     'routine' in doing ? doing.routine : (status.state ?? status.clip) || t('au repos')
-  const stopped = building || tab === 'pose'
+  const { photoMode } = editor
+  const stopped = building || tab === 'pose' || photoMode
 
   const stage = (
     <section
-      className="stage-column"
+      className={`stage-column${photoMode ? ' photo-mode-active' : ''}`}
       style={
         {
           '--avatar-body-color': activeAvatar.colors.body,
@@ -914,7 +803,7 @@ export function Editor() {
       <div
         className="stage-mode-halo stage-mode-halo-blue"
         aria-hidden="true"
-        style={{ opacity: 0.72 }}
+        style={{ opacity: photoMode ? 1 : 0.72, transform: photoMode ? 'scale(1.16)' : undefined }}
       />
       <StudioIdentity
         className="stage-identity"
@@ -922,34 +811,90 @@ export function Editor() {
         setLanguage={setLanguage}
         t={t}
       />
-      <div className="stage-mode-content live-stage-scene">
-        <div className="stage-avatar-positioner">
-          <Stage editor={editor} onStatus={setStatus} status={doingName} />
+      {photoMode ? (
+        <div className="stage-mode-content">
+          <PhotoStageFrame
+            background={editor.photo.background}
+            colorFrom={editor.photo.colorFrom}
+            colorTo={editor.photo.colorTo}
+            composition={editor.photo.composition}
+            tool={editor.photoTool}
+            onCompositionChange={composition => editor.updatePhoto({ composition })}
+          >
+            <Stage editor={editor} onStatus={setStatus} status={doingName} />
+          </PhotoStageFrame>
         </div>
-      </div>
-      {!stopped && (
+      ) : (
+        <div className="stage-mode-content live-stage-scene">
+          <div className="stage-avatar-positioner">
+            <Stage editor={editor} onStatus={setStatus} status={doingName} />
+          </div>
+        </div>
+      )}
+      {editor.photoFlash > 0 && (
+        <motion.div
+          className="photo-flash"
+          key={editor.photoFlash}
+          aria-hidden="true"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 0.92, 0] }}
+          transition={{ duration: 0.38, times: [0, 0.16, 1], ease: 'easeOut' }}
+        />
+      )}
+      {!building && (
         <div className="photo-capture-bar">
-          {gestureNames.map(name => (
+          {photoMode && (
             <Button
-              className="photo-capture-button"
+              className="photo-capture-button stage-exit-button"
               variant="secondary"
+              size="icon"
               type="button"
-              key={name}
-              onClick={() => pokeEngine(engine.current, name)}
+              aria-label={t('Quitter')}
+              onClick={editor.closePhotoMode}
             >
-              <span className="photo-capture-label">{name}</span>
+              <ArrowLeft />
             </Button>
-          ))}
+          )}
           <Button
             className="photo-capture-button"
-            variant={editor.followsPointer ? 'default' : 'secondary'}
             type="button"
-            aria-pressed={editor.followsPointer}
-            onClick={() => editor.setFollowsPointer(!editor.followsPointer)}
+            aria-label={t(photoMode ? 'Prendre une photo' : 'Ouvrir le mode photo')}
+            onClick={() => (photoMode ? takePicture(editor) : editor.openPhotoMode())}
           >
-            <MousePointer2 />
-            <span className="photo-capture-label">{t('Suit le pointeur')}</span>
+            <Camera />
+            <span className="photo-capture-label">
+              {t(photoMode ? 'Prendre une photo' : 'Mode photo')}
+            </span>
           </Button>
+          {!stopped && (
+            <>
+              {gestureNames.map(name => (
+                <Button
+                  className="photo-capture-button"
+                  variant="secondary"
+                  type="button"
+                  style={{ minWidth: 0, paddingInline: 14 }}
+                  key={name}
+                  onClick={() => pokeEngine(engine.current, name)}
+                >
+                  <span className="photo-capture-label">{name}</span>
+                </Button>
+              ))}
+              <Button
+                className="photo-capture-button"
+                variant={editor.followsPointer ? 'default' : 'secondary'}
+                type="button"
+                size="icon"
+                style={{ minWidth: 0 }}
+                aria-pressed={editor.followsPointer}
+                aria-label={t('Suit le pointeur')}
+                title={t('Suit le pointeur')}
+                onClick={() => editor.setFollowsPointer(!editor.followsPointer)}
+              >
+                <MousePointer2 />
+              </Button>
+            </>
+          )}
         </div>
       )}
       <p className="stage-credit">
@@ -966,7 +911,7 @@ export function Editor() {
     <main
       className={`inspector ${building ? 'body-workspace' : 'studio-workspace'}${
         stopped ? '' : ' state-player-active'
-      }`}
+      }${photoMode ? ' photo-inspector-active' : ''}`}
     >
       <StudioIdentity
         className="inspector-identity"
@@ -999,9 +944,15 @@ export function Editor() {
         <header className="mode-page-header">
           <div>
             <p className="eyebrow">{activeAvatar.name}</p>
-            <h1>{t(tabLabels[tab])}</h1>
+            <h1>{t(photoMode ? 'Mode photo' : tabLabels[tab])}</h1>
           </div>
-          {tab === 'pose' && (
+          {photoMode && (
+            <Button variant="outline" type="button" onClick={editor.closePhotoMode}>
+              <ArrowLeft />
+              {t('Quitter')}
+            </Button>
+          )}
+          {tab === 'pose' && !photoMode && (
             <Button
               variant="outline"
               size="icon"
@@ -1014,9 +965,11 @@ export function Editor() {
           )}
         </header>
       )}
-      <div className="mode-page-transition" key={building ? 'building' : tab}>
+      <div className="mode-page-transition" key={building ? 'building' : photoMode ? 'photo' : tab}>
         {building ? (
           <CharacterPanel editor={editor} />
+        ) : photoMode ? (
+          <PhotoPanel editor={editor} />
         ) : (
           <>
             {tab === 'avatars' && <AvatarsPanel editor={editor} />}
@@ -1071,7 +1024,7 @@ export function Editor() {
           </div>
         </footer>
       )}
-      {!building && (
+      {!building && !photoMode && (
         <nav className="mobile-mode-tabs has-seven-tabs" aria-label={t('Mode d’édition')}>
           <Button
             className="mobile-mode-tab mobile-avatar-tab"
