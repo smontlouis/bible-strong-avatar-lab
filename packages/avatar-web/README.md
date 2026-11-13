@@ -149,7 +149,42 @@ no head to turn. A new array of the same point is not a change.
 2. `avatar.setState('thinking')` returns `true`, and `onStateChange` receives `thinking`.
 3. `avatar.destroy()` is called wherever the page removes the target.
 
+## Upgrading from 0.x
+
+Version 1 replaces each avatar's own expressions and animations with one shared catalogue of
+states, clips, faces and gestures. Keep your `.avatar.json`: `createAvatar` still reads it and keeps
+its character (body, colours, outline, nose, mouth, perspective, the height of the eyes). Its
+expressions and animations are no longer read.
+
+The standard animations of the first version are states of the catalogue under the same names:
+`idle`, `sleeping`, `waking`, `listening`, `thinking`, `searching`, `working`, `excited`, `bored`,
+`suspicious`, `angry`, `drowsy`, `happy`, `curious`, `confused`, `surprised`, `proud`, `shy`, `sad`,
+`laughing`, `scared`, `playful`, `celebrate`. An animation or an expression you created under
+another name is not carried over: pick the nearest state, or one of the nine faces (`neutral`,
+`happy`, `surprised`, `sad`, `sleepy`, `squinted`, `calm`, `inspecting`, `confused`). Some states
+look different: `thinking` now turns the body into a spinner of three dots.
+
+| 0.x                                                                   | 1.0                                                                                               |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Option `definition`                                                   | `character`: the same file is accepted                                                            |
+| Options `defaultAnimation`, `autoplay`                                | `state`                                                                                           |
+| Option `defaultExpression`                                            | `face` for one of the nine faces, or a `state`                                                    |
+| Options `onAnimationEnd`, `onExpressionChange`, `onError`             | `onStateChange`: a state that hands over (`waking` → `idle`) reports the next                     |
+| `avatar.play(key)`                                                    | `avatar.setState(key)`, or `avatar.playClip(clip)` for one clip                                   |
+| `avatar.setExpression(key)`                                           | `avatar.setFace(face)`                                                                            |
+| `avatar.pause()`                                                      | `avatar.pause()`, then `avatar.resume()`                                                          |
+| `avatar.stop()`                                                       | `avatar.pause()`, or `avatar.setState('idle')`                                                    |
+| `avatar.getState()` → `{ activeAnimation, activeExpression, status }` | `{ state, clip, paused }`                                                                         |
+| `{ ok: false, error }` from `play` and `setExpression`                | `false` from `setState` and `playClip` for a name the catalogue lacks                             |
+| `Choose either defaultAnimation or defaultExpression`                 | Gone                                                                                              |
+| `Invalid avatar definition`                                           | `Invalid avatar character`, or `Invalid avatar definition` for a broken file of the first version |
+
+New: `poke`, `setEmphasis`, `lookAt` and `setLookAt`, `followPointer`, `muted`, `settleAfterMs`. The
+avatar always moves (`idle` plays its clips round and round); give `settleAfterMs` to one that only
+decorates a row or a card.
+
 ## Versions
 
-The package follows Semantic Versioning. Version 1 replaced the expressions and animations of
-each avatar with the shared catalogue of states, clips, faces and gestures.
+The package follows Semantic Versioning; every version is described in `CHANGELOG.md`, shipped in
+the package. Version 1 replaced the expressions and animations of
+each avatar with the shared catalogue of states, clips, faces and gestures. To move from 0.x, see « Upgrading from 0.x ».

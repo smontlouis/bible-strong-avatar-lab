@@ -171,11 +171,49 @@ then costs nothing. A muted avatar keeps moving unless you settle it:
 3. `state="searching"` turns the body into a spinner.
 4. No frame is computed after the app goes to background.
 
+## Upgrading from 0.x
+
+Version 1 replaces each avatar's own expressions and animations with one shared catalogue of
+states, clips, faces and gestures. Keep your `.avatar.json`: `createAvatar` still reads it and keeps
+its character (body, colours, outline, nose, mouth, perspective, the height of the eyes). Its
+expressions and animations are no longer read.
+
+The standard animations of the first version are states of the catalogue under the same names:
+`idle`, `sleeping`, `waking`, `listening`, `thinking`, `searching`, `working`, `excited`, `bored`,
+`suspicious`, `angry`, `drowsy`, `happy`, `curious`, `confused`, `surprised`, `proud`, `shy`, `sad`,
+`laughing`, `scared`, `playful`, `celebrate`. An animation or an expression you created under
+another name is not carried over: pick the nearest state, or one of the nine faces (`neutral`,
+`happy`, `surprised`, `sad`, `sleepy`, `squinted`, `calm`, `inspecting`, `confused`). Some states
+look different: `thinking` now turns the body into a spinner of three dots.
+
+| 0.x                                                                                          | 1.0                                                                              |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `createAvatar(definitionJson)`                                                               | Unchanged. The keys are no longer typed from the JSON: `state` is a string.      |
+| `<Avatar definition={validated} />`                                                          | `<Avatar character={readCharacter(json).value} />` (`@bible-strong/avatar-core`) |
+| `animation`, `defaultAnimation`, `autoplay`                                                  | `state`                                                                          |
+| `expression`, `defaultExpression`                                                            | `face` for one of the nine faces, or a `state`                                   |
+| `ref.current.play(key)`                                                                      | Change `state`                                                                   |
+| `ref.current.setExpression(key)`                                                             | Change `face`                                                                    |
+| `ref.current.pause()`, `ref.current.stop()`                                                  | `paused`                                                                         |
+| `ref.current.getState()`                                                                     | `onStateChange`                                                                  |
+| `onAnimationEnd`                                                                             | `onStateChange`: a state that hands over (`waking` → `idle`) reports the next    |
+| `onExpressionChange`, `onError`, `controlled_by_props`                                       | Removed: an unknown state or clip changes nothing                                |
+| `muted`, `frameRate`                                                                         | Unchanged                                                                        |
+| `settleAfterMs`, counted from the start of an animation                                      | Counted from the last change of a prop, or `poke`                                |
+| Types `AvatarController`, `AvatarCommandResult`, `AvatarPlaybackState`, `AvatarRuntimeError` | `AvatarHandle`, whose only method is `poke(gesture)`                             |
+
+The setup does not change: Bundle Mode, with `@bible-strong/avatar-core` in
+`importForwarding.moduleNames`. The avatar always moves (`idle` plays its clips round and round), so
+the frame callback no longer stops by itself on a still expression; give `settleAfterMs` to an avatar
+that only decorates a row or a card. The SVG is drawn half as large again as the box so that a jump
+is not cut: leave some room around the avatar.
+
 ## Versions
 
 Verified with React Native 0.88, Reanimated 4.7, Worklets 0.13 and `react-native-svg` 15.16. The
 peer ranges of Reanimated and Worklets start there, because Bundle Mode and its import forwarding
 are recent. The `strictGlobal` option of the worklets plugin is not tested.
 
-The package follows Semantic Versioning. Version 1 replaced the expressions and animations of
-each avatar with the shared catalogue of states, clips, faces and gestures.
+The package follows Semantic Versioning; every version is described in `CHANGELOG.md`, shipped in
+the package. Version 1 replaced the expressions and animations of
+each avatar with the shared catalogue of states, clips, faces and gestures. To move from 0.x, see « Upgrading from 0.x ».

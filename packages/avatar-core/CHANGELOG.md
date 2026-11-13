@@ -1,30 +1,41 @@
 # @bible-strong/avatar-core
 
+## 1.0.1
+
+### Patch Changes
+
+- Ship `CHANGELOG.md` in the package, and document in the README how to upgrade from 0.x: every
+  prop, option, method and function of the first version, with what takes its place.
+
 ## 1.0.0
 
 ### Major Changes
 
-- Second version: every character plays one shared catalogue instead of its own expressions and
-  animations.
+- Second version.
 
-  - **The character.** A renderer takes a character, as Avatar Lab exports it: body, colours,
-    outline, nose, mouth, the build of the eyes and the perspective. `createAvatar` and core's
-    `readCharacter` also read an `.avatar.json` of the first version, and keep only its character.
-  - **The catalogue.** About fifty states (`idle`, `thinking`, `searching`, `happy`…), the clips
-    they draw by their own rules, nine faces, the gestures `nod`, `bounce` and `spin`, and thirteen
-    spinner patterns a body can turn into. A state may hand over to the next one by itself.
-  - **The engine** (core): `createAvatarEngine`, `setEngineState`, `playEngineClip`,
-    `setEngineFace`, `pokeEngine`, `setEngineLookAt`, `advanceEngine`, `engineFrame` and
-    `renderCharacterFrame`.
-  - **The renderers** share one vocabulary: `state`, `clip`, `face`, `lookAt` (a point to look at,
-    reached smoothly whatever plays), `paused`, `muted`, `settleAfterMs`, `onStateChange`, and
-    `poke` for gestures. avatar-web gives the same through its controller; avatar-react-native runs
-    the engine on the UI thread.
+  Every character plays one shared catalogue instead of its own expressions and animations: about
+  fifty states (`idle`, `thinking`, `searching`, `happy`…) that draw their clips by their own
+  rules and may hand over to the next state, nine faces, the gestures `nod`, `bounce` and `spin`,
+  and thirteen spinner patterns a body can turn into. A file of the first version is still read,
+  for its character. See « Upgrading from 0.x » in the README for every change, old to new.
 
-  Breaking: the props and methods of the first version (`definition`, `animation`, `expression`,
-  `play`, `setExpression`…) are gone, with the first version's playback in core
-  (`playAvatarAnimation`, `renderAvatarFrame`, `parseAvatarDefinition`, ambient motion) and the
-  `./ambient-motion` entry point. avatar-react no longer ships a stylesheet.
+  **Breaking changes**
+
+  - The playback of the first version is gone: `createAvatarPlaybackState`,
+    `playAvatarAnimation`, `advanceAvatarPlayback`, `pauseAvatarPlayback`, `resumeAvatarPlayback`,
+    `sampleAvatarFrame`, `renderAvatarFrame`, `renderAvatarSample`, `nextAvatarFrameAt`,
+    `resolveAnimation`, `resolveExpression`, `renderAvatarDefinition` and `renderAvatarExpression`.
+  - `parseAvatarDefinition`, `getSemanticKeyIssue`, `avatarDefinitionFileName` and the size limits
+    of a definition are gone; `validateAvatarDefinition` stays, to read a file of the first
+    version.
+  - The entry point `@bible-strong/avatar-core/ambient-motion` is gone.
+  - A renderer draws a `CharacterScene`: the same geometry, moved by `transform`, with the marks
+    and the disc of a spinner.
+
+  **New**: the character (`AvatarCharacter`, `readCharacter`, `validateCharacter`, `characterOf`),
+  the catalogue (`states`, `clips`, `faces`, `stateAliases`), the engine (`createAvatarEngine`,
+  `setEngineState`, `playEngineClip`, `setEngineFace`, `pokeEngine`, `setEngineLookAt`,
+  `advanceEngine`, `engineFrame`, `engineAtRest`…) and `renderCharacterFrame`.
 
 ### Minor Changes
 

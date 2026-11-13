@@ -1,30 +1,39 @@
 # @bible-strong/avatar-react
 
+## 1.0.1
+
+### Patch Changes
+
+- Ship `CHANGELOG.md` in the package, and document in the README how to upgrade from 0.x: every
+  prop, option, method and function of the first version, with what takes its place.
+- Updated dependencies
+  - @bible-strong/avatar-core@1.0.1
+
 ## 1.0.0
 
 ### Major Changes
 
-- Second version: every character plays one shared catalogue instead of its own expressions and
-  animations.
+- Second version.
 
-  - **The character.** A renderer takes a character, as Avatar Lab exports it: body, colours,
-    outline, nose, mouth, the build of the eyes and the perspective. `createAvatar` and core's
-    `readCharacter` also read an `.avatar.json` of the first version, and keep only its character.
-  - **The catalogue.** About fifty states (`idle`, `thinking`, `searching`, `happy`…), the clips
-    they draw by their own rules, nine faces, the gestures `nod`, `bounce` and `spin`, and thirteen
-    spinner patterns a body can turn into. A state may hand over to the next one by itself.
-  - **The engine** (core): `createAvatarEngine`, `setEngineState`, `playEngineClip`,
-    `setEngineFace`, `pokeEngine`, `setEngineLookAt`, `advanceEngine`, `engineFrame` and
-    `renderCharacterFrame`.
-  - **The renderers** share one vocabulary: `state`, `clip`, `face`, `lookAt` (a point to look at,
-    reached smoothly whatever plays), `paused`, `muted`, `settleAfterMs`, `onStateChange`, and
-    `poke` for gestures. avatar-web gives the same through its controller; avatar-react-native runs
-    the engine on the UI thread.
+  Every character plays one shared catalogue instead of its own expressions and animations: about
+  fifty states (`idle`, `thinking`, `searching`, `happy`…) that draw their clips by their own
+  rules and may hand over to the next state, nine faces, the gestures `nod`, `bounce` and `spin`,
+  and thirteen spinner patterns a body can turn into. A file of the first version is still read,
+  for its character. See « Upgrading from 0.x » in the README for every change, old to new.
 
-  Breaking: the props and methods of the first version (`definition`, `animation`, `expression`,
-  `play`, `setExpression`…) are gone, with the first version's playback in core
-  (`playAvatarAnimation`, `renderAvatarFrame`, `parseAvatarDefinition`, ambient motion) and the
-  `./ambient-motion` entry point. avatar-react no longer ships a stylesheet.
+  **Breaking changes**
+
+  - `definition` becomes `character`; `createAvatar(file)` still reads an `.avatar.json`.
+  - `animation`, `defaultAnimation`, `autoplay`, `expression` and `defaultExpression` give way to
+    `state` and `face`.
+  - The ref's `play`, `setExpression`, `pause`, `stop` and `getState` are gone: the ref only has
+    `poke(gesture)`; use the props `state`, `face` and `paused`.
+  - `onAnimationEnd`, `onExpressionChange` and `onError` give way to `onStateChange`.
+  - The stylesheet `@bible-strong/avatar-react/styles.css` is gone, with the wrapper element:
+    `className` and `style` apply to the `svg`.
+
+  **New**: `state`, `clip`, `face`, `lookAt`, `paused`, `muted`, `settleAfterMs`, `followPointer`,
+  `emphasis`, `seed`, `onStateChange`, `poke`.
 
 ### Minor Changes
 

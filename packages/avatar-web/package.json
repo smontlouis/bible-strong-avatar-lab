@@ -1,6 +1,6 @@
 {
   "name": "@bible-strong/avatar-web",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Framework-independent DOM renderer for Bible Strong procedural avatars.",
   "keywords": [
     "avatar",
@@ -26,6 +26,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "exports": {

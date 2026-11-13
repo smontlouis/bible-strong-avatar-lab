@@ -125,8 +125,44 @@ no head to turn. A new array of the same point is not a change.
 2. Changing `state` moves the avatar from its current pose, without a jump, and `onStateChange`
    receives it.
 
+## Upgrading from 0.x
+
+Version 1 replaces each avatar's own expressions and animations with one shared catalogue of
+states, clips, faces and gestures. Keep your `.avatar.json`: `createAvatar` still reads it and keeps
+its character (body, colours, outline, nose, mouth, perspective, the height of the eyes). Its
+expressions and animations are no longer read.
+
+The standard animations of the first version are states of the catalogue under the same names:
+`idle`, `sleeping`, `waking`, `listening`, `thinking`, `searching`, `working`, `excited`, `bored`,
+`suspicious`, `angry`, `drowsy`, `happy`, `curious`, `confused`, `surprised`, `proud`, `shy`, `sad`,
+`laughing`, `scared`, `playful`, `celebrate`. An animation or an expression you created under
+another name is not carried over: pick the nearest state, or one of the nine faces (`neutral`,
+`happy`, `surprised`, `sad`, `sleepy`, `squinted`, `calm`, `inspecting`, `confused`). Some states
+look different: `thinking` now turns the body into a spinner of three dots.
+
+| 0.x                                                                    | 1.0                                                                              |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `createAvatar(definitionJson)`                                         | Unchanged. The keys are no longer typed from the JSON: `state` is a string.      |
+| `<Avatar definition={validated} />`                                    | `<Avatar character={readCharacter(json).value} />` (`@bible-strong/avatar-core`) |
+| `animation`, `defaultAnimation`, `autoplay`                            | `state`                                                                          |
+| `expression`, `defaultExpression`                                      | `face` for one of the nine faces, or a `state`                                   |
+| `ref.current.play(key)`                                                | Change `state`                                                                   |
+| `ref.current.setExpression(key)`                                       | Change `face`                                                                    |
+| `ref.current.pause()`, `ref.current.stop()`                            | `paused`                                                                         |
+| `ref.current.getState()`                                               | `onStateChange`                                                                  |
+| `onAnimationEnd`                                                       | `onStateChange`: a state that hands over (`waking` → `idle`) reports the next    |
+| `onExpressionChange`, `onError`, `controlled_by_props`                 | Removed: an unknown state or clip changes nothing                                |
+| `import '@bible-strong/avatar-react/styles.css'`                       | Remove it: the package ships no stylesheet                                       |
+| `filter: grayscale(1)` and a timer to pause                            | `muted` and `settleAfterMs`                                                      |
+| Types `AvatarController`, `AvatarCommandResult`, `AvatarPlaybackState` | `AvatarHandle`, whose only method is `poke(gesture)`                             |
+
+`className` and `style` now apply to the `svg` itself: there is no wrapper any more. The avatar
+always moves (`idle` plays its clips round and round); give `settleAfterMs` to one that only
+decorates a row or a card.
+
 ## Versions
 
-The package follows Semantic Versioning. Version 1 replaced the expressions and animations of
+The package follows Semantic Versioning; every version is described in `CHANGELOG.md`, shipped in
+the package. Version 1 replaced the expressions and animations of
 each avatar with the shared catalogue of states, clips, faces and gestures, and dropped the
-stylesheet.
+stylesheet. To move from 0.x, see « Upgrading from 0.x ».

@@ -210,8 +210,33 @@ it along the same line as above.
 - `@bible-strong/avatar-core/geometry`, `/body`, `/surfaces`: pure primitives for renderer
   authors.
 
+## Upgrading from 0.x
+
+Version 1 replaces each avatar's own expressions and animations, and their playback, with the
+engine and one shared catalogue. A file of the first version is still read, for its character.
+
+| 0.x                                                                              | 1.0                                                                                      |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `validateAvatarDefinition`                                                       | Unchanged, for a file of the first version                                               |
+| `parseAvatarDefinition(text)`                                                    | `readCharacter(JSON.parse(text))`                                                        |
+| `createAvatarPlaybackState()`                                                    | `createAvatarEngine({ seed })`                                                           |
+| `playAvatarAnimation(definition, key, now)`                                      | `setEngineState(engine, name)`, or `playEngineClip(engine, clips[name])`                 |
+| `resolveAnimation`, `resolveExpression`                                          | `states[resolveStateName(name)]`, `faces[resolveFaceName(name)]`                         |
+| `advanceAvatarPlayback(definition, state, now, environment)`                     | `advanceEngine(engine, seconds)`: you give the time step                                 |
+| `pauseAvatarPlayback`, `resumeAvatarPlayback`                                    | `pauseEngine`, `resumeEngine`                                                            |
+| `sampleAvatarFrame`, `renderAvatarFrame`, `renderAvatarSample`                   | `renderCharacterFrame(character, engineFrame(engine))`                                   |
+| `renderAvatarDefinition`, `renderAvatarExpression`                               | `renderCharacterFrame(character, playerFrame(createAvatarPlayer()))` for a still picture |
+| `nextAvatarFrameAt`                                                              | Gone: the avatar always moves                                                            |
+| `AvatarScene`                                                                    | `CharacterScene`: the same geometry, plus `transform` and `spinner`                      |
+| `@bible-strong/avatar-core/ambient-motion`                                       | Gone                                                                                     |
+| `getSemanticKeyIssue`, `avatarDefinitionFileName`, `AVATAR_DEFINITION_MAX_BYTES` | Gone                                                                                     |
+
+A renderer must now draw the body moved by `scene.transform`, the spinner's marks and disc, and fade
+the parts and the face by `spinner.round`: see « The scene ».
+
 ## Versions
 
-The package follows Semantic Versioning. Version 1 replaced the expressions and animations of each
+The package follows Semantic Versioning; every version is described in `CHANGELOG.md`, shipped in
+the package. Version 1 replaced the expressions and animations of each
 avatar, and their playback (`playAvatarAnimation`, `renderAvatarFrame` and the rest), with the
-engine and the shared catalogue. A file of the first version is still read, for its character.
+engine and the shared catalogue. A file of the first version is still read, for its character. To move from 0.x, see « Upgrading from 0.x ».
