@@ -767,7 +767,8 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
           label: t('Mélangé'),
           title: t('Tire ses clips au hasard, chacun une fois par tour, sans fin'),
         }
-      : { icon: Repeat, label: t('Un seul clip'), title: t('Joue son clip en boucle, sans fin') }
+      : // A single clip that loops says so by its single tile.
+        null
   })()
 
   const tiles = state && name && (
