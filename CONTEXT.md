@@ -2,77 +2,104 @@
 
 ## Purpose
 
-Bible Strong Avatar Lab is a browser-based authoring tool for procedural 2D avatars. It combines
-3D-inspired geometry with SVG rendering so creators can build a body from primitives, define a
-neutral face, author expressions and compose reusable animations. Generated packages do not depend
-on the Studio UI.
+Bible Strong Avatar Lab builds procedural 2D avatars and the engine that animates them. A
+creator builds a Character in the Studio; every Character plays the same catalogue of Clips,
+States, Faces and Gestures. The runtime packages draw a Character and do not depend on the Studio.
 
 ## Ubiquitous language
 
+### Character
+
+What an avatar is, apart from what it does: its body, colours, outline, nose, mouth, the build of
+its eyes (size, gap, height) and its perspective. A Character is what an app is given and what the
+Studio exports.
+
 ### Avatar
 
-A reusable character whose body, colors and neutral eyes define its persistent visual identity.
+A Character as the Studio keeps it, with a name and a place in the library. An Avatar owns no
+Clip, State or Face.
 
-### Neutral appearance
+### Body
 
-The persistent visual base of an Avatar before an Expression is applied. Avoid “default pose”.
+The primary shape, which carries the face, and the parts set around it. A part may follow the
+head's turn or stay still while the head turns.
 
-### Pose
+### Clip
 
-The Avatar's current temporary visual configuration. A Pose is not persisted directly.
+A piece of motion of a set length, made of tracks (position, rotation, stretch, zoom, eyelids,
+face), each with its own keys and the easing between them. Clips are read-only data of the
+catalogue. Avoid “animation” and “sequence”: everything the avatar does is animated, and a Clip's
+tracks run side by side, not one after the other.
 
-### Base behavior library
+### Key
 
-The immutable bundled collection of Expressions and Animations inherited by an Avatar that has not
-customized its behavior.
+A value of a track at a time of a Clip, with the easing that leads to the next Key.
 
-### Avatar behavior library
+### Join
 
-The Avatar-owned collection of Expressions and Animations created atomically from the Base behavior
-library on that Avatar's first behavior mutation.
+The short passage from where the body is to the starting pose of the next Clip, or back from a
+Hand pose to the Clip. Avoid “transition” for it.
 
-### Expression
+### State
 
-A saved visual preset within the Base behavior library or one Avatar behavior library. Eye values
-are relative to the owning Avatar's Neutral appearance. Optional color overrides are temporary.
+What the avatar is in, as an app declares it (`thinking`, `finished`, `happy`). A State draws its
+Clips by a Rule, may hold a Face and may turn the body into a Spinner. States are grouped
+(Lifecycle, Reactions, Spinners, Product, Showcase) for display only; the group is not part of a
+State's meaning.
 
-### Animation
+### Rule
 
-A saved sequence of Expressions from the same behavior library, including transitions and blink
-behavior. Avoid “state” in user-facing copy.
+How a State plays its Clips: shuffled without end (each once a round), a single Clip looping,
+once then the next State, or for a time then the next State.
 
-### Playback
+### Hand over
 
-The active execution of one Animation. It exclusively controls the animated Pose until direct user
-manipulation pauses it.
+A State's passing to the next State when its Rule says so. The engine hands over by default; the
+Studio can keep the State instead, to look at it.
+
+### Alias
+
+A second name of a State that plays exactly what another plays (`dots` for `thinking`). The engine
+leads an Alias to its State; the catalogue lists each State once.
+
+### Face
+
+The shape of the two eyes, one of nine (`neutral`, `happy`, `sleepy`…). The Clip asks for a Face,
+a State may hold one over it, and a Face held from outside comes before both.
+
+### Gesture
+
+A short move laid over whatever plays (`nod`, `bounce`, `spin`). Gestures add up and fade away.
+
+### Spinner
+
+What the body turns into while a State asks for it: a disc in the body's colour with its pattern
+of marks (`dots`, `radar`, `progress`…). The face fades out while it shows.
+
+### Hand pose
+
+A pose set by hand, by dragging the avatar or in the Pose tab. It pauses what plays; letting it go
+joins back to the Clip where it waited.
+
+### Player
+
+The bar of the Studio that says what plays (State, Clip, time) and holds what lies over it: play
+and stop, the held Face and the Gestures.
 
 ## Invariants
 
-- An Avatar inherits the Base behavior library until its first Expression or Animation mutation.
-- The first behavior mutation copies Expressions and Animations together so references stay valid.
-- Subsequent behavior mutations affect only the owning Avatar.
-- Duplicating an Avatar duplicates its Avatar behavior library when one exists.
-- Transferring an Animation must also transfer every Expression it references.
-- The primary body shape carries the facial coordinate system and eyes.
-- Secondary primitives have independent local dimensions, position and rotation.
-- Expressions remain compatible across body surfaces because they operate in the common facial frame.
-- `features/avatar/geometry.ts` and the exported procedural engine stay independent from React.
-- `features/studio/defaultStudioDocument.json` is the current schema baseline; pre-release legacy migrations are not required.
-- Live editing may update the preview, but unsaved avatar/expression edits must remain reversible.
+- A Character carries no Clip, State or Face of its own: all Characters play the same catalogue.
+- The primary shape carries the face's coordinate frame; Faces work on any body.
+- The Studio keeps one thing between visits: the library of Avatars.
+- An Avatar of the first version keeps only its Character: its expressions and animations are not
+  read.
+- Geometry, the player and the engine stay independent from React.
 
 ## Architecture boundaries
 
-- Pure geometry and document logic live in framework-independent TypeScript modules.
-- `features/studio/useStudioController.ts` coordinates durable UI state and application operations.
-- `features/studio/components/StudioView.tsx` composes the stage, inspector and dialogs.
-- Keep domain calculations out of React components and controller hooks.
-- Motion values own frame-by-frame visual updates; React state owns durable editor state.
-- Exports receive explicit avatar, expression and animation data rather than reading browser storage.
-- The generated standalone engine is committed and checked for freshness in local validation.
-
-## Current persistence
-
-The complete Studio document is persisted in browser local storage. JSON project export/import is the
-portable backup mechanism. There is no remote backend in this repository.
+- `packages/avatar-core` holds the geometry, the catalogue, the player and the engine.
+- `packages/avatar-react`, `avatar-web` and `avatar-react-native` draw what the engine gives.
+- `src/features/editor` is the Studio; its state lives in `useEditor`, its drawing in the stage.
+- Motion that changes at every frame is drawn without going through React state.
 
 Accepted architecture decisions live under `docs/adr/`.
