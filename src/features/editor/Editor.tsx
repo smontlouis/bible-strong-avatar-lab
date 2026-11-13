@@ -1,20 +1,10 @@
 import {
-  clipNames,
   clips,
-  createAvatarPlayer,
   faceNames,
   faces,
-  faceSmiles,
   gestureNames,
-  playEngineClip,
-  playerFrame,
   pokeEngine,
-  renderCharacterFrame,
-  stateGroups,
   states,
-  type AvatarCharacter,
-  type ClipDefinition,
-  type FaceName,
 } from '@bible-strong/avatar-core'
 import {
   Activity,
@@ -59,6 +49,7 @@ import {
   PERSPECTIVE_MAX,
 } from '@/features/editor/avatar'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
+import { ClipsPanel, StatesPanel } from '@/features/editor/ClipExplorer'
 import { PhotoPanel, PoseControls, slugOf, takePicture } from '@/features/editor/PhotoPanel'
 import { Scene } from '@/features/editor/Scene'
 import { emptyStatus, Stage, type StageStatus } from '@/features/editor/Stage'
@@ -486,190 +477,6 @@ function PosePanel({ editor }: { editor: EditorState }) {
       </InspectorCard>
       <Group title="Visage">
         <FaceChips editor={editor} />
-      </Group>
-    </div>
-  )
-}
-
-function StatesPanel({ editor, status }: { editor: EditorState; status: StageStatus }) {
-  const { t, doing, setDoing } = editor
-  const name = status.state
-  const state = name ? states[name] : undefined
-  const policy = !state
-    ? ''
-    : state.next && state.holdSeconds !== undefined
-      ? `${t('Temporisé')} · ${state.holdSeconds} s → ${state.next}`
-      : state.next
-        ? `${t('Dans l’ordre')} → ${state.next}`
-        : t('Paquet mélangé, en boucle')
-  return (
-    <div className="panel-stack">
-      {state && name && (
-        <InspectorCard>
-          <PanelTitle level={3} title={name} subtitle={policy} />
-          <Chips>
-            {state.clips.map((clip, index) => (
-              <Badge
-                variant={clip === status.clip ? 'default' : 'secondary'}
-                key={`${clip}-${index}`}
-              >
-                {clip} · {clips[clip].duration} s
-              </Badge>
-            ))}
-          </Chips>
-          <p className={note}>
-            {status.joining
-              ? `${t('Raccord vers')} ${status.clip}`
-              : `${t('Clip en cours')} : ${status.clip}`}
-            {' · '}
-            {t('visage')} {state.face ?? t('automatique')}
-            {state.morph ? ` · ${t('morphing')} ${state.morph}` : ''}
-          </p>
-          {!state.next && state.clips.length > 1 && (
-            <p className={note}>
-              {t(
-                'Chaque clip passe une fois par tour, dans un ordre retiré à chaque tour. Ce n’est pas une liste de lecture.'
-              )}
-            </p>
-          )}
-        </InspectorCard>
-      )}
-      {stateGroups.map(group => (
-        <Group title={group.label} key={group.label}>
-          <Chips>
-            {group.states.map(item => (
-              <Choice
-                active={'state' in doing ? doing.state === item : status.state === item}
-                key={item}
-                onClick={() => setDoing({ state: item })}
-              >
-                {item}
-              </Choice>
-            ))}
-          </Chips>
-        </Group>
-      ))}
-    </div>
-  )
-}
-
-const trackColors: Record<string, string> = {
-  position: '#2f855a',
-  rotation: '#805ad5',
-  squash: '#c05621',
-  scale: '#b7791f',
-  lids: '#2b6cb0',
-  expression: '#4a5568',
-}
-
-function ClipTracks({ clip, time }: { clip: ClipDefinition; time: number }) {
-  const { t } = useStudioLanguage()
-  const names: Record<string, string> = {
-    position: 'Position',
-    rotation: 'Rotation',
-    squash: 'Étirement',
-    scale: 'Zoom',
-    lids: 'Paupières',
-    expression: 'Visage',
-  }
-  return (
-    <div className="flex flex-col gap-1.5">
-      {Object.entries(clip.tracks).map(([name, keys]) => (
-        <div className="flex items-center gap-2" key={name}>
-          <span className="w-20 shrink-0 text-xs text-neutral-600">{t(names[name] ?? name)}</span>
-          <div className="relative h-5 flex-1 rounded bg-neutral-100">
-            {(keys as { t: number; v: unknown }[]).map((key, index) => (
-              <span
-                className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rotate-45"
-                style={{ left: `${(key.t / clip.duration) * 100}%`, background: trackColors[name] }}
-                title={`${key.t.toFixed(2)} s · ${typeof key.v === 'string' ? key.v : (key.v as number[]).map(value => value.toFixed(2)).join(', ')}`}
-                key={index}
-              />
-            ))}
-            <span
-              className="absolute top-0 h-full w-px bg-neutral-900"
-              style={{ left: `${Math.min(100, (time / clip.duration) * 100)}%` }}
-            />
-          </div>
-          <span className="w-6 shrink-0 text-right text-xs text-neutral-400">{keys.length}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ClipsPanel({ editor, status }: { editor: EditorState; status: StageStatus }) {
-  const { t, doing, setDoing, playing, setPlaying, speed, setSpeed, engine } = editor
-  const clip = clips[status.clip]
-  return (
-    <div className="panel-stack">
-      {clip && (
-        <InspectorCard>
-          <PanelTitle
-            level={3}
-            title={clip.name}
-            subtitle={
-              status.joining
-                ? t('Raccord : le corps rejoint la pose de départ du clip.')
-                : `${status.time.toFixed(2)} s / ${clip.duration} s`
-            }
-          />
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              type="button"
-              onClick={() => setPlaying(!playing)}
-            >
-              {t(playing ? 'Pause' : 'Lecture')}
-            </Button>
-            {[0.25, 0.5, 1].map(value => (
-              <Choice active={speed === value} key={value} onClick={() => setSpeed(value)}>
-                ×{value}
-              </Choice>
-            ))}
-          </div>
-          <input
-            className="mb-3 w-full"
-            type="range"
-            min={0}
-            max={clip.duration}
-            step={0.01}
-            value={status.joining ? 0 : Math.min(status.time, clip.duration)}
-            aria-label={t('Temps du clip')}
-            onChange={event => {
-              // Moving the cursor shows the clip at that time, alone and stopped.
-              setPlaying(false)
-              setDoing({ clip: clip.name })
-              playEngineClip(engine.current, clip, {
-                phase: Number(event.currentTarget.value) / clip.duration,
-                transition: 'cut',
-              })
-            }}
-          />
-          <ClipTracks clip={clip} time={status.joining ? 0 : status.time} />
-          <p className={note}>
-            {t(
-              'Chaque piste a ses propres images clés : une rotation peut partir avant un déplacement. Les clips se lisent, ils ne se modifient pas ici.'
-            )}
-          </p>
-        </InspectorCard>
-      )}
-      <Group title="Clips">
-        <Chips>
-          {clipNames.map(name => (
-            <Choice
-              active={'clip' in doing ? doing.clip === name : status.clip === name}
-              key={name}
-              onClick={() => {
-                setPlaying(true)
-                setDoing({ clip: name })
-              }}
-            >
-              {name}
-            </Choice>
-          ))}
-        </Chips>
       </Group>
     </div>
   )

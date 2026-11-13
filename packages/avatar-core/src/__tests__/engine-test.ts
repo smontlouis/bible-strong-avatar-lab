@@ -3,9 +3,11 @@ import {
   advanceEngine,
   createAvatarEngine,
   engineFrame,
+  pauseEngine,
   playEngineClip,
   pokeEngine,
   seedOfName,
+  seekEngine,
   setEngineCompact,
   setEngineEmphasis,
   setEngineFace,
@@ -248,6 +250,24 @@ describe('gaze', () => {
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before, 6)
     setEngineGazeAlways(engine, true)
     expect(engineFrame(engine).rotation[1]).toBeCloseTo(before + 18 * 0.55, 1)
+  })
+})
+
+describe('a clip put at a time', () => {
+  it('shows the clip there at once, without leaving the state, and stays paused', () => {
+    const engine = createAvatarEngine({ seed: 3 })
+    setEngineState(engine, 'reading')
+    advanceEngine(engine, 1)
+    pauseEngine(engine)
+    const clip = engine.player.clip!
+    seekEngine(engine, clip.duration / 2)
+    expect(engine.state).toBe('reading')
+    expect(engine.player.join).toBeNull()
+    expect(engine.player.time).toBeCloseTo(clip.duration / 2)
+    advanceEngine(engine, 1)
+    expect(engine.player.time).toBeCloseTo(clip.duration / 2)
+    seekEngine(engine, 99)
+    expect(engine.player.time).toBe(clip.duration)
   })
 })
 

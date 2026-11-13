@@ -16,6 +16,7 @@ import {
   createAvatarPlayer,
   holdPlayerFace,
   pausePlayer,
+  seekPlayer,
   playClip,
   playerFrame,
   resumePlayer,
@@ -295,6 +296,10 @@ export const setEngineEmphasis = (engine: AvatarEngine, emphasis: boolean) => {
   const state = engine.state === null ? undefined : states[engine.state]
   if (state && !state.face) holdPlayerFace(engine.player, emphasis ? 'surprised' : null)
 }
+
+/** Put the clip that plays at a time, in seconds. The state that plays, if any, goes on from there. */
+export const seekEngine = (engine: AvatarEngine, seconds: number) =>
+  seekPlayer(engine.player, seconds)
 
 export const pauseEngine = (engine: AvatarEngine) => pausePlayer(engine.player)
 export const resumeEngine = (engine: AvatarEngine) => resumePlayer(engine.player)

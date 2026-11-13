@@ -74,6 +74,31 @@ describe('the editor', () => {
     expect(getAllByText(/Done_B/).length).toBeGreaterThan(0)
   })
 
+  it('stops a clip on the keyframe that is picked and shows its curves and its easing', () => {
+    const { getByRole, getAllByRole, getByText, container } = open()
+    fireEvent.click(getByRole('button', { name: 'Clips' }))
+    fireEvent.click(getByRole('button', { name: 'Working_B' }))
+    frames(60)
+    const keys = getAllByRole('button').filter(button =>
+      button.getAttribute('aria-label')?.startsWith('Rotation · ')
+    )
+    expect(keys).toHaveLength(6)
+    fireEvent.click(keys[1])
+    frames(2)
+    // The clip is paused on the key, whose time the clock shows.
+    expect(getByRole('button', { name: 'Lecture' })).toBeTruthy()
+    expect(container.querySelector('[data-joining] span.font-mono')?.textContent).toBe(
+      '1.41 s / 4.80 s'
+    )
+    expect(getByText('Bézier →')).toBeTruthy()
+    // One curve for each of the three angles, each with a point for every key.
+    const points = getAllByRole('button').filter(button =>
+      /^[XYZ] · /.test(button.getAttribute('aria-label') ?? '')
+    )
+    expect(points).toHaveLength(18)
+    expect(getByText(/Utilisé par : reading/)).toBeTruthy()
+  })
+
   it('shows the nine faces and holds the one that is picked', () => {
     const { getByRole, getAllByRole } = open()
     fireEvent.click(getByRole('button', { name: 'Visages' }))

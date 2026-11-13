@@ -271,6 +271,20 @@ export const playClip = (
   else startClip(player, clip, phase)
 }
 
+/**
+ * Put the clip that plays at a time, in seconds, at once: a join under way is dropped. The
+ * player stays playing or paused as it was.
+ */
+export const seekPlayer = (player: AvatarPlayer, seconds: number) => {
+  const clip = player.clip
+  if (!clip) return
+  player.join = null
+  player.time = clamp(seconds, 0, clip.duration)
+  player.squashAnchor = clip.squashAnchor ?? 0
+  player.clipFace = faceAt(clip, player.time)
+  player.pose = poseAt(clip, player.time, player.pose.zoom)
+}
+
 export const pausePlayer = (player: AvatarPlayer) => {
   player.playing = false
 }
