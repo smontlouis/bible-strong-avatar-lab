@@ -272,6 +272,9 @@ export const eyeOutline = (eye: Readonly<FaceEye>, size = 1, lids = 0): [number,
 // side of the middle of the face.
 const EYE_TURN = (18.38 * Math.PI) / 180
 
+/** How far an eye's place is from the middle of the face, along the head, in head radii. */
+export const eyeReach = (gap = 1) => EYE_TURN * gap
+
 /**
  * Lay a point of an eye's own frame on the ball of the head, and give where it lands as seen
  * from the front: across to the right of the screen, and down. The eye is wrapped on the ball,

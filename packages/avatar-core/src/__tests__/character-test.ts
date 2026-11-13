@@ -1,3 +1,4 @@
+import { faceNames, faces } from '../faces'
 import { clips } from '../catalogue'
 import {
   characterFromLegacyDefinition,
@@ -120,6 +121,23 @@ describe('characters', () => {
     })
     // The base is 120 below the middle: stretched to 96, then moved down by 24.
     expect(scene.transform[3] * 120 + scene.transform[5]).toBeCloseTo(120, 6)
+  })
+
+  it('never lets the two eyes touch, whatever the face and however close the eyes are set', () => {
+    for (const gap of [1, 0.7, 0.45]) {
+      const close: AvatarCharacter = {
+        ...character,
+        face: { ...character.face, eyes: { ...character.face.eyes, gap } },
+      }
+      for (const name of faceNames) {
+        const frame = { ...resting(), face: name, eyes: faces[name].eyes }
+        const scene = renderCharacterFrame(close, frame)
+        const left = box(scene.geometry.leftPath)
+        const right = box(scene.geometry.rightPath)
+        expect(left.maxX).toBeLessThan(-3)
+        expect(right.minX).toBeGreaterThan(3)
+      }
+    }
   })
 
   it('draws every clip of the catalogue on the character without a broken path', () => {

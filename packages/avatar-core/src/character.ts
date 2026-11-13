@@ -5,7 +5,7 @@ import type {
   AvatarExpressionDefinition,
   AvatarStyleDefinition,
 } from './avatarDefinition'
-import { eyeOutline, eyePointOnFace } from './faces'
+import { eyeOutline, eyePointOnFace, eyeReach } from './faces'
 import {
   multiplyQuaternions,
   quaternionFromAxisAngle,
@@ -45,6 +45,8 @@ const STANDARD_EYE_HEIGHT = 0.57
 const STANDARD_EYE_REACH = 0.31535
 // How close the eyes may be set for their width, against the standard face.
 const CLOSEST_EYE_GAP = 0.92
+// The least room each eye leaves between itself and the middle of the face, in head radii.
+const EYE_CLEARANCE = 0.045
 
 /** The radius the face is measured in: the head's, or the smaller one when it is not round. */
 const faceRadius = (character: Readonly<AvatarCharacter>) =>
@@ -144,8 +146,15 @@ const eyeOutlineOnFace = (
   const build = character.face.eyes
   const radius = faceRadius(character)
   const side = index === 0 ? -1 : 1
-  return eyeOutline(frame.eyes[index], frame.eyeScales[index], frame.lids).map(([outward, up]) => {
-    const [x, y] = eyePointOnFace(side, outward * build.width, up * build.height, build.gap)
+  const outline = eyeOutline(frame.eyes[index], frame.eyeScales[index], frame.lids)
+  // The two eyes never touch. A face that leans its eyes inward, or a character whose eyes are
+  // set close, would bring them together: an eye that comes too near the middle of the face is
+  // moved outward, whole, by what it lacks.
+  let innermost = Infinity
+  for (const point of outline) innermost = Math.min(innermost, point[0] * build.width)
+  const clear = Math.max(0, EYE_CLEARANCE - (eyeReach(build.gap) + innermost))
+  return outline.map(([outward, up]) => {
+    const [x, y] = eyePointOnFace(side, outward * build.width + clear, up * build.height, build.gap)
     return [x * radius, (y + build.shiftY) * radius] as const
   })
 }
