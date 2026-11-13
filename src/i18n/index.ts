@@ -171,6 +171,8 @@ const english: Record<string, string> = {
   'au repos': 'at rest',
   États: 'States',
   Étirement: 'Stretch',
+  'Le corps, les couleurs et le visage de cet avatar seront définitivement supprimés.':
+    'The body, colors and face of this avatar will be permanently deleted.',
   'Couleur héritée': 'Inherited color',
   'Suit la rotation du corps': 'Follows the body rotation',
   'Désactivé, la forme reste en place quand le corps tourne. Elle le suit toujours quand il se déplace.':

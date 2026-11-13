@@ -2993,6 +2993,10 @@ p {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   backdrop-filter: blur(16px);
 }
+/* The editor built on the engine has seven tabs. */
+.mobile-mode-tabs.has-seven-tabs {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
 .mobile-mode-tab {
   display: flex;
   height: 51px;

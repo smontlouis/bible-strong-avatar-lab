@@ -138,6 +138,8 @@ export const chinese: Record<string, string> = {
   'au repos': '静止',
   États: '状态',
   Étirement: '拉伸',
+  'Le corps, les couleurs et le visage de cet avatar seront définitivement supprimés.':
+    '该头像的身体、颜色和面部将被永久删除。',
   'Couleur héritée': '继承颜色',
   'Suit la rotation du corps': '跟随身体旋转',
   'Désactivé, la forme reste en place quand le corps tourne. Elle le suit toujours quand il se déplace.':

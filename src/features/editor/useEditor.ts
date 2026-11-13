@@ -34,12 +34,11 @@ import {
 import { useStudioLanguage } from '@/i18n'
 
 export const editorTabs = [
-  'character',
+  'avatars',
   'pose',
   'states',
   'clips',
   'faces',
-  'gestures',
   'status',
   'export',
 ] as const
@@ -51,7 +50,7 @@ export type Doing = { routine: string } | { state: string } | { clip: string }
 const restPose: Required<FreePose> = { rotation: [0, 0, 0], position: [0, 0], zoom: 0.6 }
 
 /** The character of an avatar of the Studio: what it is, apart from what it does. */
-const characterOf = (avatar: StudioAvatar): AvatarCharacter | null => {
+export const characterOfAvatar = (avatar: StudioAvatar): AvatarCharacter | null => {
   const definition = createAvatarDefinition({
     avatar,
     behavior: { expressions: [], sequences: [] },
@@ -62,7 +61,9 @@ const characterOf = (avatar: StudioAvatar): AvatarCharacter | null => {
 export const useEditor = () => {
   const { t, language } = useStudioLanguage()
   const [document, setDocument] = useState<StudioDocument>(() => loadStudioDocument())
-  const [tab, setTab] = useState<EditorTab>('character')
+  const [tab, setTab] = useState<EditorTab>('avatars')
+  // Whether the avatar on the stage is being built: its body, colours and features.
+  const [building, setBuilding] = useState(false)
   const [doing, setDoing] = useState<Doing>({ state: 'idle' })
   const [face, setFace] = useState<string | null>(null)
   const [playing, setPlaying] = useState(true)
@@ -74,7 +75,7 @@ export const useEditor = () => {
   const avatars = document.library.avatars
   const activeAvatar =
     avatars.find(avatar => avatar.id === document.library.activeAvatarId) ?? avatars[0]
-  const character = useMemo(() => characterOf(activeAvatar), [activeAvatar])
+  const character = useMemo(() => characterOfAvatar(activeAvatar), [activeAvatar])
   // One engine per avatar: two avatars do not draw the same clips at the same time.
   const engine = useRef<AvatarEngine>(createAvatarEngine({ seed: seedOfName(activeAvatar.id) }))
 
@@ -100,7 +101,8 @@ export const useEditor = () => {
     const avatar = createAvatar(t('Nouvel avatar'))
     updateLibrary([...avatars, avatar], avatar.id)
     setSelectedBodyNodeId('primary')
-    setTab('character')
+    setTab('avatars')
+    setBuilding(true)
   }
   const duplicateAvatar = () => {
     const copy: StudioAvatar = {
@@ -123,7 +125,8 @@ export const useEditor = () => {
     const avatar: StudioAvatar = { ...imported.avatar, behavior: undefined }
     updateLibrary([...avatars, avatar], avatar.id)
     setSelectedBodyNodeId('primary')
-    setTab('character')
+    setTab('avatars')
+    setBuilding(true)
   }
 
   // The body.
@@ -203,7 +206,12 @@ export const useEditor = () => {
     t,
     language,
     tab,
-    setTab,
+    setTab: (next: EditorTab) => {
+      setTab(next)
+      setBuilding(false)
+    },
+    building,
+    setBuilding,
     engine,
     character,
     avatars,

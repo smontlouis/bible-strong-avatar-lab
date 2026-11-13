@@ -33,6 +33,12 @@ beforeEach(() => {
   clock = 0
   window.localStorage.clear()
   window.localStorage.setItem('avatar-studio-language', 'fr')
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  })) as unknown as typeof window.matchMedia
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => pending.push(callback))
   vi.stubGlobal('cancelAnimationFrame', () => {
     pending = []
@@ -51,14 +57,14 @@ const open = () => {
 }
 
 describe('the editor', () => {
-  it('opens on the character, with the avatars of the library and no expression or animation', () => {
-    const { getByRole, queryByText, getAllByRole } = open()
-    expect(getByRole('button', { name: 'Personnage' }).getAttribute('aria-current')).toBe('page')
+  it('opens on the gallery of avatars, with no expression or animation to edit', () => {
+    const { getByRole, queryByText } = open()
+    expect(getByRole('heading', { level: 1 }).textContent).toBe('Avatars')
     expect(getByRole('button', { name: 'Strobi' })).toBeTruthy()
     expect(getByRole('button', { name: 'Kirby' })).toBeTruthy()
     expect(queryByText('Expressions')).toBeNull()
     expect(queryByText('Animations')).toBeNull()
-    expect(getAllByRole('button').some(button => button.textContent === 'États')).toBe(true)
+    expect(getByRole('button', { name: 'États' })).toBeTruthy()
   })
 
   it('plays a state picked in the States tab and says which clip plays', () => {
@@ -70,29 +76,43 @@ describe('the editor', () => {
   })
 
   it('shows the nine faces and holds the one that is picked', () => {
-    const { getByRole, getAllByText } = open()
+    const { getByRole, getAllByRole } = open()
     fireEvent.click(getByRole('button', { name: 'Visages' }))
-    expect(getAllByText('Ne cligne pas').length).toBe(6)
-    fireEvent.click(getByRole('button', { name: /happy/ }))
-    fireEvent.click(getByRole('button', { name: 'Clips' }))
-    frames(40)
-    expect(getAllByText(/happy/).length).toBeGreaterThan(0)
+    const cards = getAllByRole('button').filter(button =>
+      button.classList.contains('expression-card')
+    )
+    expect(cards).toHaveLength(9)
+    fireEvent.click(getByRole('button', { name: 'happy' }))
+    expect(getByRole('button', { name: 'happy' }).getAttribute('aria-pressed')).toBe('true')
+    expect(getByRole('button', { name: 'Automatique' }).getAttribute('aria-pressed')).toBe('false')
   })
 
-  it('renames the avatar and keeps the name after a reload', () => {
+  it('builds an avatar on a page of its own, and keeps its new name after a reload', () => {
     const first = open()
-    fireEvent.change(first.getByLabelText('Nom'), { target: { value: 'Strobi bis' } })
+    fireEvent.doubleClick(first.getByRole('button', { name: 'Strobi' }))
+    fireEvent.change(first.getByLabelText('Nom de l’avatar'), { target: { value: 'Strobi bis' } })
+    fireEvent.click(first.getByRole('button', { name: 'Enregistrer' }))
     first.unmount()
     expect(loadStudioDocument().library.avatars[0].name).toBe('Strobi bis')
     const { getByRole } = open()
     expect(getByRole('button', { name: 'Strobi bis' })).toBeTruthy()
   })
 
-  it('adds an avatar and makes it the one on the stage', () => {
+  it('adds an avatar and opens it to be built', () => {
     const { getByRole, getByLabelText } = open()
-    fireEvent.click(getByRole('button', { name: 'Nouveau' }))
-    expect((getByLabelText('Nom') as HTMLInputElement).value).toBe('Nouvel avatar')
+    fireEvent.click(getByRole('button', { name: 'Ajouter un avatar' }))
+    expect((getByLabelText('Nom de l’avatar') as HTMLInputElement).value).toBe('Nouvel avatar')
     expect(loadStudioDocument().library.avatars.at(-1)?.name).toBe('Nouvel avatar')
+  })
+
+  it('stops the avatar and lets it be turned by hand in the Pose tab', () => {
+    const { getByRole, getByLabelText, queryByRole } = open()
+    fireEvent.click(getByRole('button', { name: 'Pose' }))
+    frames(4)
+    fireEvent.change(getByLabelText('Rotation Y'), { target: { value: '40' } })
+    frames(4)
+    // The gestures of the stage are for an avatar that plays.
+    expect(queryByRole('button', { name: 'bounce' })).toBeNull()
   })
 })
 

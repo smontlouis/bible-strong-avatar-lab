@@ -17,51 +17,109 @@ import {
   type ClipDefinition,
   type FaceName,
 } from '@bible-strong/avatar-core'
-import { useMemo, useRef, useState } from 'react'
+import {
+  Activity,
+  ArrowLeft,
+  Copy,
+  Download,
+  Film,
+  ListChecks,
+  MousePointer2,
+  Move3D,
+  Pencil,
+  Play,
+  Plus,
+  RotateCcw,
+  Smile,
+  Trash2,
+  Upload,
+} from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
-import { InspectorCard, PanelTitle } from '@/app/components/common'
+import { InspectorCard, PanelTitle, StatePlayer } from '@/app/components/common'
 import { ColorField, NumericField } from '@/app/components/controls'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Switch } from '@/components/ui/switch'
 import { downloadPicture, pictureSvg } from '@/features/editor/picture'
 import { Scene } from '@/features/editor/Scene'
 import { emptyStatus, Stage, type StageStatus } from '@/features/editor/Stage'
 import {
+  characterOfAvatar,
   editorTabs,
   useEditor,
   type Editor as EditorState,
   type EditorTab,
 } from '@/features/editor/useEditor'
 import { BodyConstructionAccordion } from '@/features/studio/components/BodyConstructionAccordion'
-import { useStudioLanguage, type StudioLanguage } from '@/i18n'
+import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
+import { useStudioLanguage } from '@/i18n'
+
+const STACKED_LAYOUT_QUERY = '(max-width: 980px)'
 
 const tabLabels: Record<EditorTab, string> = {
-  character: 'Personnage',
+  avatars: 'Avatars',
   pose: 'Pose',
   states: 'États',
   clips: 'Clips',
   faces: 'Visages',
-  gestures: 'Gestes',
   status: 'Status',
-  export: 'Export',
+  export: 'Exporter',
 }
 
-const chip = (active: boolean) =>
-  `rounded-full border px-3 py-1 text-xs transition-colors ${
-    active
-      ? 'border-transparent bg-neutral-900 text-white'
-      : 'border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100'
-  }`
-const heading = 'mb-2 text-xs font-semibold tracking-wide text-neutral-500 uppercase'
-const note = 'text-xs leading-relaxed text-neutral-500'
+const tabIcons: Record<Exclude<EditorTab, 'avatars'>, typeof Play> = {
+  pose: Move3D,
+  states: Activity,
+  clips: Film,
+  faces: Smile,
+  status: ListChecks,
+  export: Download,
+}
+
+const note = 'body-gizmo-help'
+
+/** A choice among several, as the Studio draws them: a small outlined button that stays pressed. */
+function Choice({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <Button
+      variant={active ? 'default' : 'outline'}
+      size="sm"
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  )
+}
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   const { t } = useStudioLanguage()
   return (
-    <section>
-      <h2 className={heading}>{t(title)}</h2>
+    <InspectorCard>
+      <p className="eyebrow">{t(title)}</p>
       {children}
-    </section>
+    </InspectorCard>
   )
 }
 
@@ -87,50 +145,93 @@ function SwitchRow({
   )
 }
 
-function CharacterPanel({ editor }: { editor: EditorState }) {
-  const { t, activeAvatar, avatars, outline } = editor
-  const features = activeAvatar.eyes
+const restFrame = playerFrame(createAvatarPlayer())
+
+/** A small picture of a character at rest, or with a face, as the gallery's cards show them. */
+function CharacterPreview({
+  character,
+  face = 'neutral',
+  turned = false,
+}: {
+  character: AvatarCharacter
+  face?: FaceName
+  turned?: boolean
+}) {
+  const scene = useMemo(
+    () =>
+      renderCharacterFrame(character, {
+        ...restFrame,
+        face,
+        eyes: faces[face].eyes,
+        smile: faceSmiles[face],
+        inspectWeight: face === 'inspecting' ? 1 : 0,
+        rotation: turned ? [-8, 32, 0] : [0, 0, 0],
+      }),
+    [character, face, turned]
+  )
+  return <Scene scene={scene} character={character} className="avatar-preview" />
+}
+
+function AvatarsPanel({ editor }: { editor: EditorState }) {
+  const { t, avatars, activeAvatar } = editor
   const file = useRef<HTMLInputElement | null>(null)
   const [importError, setImportError] = useState(false)
   return (
-    <>
-      <Group title="Avatars">
-        <Chips>
-          {avatars.map(avatar => (
-            <button
-              className={chip(avatar.id === activeAvatar.id)}
-              type="button"
-              key={avatar.id}
-              onClick={() => editor.selectAvatar(avatar.id)}
-            >
-              {avatar.name}
-            </button>
-          ))}
-        </Chips>
+    <div className="panel-stack avatar-page">
+      <section className="avatar-shelf" aria-label={t('Choisir un avatar')}>
+        <div className="avatar-shelf-heading">
+          <strong>{t('Double-clic pour modifier')}</strong>
+          <span>{avatars.length}</span>
+        </div>
+        <div className="avatar-grid">
+          {avatars.map(avatar => {
+            const character = characterOfAvatar(avatar)
+            return (
+              <div className="avatar-sort-item" key={avatar.id}>
+                <Button
+                  className="avatar-card"
+                  variant="outline"
+                  aria-pressed={activeAvatar.id === avatar.id}
+                  type="button"
+                  onClick={() => editor.selectAvatar(avatar.id)}
+                  onDoubleClick={() => {
+                    editor.selectAvatar(avatar.id)
+                    editor.setBuilding(true)
+                  }}
+                >
+                  {character && <CharacterPreview character={character} />}
+                  <span>{avatar.name}</span>
+                </Button>
+              </div>
+            )
+          })}
+          <Button
+            variant="outline"
+            className="avatar-add creation-card"
+            aria-label={t('Ajouter un avatar')}
+            onClick={editor.addAvatar}
+          >
+            <Plus />
+          </Button>
+        </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" type="button" onClick={editor.addAvatar}>
-            {t('Nouveau')}
-          </Button>
-          <Button variant="secondary" size="sm" type="button" onClick={editor.duplicateAvatar}>
-            {t('Dupliquer')}
-          </Button>
-          <Button variant="secondary" size="sm" type="button" onClick={() => file.current?.click()}>
-            {t('Importer')}
-          </Button>
           <Button
             variant="outline"
             size="sm"
             type="button"
-            disabled={avatars.length <= 1}
-            onClick={editor.deleteAvatar}
+            onClick={() => editor.setBuilding(true)}
           >
-            {t('Supprimer')}
+            <Pencil /> {t('Modifier')}
+          </Button>
+          <Button variant="outline" size="sm" type="button" onClick={() => file.current?.click()}>
+            <Upload /> {t('Importer un .avatar.json')}
           </Button>
           <input
             ref={file}
+            className="project-import-input"
             type="file"
-            accept="application/json,.json"
-            hidden
+            accept="application/json,.json,.avatar.json"
+            aria-label={t('Importer un .avatar.json')}
             onChange={async event => {
               const chosen = event.currentTarget.files?.[0]
               event.currentTarget.value = ''
@@ -144,24 +245,27 @@ function CharacterPanel({ editor }: { editor: EditorState }) {
             }}
           />
         </div>
-        <p className={`mt-2 ${note}`}>
-          {importError
-            ? t('Ce fichier n’est pas une définition d’avatar.')
-            : t(
-                'Un avatar importé garde son corps, ses couleurs, son nez et sa bouche. Ses expressions et ses animations ne sont pas reprises.'
-              )}
-        </p>
-      </Group>
+        {importError ? (
+          <p className="project-transfer-error" role="alert">
+            {t('Ce fichier n’est pas une définition d’avatar.')}
+          </p>
+        ) : (
+          <p className={note}>
+            {t(
+              'Un avatar importé garde son corps, ses couleurs, son nez et sa bouche. Ses expressions et ses animations ne sont pas reprises.'
+            )}
+          </p>
+        )}
+      </section>
+    </div>
+  )
+}
 
-      <Group title="Nom">
-        <input
-          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
-          value={activeAvatar.name}
-          aria-label={t('Nom')}
-          onChange={event => editor.renameAvatar(event.currentTarget.value)}
-        />
-      </Group>
-
+function CharacterPanel({ editor }: { editor: EditorState }) {
+  const { t, activeAvatar, outline } = editor
+  const features = activeAvatar.eyes
+  return (
+    <div className="panel-stack">
       <BodyConstructionAccordion controller={editor} />
 
       <InspectorCard>
@@ -313,7 +417,7 @@ function CharacterPanel({ editor }: { editor: EditorState }) {
           </>
         )}
       </InspectorCard>
-    </>
+    </div>
   )
 }
 
@@ -321,18 +425,13 @@ function FaceChips({ editor }: { editor: EditorState }) {
   const { t, face, setFace } = editor
   return (
     <Chips>
-      <button className={chip(face === null)} type="button" onClick={() => setFace(null)}>
+      <Choice active={face === null} onClick={() => setFace(null)}>
         {t('Automatique')}
-      </button>
+      </Choice>
       {faceNames.map(name => (
-        <button
-          className={chip(face === name)}
-          type="button"
-          key={name}
-          onClick={() => setFace(name)}
-        >
+        <Choice active={face === name} key={name} onClick={() => setFace(name)}>
           {name}
-        </button>
+        </Choice>
       ))}
     </Chips>
   )
@@ -351,7 +450,7 @@ function PosePanel({ editor }: { editor: EditorState }) {
     setPose({ ...pose, position })
   }
   return (
-    <>
+    <div className="panel-stack">
       <p className={note}>
         {t(
           'Place l’avatar librement : glisse sur la scène pour le tourner, ou règle les valeurs. Le clip est arrêté ; l’image de l’onglet Export reprend cette pose.'
@@ -413,7 +512,7 @@ function PosePanel({ editor }: { editor: EditorState }) {
       <Group title="Visage">
         <FaceChips editor={editor} />
       </Group>
-    </>
+    </div>
   )
 }
 
@@ -429,18 +528,21 @@ function StatesPanel({ editor, status }: { editor: EditorState; status: StageSta
         ? `${t('Dans l’ordre')} → ${state.next}`
         : t('Paquet mélangé, en boucle')
   return (
-    <>
+    <div className="panel-stack">
       {state && name && (
         <InspectorCard>
           <PanelTitle level={3} title={name} subtitle={policy} />
           <Chips>
             {state.clips.map((clip, index) => (
-              <span className={chip(clip === status.clip)} key={`${clip}-${index}`}>
+              <Badge
+                variant={clip === status.clip ? 'default' : 'secondary'}
+                key={`${clip}-${index}`}
+              >
                 {clip} · {clips[clip].duration} s
-              </span>
+              </Badge>
             ))}
           </Chips>
-          <p className={`mt-2 ${note}`}>
+          <p className={note}>
             {status.joining
               ? `${t('Raccord vers')} ${status.clip}`
               : `${t('Clip en cours')} : ${status.clip}`}
@@ -461,19 +563,18 @@ function StatesPanel({ editor, status }: { editor: EditorState; status: StageSta
         <Group title={group.label} key={group.label}>
           <Chips>
             {group.states.map(item => (
-              <button
-                className={chip('state' in doing ? doing.state === item : status.state === item)}
-                type="button"
+              <Choice
+                active={'state' in doing ? doing.state === item : status.state === item}
                 key={item}
                 onClick={() => setDoing({ state: item })}
               >
                 {item}
-              </button>
+              </Choice>
             ))}
           </Chips>
         </Group>
       ))}
-    </>
+    </div>
   )
 }
 
@@ -526,7 +627,7 @@ function ClipsPanel({ editor, status }: { editor: EditorState; status: StageStat
   const { t, doing, setDoing, playing, setPlaying, speed, setSpeed, engine } = editor
   const clip = clips[status.clip]
   return (
-    <>
+    <div className="panel-stack">
       {clip && (
         <InspectorCard>
           <PanelTitle
@@ -548,14 +649,9 @@ function ClipsPanel({ editor, status }: { editor: EditorState; status: StageStat
               {t(playing ? 'Pause' : 'Lecture')}
             </Button>
             {[0.25, 0.5, 1].map(value => (
-              <button
-                className={chip(speed === value)}
-                type="button"
-                key={value}
-                onClick={() => setSpeed(value)}
-              >
+              <Choice active={speed === value} key={value} onClick={() => setSpeed(value)}>
                 ×{value}
-              </button>
+              </Choice>
             ))}
           </div>
           <input
@@ -577,7 +673,7 @@ function ClipsPanel({ editor, status }: { editor: EditorState; status: StageStat
             }}
           />
           <ClipTracks clip={clip} time={status.joining ? 0 : status.time} />
-          <p className={`mt-3 ${note}`}>
+          <p className={note}>
             {t(
               'Chaque piste a ses propres images clés : une rotation peut partir avant un déplacement. Les clips se lisent, ils ne se modifient pas ici.'
             )}
@@ -587,9 +683,8 @@ function ClipsPanel({ editor, status }: { editor: EditorState; status: StageStat
       <Group title="Clips">
         <Chips>
           {clipNames.map(name => (
-            <button
-              className={chip('clip' in doing ? doing.clip === name : status.clip === name)}
-              type="button"
+            <Choice
+              active={'clip' in doing ? doing.clip === name : status.clip === name}
               key={name}
               onClick={() => {
                 setPlaying(true)
@@ -597,39 +692,11 @@ function ClipsPanel({ editor, status }: { editor: EditorState; status: StageStat
               }}
             >
               {name}
-            </button>
+            </Choice>
           ))}
         </Chips>
       </Group>
-    </>
-  )
-}
-
-const restFrame = playerFrame(createAvatarPlayer())
-
-function FaceThumbnail({
-  character,
-  name,
-  turned,
-}: {
-  character: AvatarCharacter
-  name: FaceName
-  turned: boolean
-}) {
-  const scene = useMemo(
-    () =>
-      renderCharacterFrame(character, {
-        ...restFrame,
-        face: name,
-        eyes: faces[name].eyes,
-        smile: faceSmiles[name],
-        inspectWeight: name === 'inspecting' ? 1 : 0,
-        rotation: turned ? [-8, 32, 0] : [0, 0, 0],
-      }),
-    [character, name, turned]
-  )
-  return (
-    <Scene scene={scene} character={character} className="size-16" viewBox="-170 -170 340 340" />
+    </div>
   )
 }
 
@@ -637,92 +704,48 @@ function FacesPanel({ editor }: { editor: EditorState }) {
   const { t, character, face, setFace } = editor
   if (!character) return null
   return (
-    <>
-      <p className={note}>
-        {t(
-          'Un visage, c’est la forme des deux yeux. Le clip choisit le visage, sauf si un état le tient ou si tu en imposes un ici.'
-        )}
-      </p>
-      <button className={chip(face === null)} type="button" onClick={() => setFace(null)}>
-        {t('Automatique : laisser le clip décider')}
-      </button>
-      <div className="grid grid-cols-1 gap-2">
-        {faceNames.map(name => (
-          <button
-            className={`flex items-center gap-3 rounded-xl border p-2 text-left transition-colors ${
-              face === name
-                ? 'border-neutral-900 bg-neutral-50'
-                : 'border-neutral-200 bg-white hover:bg-neutral-50'
-            }`}
+    <div className="panel-stack">
+      <InspectorCard>
+        <div className="preset-header">
+          <div>
+            <p className="eyebrow">
+              {faceNames.length} {t('visages')}
+            </p>
+          </div>
+          <Button
+            variant={face === null ? 'default' : 'outline'}
+            size="sm"
             type="button"
-            key={name}
-            onClick={() => setFace(name)}
+            aria-pressed={face === null}
+            onClick={() => setFace(null)}
           >
-            <FaceThumbnail character={character} name={name} turned={false} />
-            <FaceThumbnail character={character} name={name} turned />
-            <span className="flex flex-col">
-              <span className="text-sm font-medium">{name}</span>
-              <span className={note}>
-                {t(faces[name].blinks ? 'Cligne avec les clips' : 'Ne cligne pas')}
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-    </>
-  )
-}
-
-function GesturesPanel({ editor, status }: { editor: EditorState; status: StageStatus }) {
-  const { t, engine, doing, setDoing, followsPointer, setFollowsPointer } = editor
-  const spinners = stateGroups.find(group => group.label === 'Spinners')?.states ?? []
-  return (
-    <>
-      <Group title="Gestes">
-        <Chips>
-          {gestureNames.map(name => (
-            <button
-              className={chip(false)}
+            {t('Automatique')}
+          </Button>
+        </div>
+        <div className="expression-grid">
+          {faceNames.map(name => (
+            <Button
+              className="expression-card"
+              variant="outline"
+              aria-pressed={face === name}
+              aria-label={name}
+              title={t(faces[name].blinks ? 'Cligne avec les clips' : 'Ne cligne pas')}
               type="button"
               key={name}
-              onClick={() => pokeEngine(engine.current, name)}
+              onClick={() => setFace(name)}
             >
-              {name}
-            </button>
+              <CharacterPreview character={character} face={name} turned={face === name} />
+              <span>{name}</span>
+            </Button>
           ))}
-        </Chips>
-        <p className={`mt-2 ${note}`}>
+        </div>
+        <p className={note}>
           {t(
-            'Un geste se pose par-dessus ce qui joue, sans le relancer. Plusieurs gestes s’additionnent.'
+            'Un visage, c’est la forme des deux yeux. Le clip choisit le visage, sauf si un état le tient ou si tu en imposes un ici.'
           )}
         </p>
-      </Group>
-      <Group title="Regard">
-        <SwitchRow label="Suit le pointeur" checked={followsPointer} onChange={setFollowsPointer} />
-      </Group>
-      <Group title="Spinners">
-        <Chips>
-          {spinners.map(name => (
-            <button
-              className={chip('state' in doing ? doing.state === name : status.state === name)}
-              type="button"
-              key={name}
-              onClick={() => setDoing({ state: name })}
-            >
-              {name}
-            </button>
-          ))}
-          <button className={chip(false)} type="button" onClick={() => setDoing({ state: 'idle' })}>
-            {t('Revenir à idle')}
-          </button>
-        </Chips>
-        <p className={`mt-2 ${note}`}>
-          {t(
-            'Le corps se rassemble en un petit disque et un motif se dessine autour. Le clip s’arrête pendant ce temps.'
-          )}
-        </p>
-      </Group>
-    </>
+      </InspectorCard>
+    </div>
   )
 }
 
@@ -730,21 +753,20 @@ function StatusPanel({ editor, status }: { editor: EditorState; status: StageSta
   const { t, doing, setDoing } = editor
   const running = 'routine' in doing ? doing.routine : null
   return (
-    <>
+    <div className="panel-stack">
       <Group title="Scénarios">
         <Chips>
           {Object.keys(routines).map(name => (
-            <button
-              className={chip(running === name)}
-              type="button"
+            <Choice
+              active={running === name}
               key={name}
               onClick={() => setDoing({ routine: name })}
             >
               {name}
-            </button>
+            </Choice>
           ))}
         </Chips>
-        <p className={`mt-2 ${note}`}>
+        <p className={note}>
           {t(
             'Un scénario mène l’avatar d’état en état, chacun pour un temps, avec ce qui se dit pendant. Il tourne en boucle.'
           )}
@@ -777,7 +799,7 @@ function StatusPanel({ editor, status }: { editor: EditorState; status: StageSta
           })}
         </ol>
       )}
-    </>
+    </div>
   )
 }
 
@@ -808,7 +830,7 @@ function ExportPanel({ editor }: { editor: EditorState }) {
     URL.revokeObjectURL(link.href)
   }
   return (
-    <>
+    <div className="panel-stack">
       <InspectorCard>
         <PanelTitle
           level={3}
@@ -856,88 +878,290 @@ function ExportPanel({ editor }: { editor: EditorState }) {
           ))}
         </div>
       </InspectorCard>
-    </>
+    </div>
   )
 }
 
-const languages: { value: StudioLanguage; label: string }[] = [
-  { value: 'fr', label: 'Français' },
-  { value: 'en', label: 'English' },
-  { value: 'zh-CN', label: '中文' },
-]
-
 export function Editor() {
   const editor = useEditor()
-  const { t, tab, setTab, activeAvatar } = editor
+  const { t, tab, setTab, activeAvatar, character, building, engine, doing, playing } = editor
   const { language, setLanguage } = useStudioLanguage()
   const [status, setStatus] = useState<StageStatus>(emptyStatus)
-  const stopped = tab === 'character' || tab === 'pose'
+  const [deleting, setDeleting] = useState(false)
+  const [stacked, setStacked] = useState(() => window.matchMedia(STACKED_LAYOUT_QUERY).matches)
+  useEffect(() => {
+    const query = window.matchMedia(STACKED_LAYOUT_QUERY)
+    const update = () => setStacked(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+
+  // What the avatar is doing, as the stage and the bar at the bottom name it.
+  const doingName =
+    'routine' in doing ? doing.routine : (status.state ?? status.clip) || t('au repos')
+  const stopped = building || tab === 'pose'
+
+  const stage = (
+    <section
+      className="stage-column"
+      style={
+        {
+          '--avatar-body-color': activeAvatar.colors.body,
+          '--avatar-eye-color': activeAvatar.colors.eyes,
+        } as CSSProperties
+      }
+    >
+      <div
+        className="stage-mode-halo stage-mode-halo-blue"
+        aria-hidden="true"
+        style={{ opacity: 0.72 }}
+      />
+      <StudioIdentity
+        className="stage-identity"
+        language={language}
+        setLanguage={setLanguage}
+        t={t}
+      />
+      <div className="stage-mode-content live-stage-scene">
+        <div className="stage-avatar-positioner">
+          <Stage editor={editor} onStatus={setStatus} status={doingName} />
+        </div>
+      </div>
+      {!stopped && (
+        <div className="photo-capture-bar">
+          {gestureNames.map(name => (
+            <Button
+              className="photo-capture-button"
+              variant="secondary"
+              type="button"
+              key={name}
+              onClick={() => pokeEngine(engine.current, name)}
+            >
+              <span className="photo-capture-label">{name}</span>
+            </Button>
+          ))}
+          <Button
+            className="photo-capture-button"
+            variant={editor.followsPointer ? 'default' : 'secondary'}
+            type="button"
+            aria-pressed={editor.followsPointer}
+            onClick={() => editor.setFollowsPointer(!editor.followsPointer)}
+          >
+            <MousePointer2 />
+            <span className="photo-capture-label">{t('Suit le pointeur')}</span>
+          </Button>
+        </div>
+      )}
+      <p className="stage-credit">
+        Made with ❤️ by{' '}
+        <a href="https://x.com/_smontlouis" target="_blank" rel="noreferrer">
+          @_smontlouis
+        </a>
+        .
+      </p>
+    </section>
+  )
+
+  const inspector = (
+    <main
+      className={`inspector ${building ? 'body-workspace' : 'studio-workspace'}${
+        stopped ? '' : ' state-player-active'
+      }`}
+    >
+      <StudioIdentity
+        className="inspector-identity"
+        language={language}
+        setLanguage={setLanguage}
+        t={t}
+      />
+      {building ? (
+        <header className="workspace-header body-workspace-header">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => editor.setBuilding(false)}
+            aria-label={t('Retour au studio')}
+          >
+            <ArrowLeft />
+          </Button>
+          <div className="workspace-heading">
+            <p className="eyebrow">{t('Construction du corps')}</p>
+            <Input
+              className="avatar-name-input"
+              aria-label={t('Nom de l’avatar')}
+              value={activeAvatar.name}
+              onChange={event => editor.renameAvatar(event.currentTarget.value)}
+            />
+            <p>{t('Choisis la forme principale puis assemble les primitives autour d’elle.')}</p>
+          </div>
+        </header>
+      ) : (
+        <header className="mode-page-header">
+          <div>
+            <p className="eyebrow">{activeAvatar.name}</p>
+            <h1>{t(tabLabels[tab])}</h1>
+          </div>
+          {tab === 'pose' && (
+            <Button
+              variant="outline"
+              size="icon"
+              type="button"
+              aria-label={t('Réinitialiser')}
+              onClick={editor.resetPose}
+            >
+              <RotateCcw />
+            </Button>
+          )}
+        </header>
+      )}
+      <div className="mode-page-transition" key={building ? 'building' : tab}>
+        {building ? (
+          <CharacterPanel editor={editor} />
+        ) : (
+          <>
+            {tab === 'avatars' && <AvatarsPanel editor={editor} />}
+            {tab === 'pose' && <PosePanel editor={editor} />}
+            {tab === 'states' && <StatesPanel editor={editor} status={status} />}
+            {tab === 'clips' && <ClipsPanel editor={editor} status={status} />}
+            {tab === 'faces' && <FacesPanel editor={editor} />}
+            {tab === 'status' && <StatusPanel editor={editor} status={status} />}
+            {tab === 'export' && <ExportPanel editor={editor} />}
+          </>
+        )}
+      </div>
+      {building && (
+        <footer className="workspace-footer">
+          <div className="workspace-footer-secondary">
+            <Button
+              variant="destructive"
+              disabled={editor.avatars.length <= 1}
+              onClick={() => setDeleting(true)}
+            >
+              <Trash2 />
+              {t('Supprimer')}
+            </Button>
+            <Button variant="outline" onClick={editor.duplicateAvatar}>
+              <Copy />
+              {t('Dupliquer')}
+            </Button>
+          </div>
+          <Button onClick={() => editor.setBuilding(false)}>{t('Enregistrer')}</Button>
+        </footer>
+      )}
+      {!stopped && (
+        <footer className="state-playback-footer">
+          <div className="state-playback-bar">
+            <div className="state-playback-timeline">
+              <span className="eyebrow">
+                {status.joining ? t('raccord') : status.clip}
+                {status.text ? ` · ${status.text}` : ''}
+              </span>
+            </div>
+            <div className="state-playback-controls">
+              <StatePlayer
+                name={doingName}
+                status={playing ? 'playing' : 'paused'}
+                onToggle={() => editor.setPlaying(!playing)}
+                onStop={() => {
+                  editor.setPlaying(true)
+                  editor.setDoing({ state: 'idle' })
+                }}
+              />
+            </div>
+          </div>
+        </footer>
+      )}
+      {!building && (
+        <nav className="mobile-mode-tabs has-seven-tabs" aria-label={t('Mode d’édition')}>
+          <Button
+            className="mobile-mode-tab mobile-avatar-tab"
+            variant="ghost"
+            type="button"
+            aria-pressed={tab === 'avatars'}
+            aria-label={t('Choisir un avatar')}
+            onClick={() => setTab('avatars')}
+          >
+            {character && <CharacterPreview character={character} />}
+            <span>{activeAvatar.name}</span>
+          </Button>
+          {editorTabs
+            .filter((item): item is Exclude<EditorTab, 'avatars'> => item !== 'avatars')
+            .map(item => {
+              const Icon = tabIcons[item]
+              return (
+                <Button
+                  className="mobile-mode-tab"
+                  variant="ghost"
+                  type="button"
+                  key={item}
+                  aria-pressed={tab === item}
+                  onClick={() => setTab(item)}
+                >
+                  <Icon />
+                  <span>{t(tabLabels[item])}</span>
+                </Button>
+              )
+            })}
+        </nav>
+      )}
+    </main>
+  )
 
   return (
-    <main
-      className="grid h-dvh grid-cols-1 grid-rows-[minmax(260px,42dvh)_minmax(0,1fr)] bg-neutral-100 text-neutral-900 md:grid-cols-[minmax(0,1fr)_460px] md:grid-rows-1"
-      lang={language}
-    >
-      <section className="flex min-h-0 flex-col items-center justify-center gap-2 bg-[#141821] p-4 text-neutral-300">
-        <div className="aspect-square min-h-0 w-full max-w-[600px] flex-1">
-          <Stage editor={editor} onStatus={setStatus} />
-        </div>
-        <p className="text-center font-mono text-xs">
-          {activeAvatar.name}
-          {stopped
-            ? ` · ${t(tab === 'pose' ? 'pose libre' : 'au repos')}`
-            : ` · ${status.state ? `${status.state} · ` : ''}${status.clip}${
-                status.joining ? ` · ${t('raccord')}` : ''
-              } · ${status.face}`}
-        </p>
-        <p className="h-5 text-sm text-white">{stopped ? '' : status.text}</p>
-      </section>
-
-      <aside className="flex min-h-0 flex-col border-l border-neutral-200 bg-white">
-        <header className="flex items-center justify-between gap-3 border-b border-neutral-200 px-4 py-3">
-          <strong className="text-sm">Bible Strong · Avatar Lab</strong>
-          <select
-            className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs"
-            value={language}
-            aria-label={t('Langue de l’interface')}
-            onChange={event => setLanguage(event.currentTarget.value as StudioLanguage)}
-          >
-            {languages.map(item => (
-              <option value={item.value} key={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </header>
-        <nav
-          className="flex flex-wrap gap-1 border-b border-neutral-200 px-3 py-2"
-          aria-label={t('Mode d’édition')}
+    <div className="studio-root" lang={language}>
+      {stacked ? (
+        <ResizablePanelGroup
+          className="studio studio-mobile-resizable"
+          orientation="vertical"
+          resizeTargetMinimumSize={{ coarse: 40, fine: 12 }}
         >
-          {editorTabs.map(item => (
-            <button
-              className={`shrink-0 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors ${
-                item === tab ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:bg-neutral-100'
-              }`}
-              type="button"
-              aria-current={item === tab ? 'page' : undefined}
-              key={item}
-              onClick={() => setTab(item)}
-            >
-              {t(tabLabels[item])}
-            </button>
-          ))}
-        </nav>
-        <div className="inspector-scroll flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
-          {tab === 'character' && <CharacterPanel editor={editor} />}
-          {tab === 'pose' && <PosePanel editor={editor} />}
-          {tab === 'states' && <StatesPanel editor={editor} status={status} />}
-          {tab === 'clips' && <ClipsPanel editor={editor} status={status} />}
-          {tab === 'faces' && <FacesPanel editor={editor} />}
-          {tab === 'gestures' && <GesturesPanel editor={editor} status={status} />}
-          {tab === 'status' && <StatusPanel editor={editor} status={status} />}
-          {tab === 'export' && <ExportPanel editor={editor} />}
+          <ResizablePanel
+            id="preview"
+            className="mobile-stage-panel"
+            defaultSize="42%"
+            minSize={180}
+          >
+            {stage}
+          </ResizablePanel>
+          <ResizableHandle
+            className="studio-resize-handle"
+            withHandle
+            aria-label={t('Redimensionner l’aperçu et l’éditeur')}
+          />
+          <ResizablePanel id="editor" className="mobile-inspector-panel" minSize={260}>
+            {inspector}
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      ) : (
+        <div className="studio">
+          {stage}
+          {inspector}
         </div>
-      </aside>
-    </main>
+      )}
+      <AlertDialog open={deleting} onOpenChange={setDeleting}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(`Supprimer ${activeAvatar.name} ?`)}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                'Le corps, les couleurs et le visage de cet avatar seront définitivement supprimés.'
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('Annuler')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                editor.deleteAvatar()
+                editor.setBuilding(false)
+                setDeleting(false)
+              }}
+            >
+              {t('Supprimer')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   )
 }

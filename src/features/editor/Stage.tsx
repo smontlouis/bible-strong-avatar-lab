@@ -17,6 +17,7 @@ import {
 } from '@bible-strong/avatar-core'
 import { useEffect, useRef, useState } from 'react'
 
+import { PlaybackIdentity } from '@/app/components/common'
 import { Scene } from '@/features/editor/Scene'
 import type { Editor } from '@/features/editor/useEditor'
 import { BodyNodeGizmo } from '@/features/rendering/components/AvatarCanvas'
@@ -49,15 +50,16 @@ export const emptyStatus: StageStatus = {
 // The pose the body is built in: at rest, facing the viewer, at its own size.
 const BUILD_POSE = { rotation: [0, 0, 0], position: [0, 0], zoom: 0.6 } as const
 const STATUS_EVERY_FRAMES = 6
-// How many units the stage shows across: the avatar's own 300, and room around them.
-const STAGE_VIEW = 380
 
 export function Stage({
   editor,
   onStatus,
+  status,
 }: {
   editor: Editor
   onStatus: (status: StageStatus) => void
+  /** What the avatar is doing, shown in a corner of the stage. */
+  status: string
 }) {
   const {
     activeAvatar,
@@ -76,14 +78,14 @@ export function Stage({
     t,
     tab,
   } = editor
-  const svg = useRef<SVGSVGElement | null>(null)
+  const svg = useRef<SVGSVGElement>(null)
   const [scene, setScene] = useState<CharacterScene | null>(null)
   const speedRef = useRef(speed)
   speedRef.current = speed
   const report = useRef(onStatus)
   report.current = onStatus
-  const building = tab === 'character'
-  const posing = tab === 'pose'
+  const building = editor.building
+  const posing = tab === 'pose' && !building
 
   useEffect(() => {
     if ('routine' in doing) {
@@ -180,42 +182,25 @@ export function Stage({
     drag.current = null
   }
 
-  // The gizmo reads pointer positions against a view 300 units wide. The stage shows more than
-  // that, to leave room around the avatar: the gizmo is given the part of the stage that those
-  // 300 units cover.
-  const gizmoFrame = useRef({
-    getBoundingClientRect: () => {
-      const box = svg.current!.getBoundingClientRect()
-      const side = (Math.min(box.width, box.height) * 300) / STAGE_VIEW
-      return new DOMRect(
-        box.left + (box.width - side) / 2,
-        box.top + (box.height - side) / 2,
-        side,
-        side
-      )
-    },
-  }) as unknown as React.RefObject<SVGSVGElement | null>
-
-  if (!character || !scene) return <div className="size-full" />
+  if (!character || !scene) return <div className="avatar-wrap" />
   return (
     <div
-      className="size-full touch-none"
-      style={{ cursor: posing ? 'grab' : 'default' }}
-      aria-label={posing ? t('Glisse pour tourner l’avatar') : undefined}
+      className="avatar-wrap"
+      style={{ cursor: posing ? 'grab' : undefined, touchAction: 'none' }}
     >
-      <Scene
-        scene={scene}
-        character={character}
-        svgRef={svg}
-        className="size-full"
-        viewBox={`${-STAGE_VIEW / 2} ${-STAGE_VIEW / 2} ${STAGE_VIEW} ${STAGE_VIEW}`}
-      >
+      {!building && !posing && status && (
+        <div className="stage-playback-status">
+          <PlaybackIdentity name={status} status={playing ? 'playing' : 'paused'} />
+        </div>
+      )}
+      <Scene scene={scene} character={character} svgRef={svg} className="avatar">
         <rect
-          x={-190}
-          y={-190}
-          width={380}
-          height={380}
+          x={-150}
+          y={-150}
+          width={300}
+          height={300}
           fill="transparent"
+          aria-label={posing ? t('Glisse pour tourner l’avatar') : undefined}
           onPointerDown={startTurn as never}
           onPointerMove={turn as never}
           onPointerUp={endTurn}
@@ -223,7 +208,7 @@ export function Stage({
         />
         {building && selectedBodyNode && (
           <BodyNodeGizmo
-            svgRef={gizmoFrame}
+            svgRef={svg}
             pose={poseFromExpression({ ...expression, perspective: character.face.perspective })}
             node={selectedBodyNode}
             onPreview={commitBodyNode}
