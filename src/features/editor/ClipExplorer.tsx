@@ -14,7 +14,7 @@ import {
   type ClipFaceKey,
   type ClipKey,
 } from '@bible-strong/avatar-core'
-import { ChevronRight, Pause, Play, Repeat, SkipBack, X } from 'lucide-react'
+import { ChevronRight, LoaderCircle, Smile, Pause, Play, Repeat, SkipBack, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -602,9 +602,22 @@ export function ClipTimeline({
 // A surface of the inspector, as the Studio's cards draw them, with room of its own.
 const surface = 'rounded-2xl border border-border bg-card shadow-[0_4px_14px_rgb(24_28_35/5%)]'
 
-function Pill({ children }: { children: ReactNode }) {
+function Pill({
+  children,
+  icon: Icon,
+  title,
+}: {
+  children: ReactNode
+  icon?: typeof Smile
+  title?: string
+}) {
   return (
-    <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-semibold text-muted-foreground">
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-semibold text-muted-foreground"
+      title={title}
+      aria-label={title ? `${title} : ${String(children)}` : undefined}
+    >
+      {Icon && <Icon className="size-3 shrink-0" aria-hidden="true" />}
       {children}
     </span>
   )
@@ -722,8 +735,16 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
       <div className="flex flex-wrap items-center gap-1.5">
         <h3 className="mr-1 text-lg font-semibold">{name}</h3>
         <Pill>{policy}</Pill>
-        {state.face && <Pill>{state.face}</Pill>}
-        {state.morph && <Pill>{state.morph}</Pill>}
+        {state.face && (
+          <Pill icon={Smile} title={t('Visage tenu par l’état')}>
+            {state.face}
+          </Pill>
+        )}
+        {state.morph && (
+          <Pill icon={LoaderCircle} title={t('Se transforme en spinner')}>
+            {state.morph}
+          </Pill>
+        )}
         {inspecting && (
           <span className="ml-auto flex items-center gap-1 rounded-full bg-secondary py-0.5 pr-0.5 pl-2 text-[0.65rem] font-semibold text-secondary-foreground">
             {t('Clip seul')}

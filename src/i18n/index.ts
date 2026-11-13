@@ -178,6 +178,8 @@ const english: Record<string, string> = {
   'Visage tenu': 'Held face',
   Auto: 'Auto',
   arrêté: 'stopped',
+  'Visage tenu par l’état': 'Face held by the state',
+  'Se transforme en spinner': 'Turns into a spinner',
   'Taille des yeux': 'Eye size',
   'Écart des yeux': 'Eye gap',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':

@@ -145,6 +145,8 @@ export const chinese: Record<string, string> = {
   'Visage tenu': '固定表情',
   Auto: '自动',
   arrêté: '已停止',
+  'Visage tenu par l’état': '状态固定的表情',
+  'Se transforme en spinner': '变形为加载动画',
   'Taille des yeux': '眼睛大小',
   'Écart des yeux': '眼睛间距',
   'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':
