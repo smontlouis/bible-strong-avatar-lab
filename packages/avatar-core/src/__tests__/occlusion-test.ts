@@ -4,11 +4,14 @@ import {
   poseFromExpression,
   quaternionFromEuler,
   renderAvatar,
-  renderAvatarDefinition,
   rotateWithQuaternion,
   surfaceField,
   surfacePresets,
   validateAvatarDefinition,
+  characterFromLegacyDefinition,
+  createAvatarPlayer,
+  playerFrame,
+  renderCharacterFrame,
   type AvatarDefinition,
   type BodyNode,
   type Quaternion,
@@ -309,7 +312,7 @@ describe('occlusion masks', () => {
     expect(turned.frontClipPaths[0]).toMatch(/^M.*Z$/)
   })
 
-  it('reaches a rendered definition, with the colour of each copy', () => {
+  it('reaches the frame of a character, with the colour of each copy', () => {
     const source: AvatarDefinition = {
       schema: 'bible-strong/avatar-definition',
       schemaVersion: 1,
@@ -333,7 +336,10 @@ describe('occlusion masks', () => {
     }
     const validated = validateAvatarDefinition(source)
     if (!validated.ok) throw new Error(validated.errors[0]?.message)
-    const scene = renderAvatarDefinition(validated.value)
+    const scene = renderCharacterFrame(
+      characterFromLegacyDefinition(validated.value),
+      playerFrame(createAvatarPlayer())
+    )
 
     expect(scene.geometry.frontClipPaths[0]).toMatch(/^M.*Z$/)
     expect(scene.bodyColors.back).toEqual(['#e5a15b'])
