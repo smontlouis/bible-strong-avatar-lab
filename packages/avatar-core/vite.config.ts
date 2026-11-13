@@ -10,7 +10,6 @@ export default defineConfig({
         geometry: fileURLToPath(new URL('./src/geometry.ts', import.meta.url)),
         body: fileURLToPath(new URL('./src/body.ts', import.meta.url)),
         surfaces: fileURLToPath(new URL('./src/surfaces.ts', import.meta.url)),
-        ambientMotion: fileURLToPath(new URL('./src/ambientMotion.ts', import.meta.url)),
       },
       formats: ['es'],
     },

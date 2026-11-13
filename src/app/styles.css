@@ -58,9 +58,12 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
-button,
-input {
-  font: inherit;
+/* In the base layer, so that a size given to a button by a utility class wins. */
+@layer base {
+  button,
+  input {
+    font: inherit;
+  }
 }
 .studio {
   display: grid;
@@ -2992,6 +2995,10 @@ p {
   box-shadow: 0 -8px 24px rgb(24 28 35 / 7%);
   grid-template-columns: repeat(5, minmax(0, 1fr));
   backdrop-filter: blur(16px);
+}
+/* The editor built on the engine has five tabs. */
+.mobile-mode-tabs.has-five-tabs {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .mobile-mode-tab {
   display: flex;

@@ -1,58 +1,66 @@
 # Bible Strong Avatar Lab
 
-Bible Strong Avatar Lab is a browser-based authoring studio for procedural 2D avatars. It combines 3D-inspired geometry with SVG rendering so you can construct a character, define its neutral appearance, create expressions, compose reusable animations, and export the result without depending on the Studio UI.
+Bible Strong Avatar Lab is a browser-based studio for procedural 2D avatars, and the engine that
+animates them. It combines 3D-inspired geometry with SVG rendering: you build a character, watch it
+play a shared catalogue of states, clips, faces and gestures, and export it for your own product.
 
 Website: [avatars.bible-strong.app](https://avatars.bible-strong.app) · Source: [GitHub](https://github.com/smontlouis/bible-strong-avatar-lab)
 
-The application runs entirely in the browser. Projects are stored locally and can be moved between browsers with JSON export/import; no account or backend is required.
+The application runs entirely in the browser. The library of avatars is stored locally; no account
+or backend is required.
 
 ## What you can do
 
-- Create, rename, duplicate, reorder, and delete avatars.
-- Build a body from a primary facial surface and additional 3D-inspired primitives.
-- Adjust dimensions, roundness, position, local rotation, perspective, colors, and wireframe guides.
-- Edit each eye independently or link their size, proportions, and position.
-- Manipulate the avatar directly on the canvas with translation and rotation controls.
-- Save, duplicate, reorder, and delete reusable expressions.
-- Add temporary body and eye color overrides to an expression.
-- Add subtle ambient movement to the body and eyes.
-- Build animations from expression steps with custom hold times and transitions.
-- Choose loop, play-once, or ping-pong playback and configure automatic blinking.
-- Preview, play, pause, and stop animations inside the Studio.
-- Take SVG or PNG snapshots with transparent, solid, linear-gradient, or radial-gradient backgrounds.
-- Export one portable `.avatar.json` definition for React or framework-free JavaScript/ESM.
-- Export and import the complete Studio project as JSON.
-- Use the interface in English, French, or Simplified Chinese.
+- Create, rename, duplicate and delete avatars, and import one from a file.
+- Build a body from a primary surface and additional 3D-inspired parts, each with its own colour,
+  and parts that follow the head's turn or stay still.
+- Set the colours, the outline, the nose, the mouth, the size, gap and height of the eyes, and the
+  perspective of the face.
+- Pose the avatar by hand, by dragging it on the stage or in the Pose tab.
+- Play any state of the catalogue (`idle`, `thinking`, `searching`, `happy`…), see how it draws
+  its clips and hand over to the next state, or keep it.
+- Explore every clip on a timeline: its tracks, its keys, its easings and its curves.
+- Hold a face and lay gestures (`nod`, `bounce`, `spin`) over whatever plays.
+- Take SVG or PNG pictures with transparent, solid, linear-gradient or radial-gradient
+  backgrounds.
+- Export the character as an `.avatar.json` file, with the instructions to put it in a React,
+  React Native or JavaScript project.
+- Use the interface in English, French or Simplified Chinese.
 
 ## How the Studio works
 
-The workspace has a live canvas on the left and an inspector on the right. Start by selecting an avatar, then move through the four main areas:
+The stage is on the left and the inspector on the right, with a player at the bottom that says what
+plays and holds the face and the gestures laid over it. The inspector has five tabs:
 
-1. **Pose** — inspect a temporary pose or open the avatar editor to change the character's durable body, colors, and neutral eyes.
-2. **Expressions** — create named visual presets. Expression eye values are relative to the avatar's neutral appearance, so the same behavior remains compatible with different body surfaces.
-3. **Animations** — arrange expressions on a timeline, tune step duration and transition style, choose a playback mode, and configure blinking.
-4. **Export** — choose animations to include, download an integration package, configure Photo Mode, or back up the full Studio project.
+1. **Avatars** — the library: pick, create, duplicate, import or delete an avatar, and build its
+   body, colours and face.
+2. **Pose** — place the avatar by hand. Letting it go joins back to the clip where it waited.
+3. **States** — play a state of the catalogue, see the clips it draws and by which rule, and
+   choose whether it hands over to the next state.
+4. **Clips** — play one clip alone and read it on its timeline.
+5. **Export** — download the character, copy the instructions for an integration, or open Photo
+   Mode.
 
-Changes to the Studio document are saved automatically in browser local storage. Unsaved edits inside an avatar, expression, or animation editor can still be cancelled. Use **Export → Studio project** to create a portable JSON backup before clearing browser data or moving to another device.
+The library is saved automatically in browser local storage. An avatar of the first version keeps
+only its character: its expressions and animations are not read.
 
-## Avatars and behavior libraries
+## The character and the catalogue
 
-An avatar owns its body geometry, colors, and neutral eye appearance. Expressions and animations initially come from the bundled base behavior library.
+A character is what an avatar is, apart from what it does: its body, colours, outline, nose,
+mouth, the build of its eyes and its perspective. Every character plays the same catalogue: about
+fifty states, the clips they draw, nine faces, three gestures and thirteen spinner patterns. The
+words are defined in [CONTEXT.md](./CONTEXT.md).
 
-When an avatar's expressions or animations are edited for the first time, the Studio copies both collections into an avatar-specific behavior library. From that point on, behavior changes affect only that avatar. Duplicating an avatar also duplicates its custom behavior, and transferring an animation includes every expression it references.
+## Export
 
-This copy-on-write model lets multiple avatars share the defaults without accidental cross-avatar edits while keeping customized characters fully independent.
+### The character file
 
-## Export formats
-
-### Avatar definition
-
-The selected avatar and animations are stored in one portable `.avatar.json` definition. React and
-JavaScript use this exact same file, so visual behavior does not diverge between renderers.
+**Export** downloads the character as `<name>.avatar.json`. The three renderers read it, and also
+read an `.avatar.json` of the first version, of which they keep only the character.
 
 ### Runtime packages
 
-Four MIT-licensed npm packages render the definition. Choose by target:
+Four MIT-licensed npm packages render a character. Choose by target:
 
 | Target                       | Package                                                                         |
 | ---------------------------- | ------------------------------------------------------------------------------- |
@@ -61,26 +69,21 @@ Four MIT-licensed npm packages render the definition. Choose by target:
 | Browser without React        | [`@bible-strong/avatar-web`](./packages/avatar-web/README.md)                   |
 | Your own renderer, or a test | [`@bible-strong/avatar-core`](./packages/avatar-core/README.md)                 |
 
-The three renderers depend on `avatar-core` for validation, playback and geometry, and share one
-API: `createAvatar` for a definition known at build time, the same props or options, the same
-controller (`play`, `pause`, `stop`, `setExpression`, `getState`) and the same typed errors.
+The three renderers depend on `avatar-core` for reading files, the engine and geometry, and share
+one vocabulary: `createAvatar` for a file known at build time, then `state`, `lookAt`, `muted`,
+`settleAfterMs`, gestures and the rest over the shared catalogue.
 
 Each package README is written to be followed step by step, by a person or by a coding agent:
 setup, a minimal example, every prop, every error with its fix, and a checklist to verify the
 integration. It ships in the npm tarball, so it is readable in `node_modules`. The Studio's
-**Export** tab offers the three integrations and copies the same instructions, written for a coding
-agent: setup, example, props, every error with its fix, and a checklist.
-
-The integration ZIP of the JavaScript export contains the `.avatar.json`, a lightweight ESM wrapper
-and usage instructions; it does not copy the rendering engine into every avatar export.
+**Export** tab shows the install and a minimal example for each integration, and **Copy
+instructions for AI** copies that package's README, with the avatar's file and names in its
+examples.
 
 ### Photo Mode
 
-Photo Mode exports the currently rendered avatar as SVG or PNG. You can choose the resolution and use a transparent, solid, linear-gradient, or radial-gradient background.
-
-### Studio project
-
-The JSON project file contains the complete current document: avatars, base and avatar-specific behavior libraries, expressions, animations, and playback selection. Importing a project replaces the current local document after confirmation.
+Photo Mode exports the avatar on the stage as SVG or PNG. You can choose the resolution and use a
+transparent, solid, linear-gradient or radial-gradient background.
 
 ## Getting started
 
@@ -100,18 +103,16 @@ Open [http://localhost:5173](http://localhost:5173).
 
 ## Available commands
 
-| Command             | Purpose                                                                           |
-| ------------------- | --------------------------------------------------------------------------------- |
-| `pnpm dev`          | Regenerate the standalone engine and start Vite in development mode.              |
-| `pnpm typecheck`    | Run TypeScript in strict, no-emit mode.                                           |
-| `pnpm test`         | Run the Vitest suite once.                                                        |
-| `pnpm test:watch`   | Run Vitest in watch mode.                                                         |
-| `pnpm engine`       | Regenerate the standalone engine used by exported packages.                       |
-| `pnpm engine:check` | Verify that the committed generated engine is current.                            |
-| `pnpm build`        | Regenerate the engine and create a production build in `dist/`.                   |
-| `pnpm preview`      | Serve the production build locally.                                               |
-| `pnpm format`       | Format the repository with Prettier.                                              |
-| `pnpm check`        | Run engine freshness, formatting, type checking, tests, and the production build. |
+| Command           | Purpose                                                         |
+| ----------------- | --------------------------------------------------------------- |
+| `pnpm dev`        | Start Vite in development mode.                                 |
+| `pnpm typecheck`  | Run TypeScript in strict, no-emit mode.                         |
+| `pnpm test`       | Run the Vitest suite once.                                      |
+| `pnpm test:watch` | Run Vitest in watch mode.                                       |
+| `pnpm build`      | Create a production build in `dist/`.                           |
+| `pnpm preview`    | Serve the production build locally.                             |
+| `pnpm format`     | Format the repository with Prettier.                            |
+| `pnpm check`      | Run formatting, type checking, tests, and the production build. |
 
 ## Validation
 
@@ -137,7 +138,7 @@ The deployable site is written to `dist/`. Serve it locally before publishing:
 pnpm preview
 ```
 
-The application is a client-only Vite site with no server runtime or environment variables. Talk Mode and Stream Mode exist only on the development server (`pnpm dev`), which serves the `/api/direct-dialogue` route they need: a production build leaves them out. The build uses relative asset paths, so the contents of `dist/` can be hosted at a domain root or a subpath, including a GitHub Pages project URL. Any static host that serves `index.html` can deploy it.
+The application is a client-only Vite site with no server runtime or environment variables. The build uses relative asset paths, so the contents of `dist/` can be hosted at a domain root or a subpath, including a GitHub Pages project URL. Any static host that serves `index.html` can deploy it.
 
 Vercel Web Analytics and Speed Insights are integrated in the React entry point. Enable both products in the Vercel project dashboard, then redeploy so their collection routes become available.
 
@@ -146,39 +147,39 @@ Vercel Web Analytics and Speed Insights are integrated in the React entry point.
 - **React 19** coordinates the editor UI and durable application state.
 - **TypeScript** is configured in strict mode.
 - **Vite 8** provides the development server and production build.
-- **Motion** owns high-frequency rendering and playback values.
-- **SVG** renders the procedural avatar geometry.
+- **SVG** renders the procedural avatar geometry; the engine's frames are written to it directly,
+  without React renders. **Motion** drives the Studio's own gizmos and transitions.
 - **Tailwind CSS 4** and reusable components under `src/components/ui/` provide the interface layer.
-- **Vitest** covers geometry, playback, editing, persistence, rendering, and export behavior.
+- **Vitest** covers geometry, the engine, the renderers, editing, persistence and export.
 
-Geometry, playback, document operations, and the standalone runtime remain framework-independent. React state stores durable editor data; Motion values handle frame-by-frame visual updates without forcing React renders.
+Geometry, the catalogue and the engine live in `packages/avatar-core` and remain
+framework-independent. React state stores durable editor data; what changes at every frame is
+drawn without going through React state.
 
 ## Repository map
 
-| Path                                     | Responsibility                                                           |
-| ---------------------------------------- | ------------------------------------------------------------------------ |
-| `src/app/`                               | Application shell, shared controls, utilities, and global styles.        |
-| `src/components/ui/`                     | Reusable interface primitives.                                           |
-| `src/features/avatar/`                   | Avatar identity, body, geometry, expressions, manipulation, and tests.   |
-| `src/features/animation/`                | Animation sequences, framework-independent playback, and tests.          |
-| `src/features/rendering/`                | Stable SVG scene, canvas preview, rotation gizmo, and rendering tests.   |
-| `src/features/export/`                   | Packages, snapshots, ZIPs, standalone runtime, and export tests.         |
-| `src/features/studio/`                   | Studio controller, composed views, persistence, bundled data, and tests. |
-| `src/i18n/`                              | Localized interface copy and translation tests.                          |
-| `src/lib/`                               | Small shared utilities without product-domain ownership.                 |
-| `scripts/generate-standalone-engine.mjs` | Standalone-engine generator.                                             |
-| `docs/adr/`                              | Accepted architecture decisions.                                         |
-| `legacy/`                                | Self-contained HTML prototypes that preceded the React application.      |
+| Path                   | Responsibility                                                               |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `packages/`            | The runtime packages: core engine and its React, web and native renderers.   |
+| `src/app/`             | Application shell and global styles.                                         |
+| `src/components/ui/`   | Reusable interface primitives.                                               |
+| `src/features/editor/` | The Studio: avatar library, body construction, stage, photo mode, and tests. |
+| `src/i18n/`            | Localized interface copy and translation tests.                              |
+| `src/lib/`             | Small shared utilities without product-domain ownership.                     |
+| `docs/adr/`            | Accepted architecture decisions.                                             |
+| `legacy/`              | Self-contained HTML prototypes that preceded the React application.          |
 
 ## Persistence and privacy
 
-There is no remote backend in this repository. The complete Studio document and interface language preference are stored in the browser's local storage. Exported files are generated locally in the browser. Clearing site data removes the local project, so JSON export is the recommended backup mechanism.
+There is no remote backend in this repository. The avatar library and interface language preference are stored in the browser's local storage. Exported files are generated locally in the browser. Clearing site data removes the local library, so saving each character as JSON is the recommended backup mechanism.
 
-The current project format is a pre-release schema. Compatibility is maintained with the current schema only unless an explicit migration is introduced.
+The library keeps the storage key and the shape of the first version, whose expressions and
+animations are no longer read.
 
 ## Contributing
 
-Keep domain calculations outside React components, preserve the separation between durable React state and high-frequency Motion values, and add focused tests for domain changes. Do not edit `src/features/export/standaloneEngine.generated.ts` directly; run `pnpm engine` after changing its source modules.
+Keep domain calculations outside React components, keep what changes at every frame out of React
+state, and add focused tests for domain changes.
 
 English, French, and Simplified Chinese interface copy must stay synchronized across `src/i18n/index.ts` and `src/i18n/zh.ts`.
 
@@ -200,7 +201,7 @@ The Studio is the editor served at avatars.bible-strong.app. You may use, study,
 redistribute it. If you distribute it or offer a modified version to users over a network, you must
 make the corresponding source available under the same license and keep the notices.
 
-What you create with the Studio is yours: an exported `.avatar.json`, the snapshots and the files
-of an integration ZIP carry no license obligation from this project.
+What you create with the Studio is yours: an exported `.avatar.json` and the pictures carry no
+license obligation from this project.
 
 See each `LICENSE` file for the complete and legally authoritative terms.

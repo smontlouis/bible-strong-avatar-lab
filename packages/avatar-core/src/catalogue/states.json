@@ -1,0 +1,259 @@
+{
+  "states": {
+    "idle": {
+      "clips": ["Idle_B", "Idle_B", "Idle_D", "Idle_B", "Idle_A"],
+      "compactClips": ["Idle_B"]
+    },
+    "listening": {
+      "clips": ["Idle_D"],
+      "face": "calm"
+    },
+    "thinking": {
+      "clips": ["Idle_B"],
+      "morph": "thinking"
+    },
+    "streaming": {
+      "clips": ["Streaming_A", "Streaming_B", "Streaming_C"]
+    },
+    "searching": {
+      "clips": ["Idle_B"],
+      "morph": "radar"
+    },
+    "reading": {
+      "clips": ["Working_A", "Working_B", "Working_C", "Working_D", "Working_E", "Working_F"]
+    },
+    "working": {
+      "clips": ["Working_A", "Working_B", "Working_C", "Working_D", "Working_E", "Working_F"]
+    },
+    "coding": {
+      "clips": ["Working_A", "Working_B", "Working_C", "Working_D", "Working_E", "Working_F"]
+    },
+    "running": {
+      "clips": ["Working_A", "Working_B", "Working_C", "Working_D", "Working_E", "Working_F"]
+    },
+    "computing": {
+      "clips": ["Working_A", "Working_B", "Working_C", "Working_D", "Working_E", "Working_F"]
+    },
+    "controlling": {
+      "clips": ["Working_A", "Working_B", "Working_C", "Working_D", "Working_E", "Working_F"]
+    },
+    "waiting": {
+      "clips": ["Idle_B"],
+      "morph": "orbit"
+    },
+    "blocked": {
+      "clips": ["Blocked_A"],
+      "next": "drowsy",
+      "holdSeconds": 120
+    },
+    "finished": {
+      "clips": ["Done_B", "Done_A"],
+      "face": "happy",
+      "next": "idle"
+    },
+    "failed": {
+      "clips": ["Blocked_B"],
+      "next": "idle"
+    },
+    "sleeping": {
+      "clips": ["Idle_B"],
+      "face": "sleepy"
+    },
+    "waking": {
+      "clips": ["Idle_B"],
+      "face": "surprised",
+      "next": "idle",
+      "holdSeconds": 1.6
+    },
+    "happy": {
+      "clips": ["Done_A"]
+    },
+    "excited": {
+      "clips": ["Done_C"]
+    },
+    "laughing": {
+      "clips": ["Done_B"]
+    },
+    "proud": {
+      "clips": ["Marketing_B"]
+    },
+    "curious": {
+      "clips": ["Working_B"],
+      "face": "inspecting"
+    },
+    "playful": {
+      "clips": ["Bodymoves_A"]
+    },
+    "shy": {
+      "clips": ["Idle_D"],
+      "face": "calm"
+    },
+    "surprised": {
+      "clips": ["Idle_B"],
+      "face": "surprised"
+    },
+    "suspicious": {
+      "clips": ["Idle_D"],
+      "face": "squinted"
+    },
+    "angry": {
+      "clips": ["Blocked_A"],
+      "face": "squinted"
+    },
+    "confused": {
+      "clips": ["Blocked_A"]
+    },
+    "sad": {
+      "clips": ["Blocked_B"]
+    },
+    "drowsy": {
+      "clips": ["Blocked_C"]
+    },
+    "bored": {
+      "clips": ["Idle_B"],
+      "face": "sleepy"
+    },
+    "scared": {
+      "clips": ["Idle_D"],
+      "face": "surprised"
+    },
+    "celebrate": {
+      "clips": ["Rotation_A"],
+      "face": "happy"
+    },
+    "approving": {
+      "clips": ["Rotation_C"],
+      "next": "idle"
+    },
+    "progress": {
+      "clips": ["Idle_B"],
+      "morph": "progress"
+    },
+    "spawning": {
+      "clips": ["Idle_B"],
+      "morph": "spawning"
+    },
+    "dictating": {
+      "clips": ["Idle_B"],
+      "morph": "dictating"
+    },
+    "sending": {
+      "clips": ["Idle_B"],
+      "morph": "sending"
+    },
+    "receiving": {
+      "clips": ["Idle_B"],
+      "morph": "receiving"
+    },
+    "uploading": {
+      "clips": ["Idle_B"],
+      "morph": "uploading"
+    },
+    "writing": {
+      "clips": ["Idle_B"],
+      "morph": "writing"
+    },
+    "alerting": {
+      "clips": ["Idle_B"],
+      "morph": "alerting"
+    },
+    "bouncing": {
+      "clips": ["Idle_B"],
+      "morph": "bouncing"
+    },
+    "powering-down": {
+      "clips": ["Idle_B"],
+      "morph": "powering-down"
+    },
+    "humming": {
+      "clips": ["Idle_B"],
+      "face": "calm"
+    },
+    "notifying": {
+      "clips": ["Done_B"],
+      "face": "surprised"
+    },
+    "dragging": {
+      "clips": ["Idle_B"],
+      "face": "surprised"
+    },
+    "logo": {
+      "clips": ["Logo_A", "Logo_B"]
+    },
+    "showcase": {
+      "clips": ["Marketing_A", "Marketing_B", "Marketing_C", "Marketing_D"]
+    },
+    "turntable": {
+      "clips": ["Rotation_B"]
+    }
+  },
+  "groups": [
+    {
+      "label": "Lifecycle",
+      "states": [
+        "idle",
+        "listening",
+        "thinking",
+        "streaming",
+        "searching",
+        "reading",
+        "working",
+        "coding",
+        "running",
+        "computing",
+        "controlling",
+        "waiting",
+        "blocked",
+        "finished",
+        "failed",
+        "sleeping",
+        "waking"
+      ]
+    },
+    {
+      "label": "Reactions",
+      "states": [
+        "happy",
+        "excited",
+        "laughing",
+        "proud",
+        "curious",
+        "playful",
+        "shy",
+        "surprised",
+        "suspicious",
+        "angry",
+        "confused",
+        "sad",
+        "drowsy",
+        "bored",
+        "scared",
+        "celebrate",
+        "approving"
+      ]
+    },
+    {
+      "label": "Spinners",
+      "states": [
+        "progress",
+        "spawning",
+        "dictating",
+        "sending",
+        "receiving",
+        "uploading",
+        "writing",
+        "alerting",
+        "bouncing",
+        "powering-down"
+      ]
+    },
+    {
+      "label": "Product",
+      "states": ["humming", "notifying", "dragging"]
+    },
+    {
+      "label": "Showcase",
+      "states": ["logo", "showcase", "turntable"]
+    }
+  ]
+}

@@ -1,442 +1,232 @@
 // @vitest-environment jsdom
-
-import { type AvatarDefinition } from '@bible-strong/avatar-core'
-import { act, createRef, Profiler, StrictMode } from 'react'
+import type { AvatarCharacter } from '@bible-strong/avatar-core'
+import { act, createRef } from 'react'
 import { render } from '@testing-library/react'
 import { vi } from 'vitest'
 
-import { Avatar, type AvatarController } from '../Avatar'
-import { createAvatar } from '../createAvatar'
+import legacyJson from '../../../../examples/react-vite-consumer/src/strobi.avatar.json'
+import { Avatar, createAvatar, type AvatarHandle } from '../index'
 
-const expression = {
-  head: { x: 0, y: 0, z: 0 },
-  eyes: {
-    left: { width: 28, height: 38, x: 0, y: 0, angle: 0 },
-    right: { width: 28, height: 38, x: 0, y: 0, angle: 0 },
-    spacing: 54,
-  },
-  perspective: 1,
-  motion: { eyes: 'none', body: 'none' },
-} as const
-
-const ambientExpression = {
-  ...expression,
-  motion: { eyes: 'none', body: 'shake' },
-} as const
-
-const blinkingExpression = {
-  ...expression,
-  blinking: true,
-} as const
-
-const definition: AvatarDefinition = {
-  schema: 'bible-strong/avatar-definition',
-  schemaVersion: 1,
-  name: 'React fixture',
+const character: AvatarCharacter = {
+  name: 'Fixture',
   body: {
     primary: { type: 'sphere', width: 240, height: 240, depth: 240, roundness: 1 },
-    nodes: [],
+    nodes: [
+      {
+        color: '#e5a15b',
+        surface: { type: 'sphere', width: 70, height: 70, depth: 70, roundness: 1 },
+        position: [-100, 0, 20],
+        rotation: [0, 0, 0],
+      },
+    ],
   },
   colors: { body: '#5b7fe5', eyes: '#111316' },
-  expressions: {
-    neutral: expression,
-    smile: { ...expression, head: { x: 0, y: 10, z: 0 } },
-    restless: ambientExpression,
-    blinking: blinkingExpression,
-  },
-  expressionOrder: ['neutral', 'smile', 'restless', 'blinking'],
-  animations: {
-    greet: {
-      playbackMode: 'loop',
-      steps: [{ expression: 'smile', holdMs: 1_000, transitionMs: 100, transition: 'smooth' }],
-      blink: {
-        enabled: false,
-        initialDelayMs: 0,
-        minIntervalMs: 1_000,
-        maxIntervalMs: 1_000,
-        durationMs: 100,
-      },
-    },
-    'wave-once': {
-      playbackMode: 'once',
-      steps: [{ expression: 'smile', holdMs: 100, transitionMs: 0, transition: 'snappy' }],
-      blink: {
-        enabled: false,
-        initialDelayMs: 0,
-        minIntervalMs: 1_000,
-        maxIntervalMs: 1_000,
-        durationMs: 100,
-      },
-    },
-  },
-  animationOrder: ['greet', 'wave-once'],
+  face: { eyes: { width: 1, height: 1, gap: 1, shiftY: 0 }, perspective: 1 },
 }
 
-beforeAll(() => {
-  window.matchMedia = () =>
-    ({
-      matches: false,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined,
-    }) as unknown as MediaQueryList
+// Frames are asked for by hand: `frames(n)` runs n of them, a sixtieth of a second apart.
+let pending: FrameRequestCallback[] = []
+let clock = 0
+const frames = (count: number) => {
+  act(() => {
+    for (let index = 0; index < count; index += 1) {
+      clock += 1000 / 60
+      const due = pending
+      pending = []
+      due.forEach(callback => callback(clock))
+    }
+  })
+}
+let reduced = false
+
+beforeEach(() => {
+  pending = []
+  clock = 0
+  reduced = false
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => pending.push(callback))
+  vi.stubGlobal('cancelAnimationFrame', () => {
+    pending = []
+  })
+  window.matchMedia = ((query: string) => ({
+    matches: reduced && query.includes('reduce'),
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  })) as unknown as typeof window.matchMedia
 })
+afterEach(() => vi.unstubAllGlobals())
+
+const part = (container: HTMLElement, name: string) =>
+  container.querySelector(`[data-part="${name}"]`)!
 
 describe('@bible-strong/avatar-react', () => {
-  it('creates a validated concrete component from a definition', () => {
-    const ConcreteAvatar = createAvatar(definition)
-    const view = render(<ConcreteAvatar animation="greet" ariaLabel="Concrete avatar" />)
-
-    expect(view.getByRole('img', { name: 'Concrete avatar' })).toBeTruthy()
+  it('draws the character at once, before any frame', () => {
+    const { container, getByRole } = render(<Avatar character={character} ariaLabel="Fixture" />)
+    expect(getByRole('img', { name: 'Fixture' })).toBeTruthy()
+    expect(part(container, 'head').getAttribute('d')).toMatch(/^M/)
+    expect(part(container, 'left').getAttribute('d')).toMatch(/^M/)
+    expect(part(container, 'head').getAttribute('fill')).toBe('#5b7fe5')
   })
 
-  it('rejects invalid definitions before creating a component', () => {
-    expect(() => createAvatar({})).toThrow('Invalid avatar definition')
+  it('moves without a render of React: the paths change from frame to frame', () => {
+    const { container } = render(<Avatar character={character} clip="Streaming_A" />)
+    frames(2)
+    const before = part(container, 'left').getAttribute('d')
+    frames(30)
+    expect(part(container, 'left').getAttribute('d')).not.toBe(before)
   })
 
-  it('renders semantic SVG geometry', () => {
-    const view = render(<Avatar definition={definition} ariaLabel="Assistant avatar" />)
-    const avatar = view.getByRole('img', { name: 'Assistant avatar' })
-    expect(avatar.classList.contains('bs-avatar')).toBe(true)
-    expect(avatar.className).toBe('bs-avatar')
-    expect(avatar.querySelector('svg path')).not.toBeNull()
+  it('computes nothing while it is paused, and goes on when it is not', () => {
+    const { container, rerender } = render(
+      <Avatar character={character} clip="Streaming_A" paused />
+    )
+    expect(pending).toHaveLength(0)
+    const held = part(container, 'left').getAttribute('d')
+    rerender(<Avatar character={character} clip="Streaming_A" />)
+    frames(30)
+    expect(part(container, 'left').getAttribute('d')).not.toBe(held)
   })
 
-  it('clips the front copy of a coloured node to where it is nearer than the head', () => {
-    const coloured: AvatarDefinition = {
-      ...definition,
-      body: {
-        ...definition.body,
-        nodes: [
-          {
-            color: '#e5a15b',
-            surface: { type: 'sphere', width: 70, height: 70, depth: 70, roundness: 1 },
-            position: [-100, 0, 20],
-            rotation: [0, 0, 0],
-          },
-        ],
-      },
+  it('is idle when nothing is asked of it, and goes to the state it is given', () => {
+    const states: (string | null)[] = []
+    const { rerender } = render(
+      <Avatar character={character} onStateChange={state => states.push(state)} />
+    )
+    frames(2)
+    rerender(
+      <Avatar character={character} state="finished" onStateChange={state => states.push(state)} />
+    )
+    frames(2)
+    expect(states).toEqual(['finished'])
+    // `finished` plays its two clips then gives way to `idle` by itself.
+    frames(60 * 9)
+    expect(states).toEqual(['finished', 'idle'])
+  })
+
+  it('holds the face it is given whatever it does', () => {
+    const wide = (container: HTMLElement) => {
+      const numbers = (
+        part(container, 'left')
+          .getAttribute('d')!
+          .match(/-?\d+\.?\d*/g) ?? []
+      ).map(Number)
+      const xs = numbers.filter((_, index) => index % 2 === 0)
+      return Math.max(...xs) - Math.min(...xs)
     }
-    const view = render(<Avatar definition={coloured} ariaLabel="Masked avatar" />)
-    const svg = view.getByRole('img', { name: 'Masked avatar' }).querySelector('svg')
-    const clip = svg?.querySelector('clipPath[id$="-front-0"]')
-    const clipped = svg?.querySelector(':scope > path[clip-path]')
-
-    expect(clip?.querySelector('path')?.getAttribute('d')).toMatch(/^M.*Z$/)
-    expect(clipped?.getAttribute('clip-path')).toBe(`url(#${clip?.id})`)
-    expect(clipped?.getAttribute('fill')).toBe('#e5a15b')
-
-    const plain = render(<Avatar definition={definition} ariaLabel="Plain avatar" />)
-    const plainSvg = plain.getByRole('img', { name: 'Plain avatar' }).querySelector('svg')
-    expect(plainSvg?.querySelector(':scope > path[clip-path]')).toBeNull()
+    const { container, rerender } = render(<Avatar character={character} clip="Logo_A" />)
+    frames(30)
+    const neutral = wide(container)
+    rerender(<Avatar character={character} clip="Logo_A" face="surprised" />)
+    frames(40)
+    expect(wide(container)).toBeGreaterThan(neutral * 1.3)
   })
 
-  it('keeps stable SVG layer slots for nodes moving in front of or behind the head', () => {
-    const view = render(<Avatar definition={definition} ariaLabel="Layered avatar" />)
-    const svg = view.getByRole('img', { name: 'Layered avatar' }).querySelector('svg')
+  it('takes a gesture through its ref', () => {
+    const handle = createRef<AvatarHandle>()
+    const { container } = render(<Avatar character={character} clip="Blocked_B" ref={handle} />)
+    frames(30)
+    const before = part(container, 'body').getAttribute('transform')
+    act(() => handle.current!.poke('bounce'))
+    frames(18)
+    expect(part(container, 'body').getAttribute('transform')).not.toBe(before)
+    frames(40)
+    expect(part(container, 'body').getAttribute('transform')).toBe(before)
+  })
 
-    // The head, plus two slots behind and two in front for a body without nodes.
-    expect(svg?.querySelectorAll(':scope > path')).toHaveLength(5)
+  it('turns into a spinner: marks appear and the face goes', () => {
+    const { container } = render(<Avatar character={character} state="thinking" />)
+    frames(120)
+    expect(part(container, 'mark-0').getAttribute('d')).toMatch(/^M/)
+    expect(part(container, 'left').getAttribute('d')).toBe('')
+    expect(Number(part(container, 'disc').getAttribute('opacity'))).toBeGreaterThan(0.99)
+  })
 
-    const withNodes: AvatarDefinition = {
-      ...definition,
-      body: {
-        ...definition.body,
-        nodes: [
-          {
-            surface: { type: 'sphere', width: 60, height: 60, depth: 60, roundness: 1 },
-            position: [-90, -90, 0],
-            rotation: [0, 0, 0],
-          },
-        ],
-      },
+  it('draws one settled picture, and asks for no frame, for who wants less motion', () => {
+    reduced = true
+    const { container } = render(<Avatar character={character} state="streaming" />)
+    expect(pending).toHaveLength(0)
+    expect(part(container, 'head').getAttribute('d')).toMatch(/^M/)
+  })
+
+  it('clips the front copy of a coloured node, as the core asks', () => {
+    const { container } = render(<Avatar character={character} clip="Blocked_B" />)
+    frames(2)
+    const front = part(container, 'front-0')
+    expect(front.getAttribute('fill')).toBe('#e5a15b')
+    expect(front.getAttribute('clip-path')).toMatch(/^url\(#.*-front-0\)$/)
+  })
+
+  it('looks at the point it is given, turning there smoothly over what it plays', () => {
+    const middle = (container: HTMLElement) => {
+      const numbers = (
+        part(container, 'left')
+          .getAttribute('d')!
+          .match(/-?\d+\.?\d*/g) ?? []
+      ).map(Number)
+      const xs = numbers.filter((_, index) => index % 2 === 0)
+      return xs.reduce((sum, x) => sum + x, 0) / xs.length
     }
-    const noded = render(<Avatar definition={withNodes} ariaLabel="Noded avatar" />)
-    const nodedSvg = noded.getByRole('img', { name: 'Noded avatar' }).querySelector('svg')
-    // Every node can be on either side: one more slot behind and one more in front.
-    expect(nodedSvg?.querySelectorAll(':scope > path')).toHaveLength(7)
+    const { container, rerender } = render(<Avatar character={character} clip="Blocked_B" />)
+    frames(30)
+    const ahead = middle(container)
+    rerender(<Avatar character={character} clip="Blocked_B" lookAt={[1, 0]} />)
+    frames(1)
+    const first = middle(container)
+    frames(90)
+    const right = middle(container)
+    // To the right of the screen, reached over many frames rather than in one.
+    expect(right - ahead).toBeGreaterThan(10)
+    expect(first - ahead).toBeLessThan((right - ahead) / 2)
+    // A new array of the same point changes nothing; null brings the head back.
+    rerender(<Avatar character={character} clip="Blocked_B" lookAt={[1, 0]} />)
+    frames(1)
+    expect(middle(container)).toBeCloseTo(right, 3)
+    rerender(<Avatar character={character} clip="Blocked_B" lookAt={null} />)
+    frames(90)
+    expect(Math.abs(middle(container) - ahead)).toBeLessThan(2)
   })
 
-  it('exposes semantic imperative controls without Studio identifiers', () => {
-    const controller = createRef<AvatarController>()
-    render(<Avatar definition={definition} ref={controller} />)
-
-    let result: ReturnType<AvatarController['setExpression']> | undefined
-    act(() => {
-      result = controller.current?.setExpression('smile')
-    })
-    expect(result).toEqual({ ok: true })
-    expect(controller.current?.getState()).toMatchObject({
-      activeExpression: 'smile',
-      status: 'playing',
-    })
-    expect(controller.current?.play('missing')).toMatchObject({
-      ok: false,
-      error: { code: 'unknown_animation', key: 'missing' },
-    })
-    act(() => {
-      result = controller.current?.play('greet')
-    })
-    expect(result).toEqual({ ok: true })
-    expect(controller.current?.getState()).toMatchObject({
-      activeAnimation: 'greet',
-      activeExpression: 'smile',
-      status: 'playing',
-    })
+  it('fades to grey when muted', () => {
+    const { container, rerender } = render(<Avatar character={character} />)
+    const svg = container.querySelector('svg')!
+    expect(svg.style.filter).toBe('')
+    rerender(<Avatar character={character} muted />)
+    expect(svg.style.filter).toBe('grayscale(1)')
+    expect(svg.style.transition).toContain('filter')
   })
 
-  it('rejects imperative target changes when playback is controlled by props', () => {
-    const controller = createRef<AvatarController>()
-    render(<Avatar definition={definition} expression="neutral" ref={controller} />)
-    expect(controller.current?.setExpression('smile')).toMatchObject({
-      ok: false,
-      error: { code: 'controlled_by_props' },
-    })
-  })
-
-  it('smoothly transitions when a controlled expression changes', () => {
-    const controller = createRef<AvatarController>()
-    const view = render(<Avatar definition={definition} expression="neutral" ref={controller} />)
-
-    view.rerender(<Avatar definition={definition} expression="smile" ref={controller} />)
-
-    expect(controller.current?.getState()).toEqual({
-      activeExpression: 'smile',
-      status: 'playing',
-    })
-  })
-
-  it('retargets from the currently painted SVG frame without a target-frame flash', () => {
-    let nextFrame = 0
-    const frames = new Map<number, FrameRequestCallback>()
-    const request = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
-      frames.set(++nextFrame, callback)
-      return nextFrame
-    })
-    const cancel = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => {
-      frames.delete(id)
-    })
-    const clock = vi.spyOn(performance, 'now').mockReturnValue(1_000)
-    const controller = createRef<AvatarController>()
-    const view = render(<Avatar definition={definition} ref={controller} />)
-    const eye = view.container.querySelector<SVGPathElement>('.bs-avatar__svg g path')
-    const neutralPath = eye?.getAttribute('d')
-
-    act(() => controller.current?.setExpression('smile'))
-    expect(eye?.getAttribute('d')).toBe(neutralPath)
-
-    act(() => {
-      const callback = [...frames.values()].at(-1)
-      frames.clear()
-      callback?.(1_200)
-    })
-    const inFlightPath = eye?.getAttribute('d')
-    expect(inFlightPath).not.toBe(neutralPath)
-
-    clock.mockReturnValue(1_200)
-    act(() => controller.current?.setExpression('neutral'))
-    expect(eye?.getAttribute('d')).toBe(inFlightPath)
-
-    act(() => {
-      const callback = [...frames.values()].at(-1)
-      frames.clear()
-      callback?.(1_200)
-    })
-    expect(eye?.getAttribute('d')).toBe(inFlightPath)
-
-    clock.mockRestore()
-    request.mockRestore()
-    cancel.mockRestore()
-  })
-
-  it('rejects simultaneous controlled animation and expression props', () => {
-    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    expect(() =>
-      render(<Avatar definition={definition} animation="greet" expression="neutral" />)
-    ).toThrow('Avatar accepts either animation or expression, not both.')
-    errors.mockRestore()
-  })
-
-  it('rejects simultaneous uncontrolled animation and expression defaults', () => {
-    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    expect(() =>
-      render(
-        <Avatar definition={definition} defaultAnimation="greet" defaultExpression="neutral" />
-      )
-    ).toThrow('Avatar accepts either defaultAnimation or defaultExpression, not both.')
-    errors.mockRestore()
-  })
-
-  it('reports unknown controlled and default targets through onError', () => {
-    const onError = vi.fn()
-    const controlled = render(
-      <Avatar definition={definition} animation="missing-animation" onError={onError} />
+  it('stops computing once settled, eyes open, and wakes when asked for something', () => {
+    const handle = createRef<AvatarHandle>()
+    const { container, rerender } = render(
+      <Avatar character={character} ref={handle} settleAfterMs={500} />
     )
+    frames(20)
+    expect(pending).toHaveLength(1)
+    // Within a few seconds the eyes are open past the delay: the loop stops.
+    frames(60 * 6)
+    expect(pending).toHaveLength(0)
+    const held = part(container, 'left').getAttribute('d')
 
-    expect(onError).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'unknown_animation', key: 'missing-animation' })
-    )
+    rerender(<Avatar character={character} ref={handle} settleAfterMs={500} state="happy" />)
+    expect(pending).toHaveLength(1)
+    frames(60 * 6)
+    expect(pending).toHaveLength(0)
 
-    onError.mockClear()
-    controlled.rerender(
-      <Avatar definition={definition} defaultExpression="missing-expression" onError={onError} />
-    )
-    expect(onError).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'unknown_expression', key: 'missing-expression' })
-    )
+    act(() => handle.current!.poke('nod'))
+    expect(pending).toHaveLength(1)
+    frames(10)
+    expect(part(container, 'left').getAttribute('d')).not.toBe(held)
   })
 
-  it('keeps a controlled expression above an uncontrolled animation default', () => {
-    const controller = createRef<AvatarController>()
-    render(
-      <Avatar
-        definition={definition}
-        expression="neutral"
-        defaultAnimation="greet"
-        ref={controller}
-      />
-    )
-    expect(controller.current?.getState()).toEqual({
-      activeExpression: 'neutral',
-      status: 'stopped',
-    })
+  it('makes a component for one character', () => {
+    const Fixture = createAvatar(character)
+    const { getByRole } = render(<Fixture ariaLabel="Mine" size={32} />)
+    expect(getByRole('img', { name: 'Mine' })).toBeTruthy()
   })
 
-  it('honors uncontrolled defaults without autoplay when requested', () => {
-    const controller = createRef<AvatarController>()
-    render(
-      <Avatar definition={definition} defaultAnimation="greet" autoplay={false} ref={controller} />
-    )
-    expect(controller.current?.getState()).toEqual({
-      activeExpression: 'smile',
-      status: 'stopped',
-    })
-  })
-
-  it('resumes the current paused animation instead of restarting it', () => {
-    const controller = createRef<AvatarController>()
-    const clock = vi.spyOn(performance, 'now')
-    clock.mockReturnValueOnce(100).mockReturnValueOnce(250).mockReturnValueOnce(1_250)
-    render(<Avatar definition={definition} ref={controller} />)
-    act(() => {
-      controller.current?.play('greet')
-      controller.current?.pause()
-      controller.current?.play('greet')
-    })
-    expect(controller.current?.getState()).toMatchObject({
-      activeAnimation: 'greet',
-      activeExpression: 'smile',
-      status: 'playing',
-    })
-    clock.mockRestore()
-  })
-
-  it('updates SVG frames without rendering React once per animation frame', () => {
-    let nextFrame = 0
-    const frames = new Map<number, FrameRequestCallback>()
-    const request = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
-      frames.set(++nextFrame, callback)
-      return nextFrame
-    })
-    const cancel = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => {
-      frames.delete(id)
-    })
-    const clock = vi.spyOn(performance, 'now').mockReturnValue(1_000)
-    let renders = 0
-    render(
-      <Profiler id="animated-avatar" onRender={() => renders++}>
-        <Avatar definition={definition} defaultAnimation="greet" />
-      </Profiler>
-    )
-    const beforeFrames = renders
-    act(() => {
-      for (let index = 1; index <= 20; index++) {
-        const callback = [...frames.values()].at(-1)
-        frames.clear()
-        callback?.(1_000 + index)
-      }
-    })
-    expect(renders).toBe(beforeFrames)
-    clock.mockRestore()
-    request.mockRestore()
-    cancel.mockRestore()
-  })
-
-  it('keeps scheduling frames for a controlled expression with ambient motion', () => {
-    let nextFrame = 0
-    const frames = new Map<number, FrameRequestCallback>()
-    const request = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
-      frames.set(++nextFrame, callback)
-      return nextFrame
-    })
-    const cancel = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => {
-      frames.delete(id)
-    })
-
-    render(<Avatar definition={definition} expression="restless" />)
-
-    act(() => {
-      for (let index = 1; index <= 3; index++) {
-        const callback = [...frames.values()].at(-1)
-        frames.clear()
-        callback?.(index * 1_000)
-      }
-    })
-
-    expect(request).toHaveBeenCalledTimes(4)
-    expect(frames).toHaveLength(1)
-    request.mockRestore()
-    cancel.mockRestore()
-  })
-
-  it('keeps scheduling frames for a controlled expression with automatic blinking', () => {
-    let nextFrame = 0
-    const frames = new Map<number, FrameRequestCallback>()
-    const request = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
-      frames.set(++nextFrame, callback)
-      return nextFrame
-    })
-    const cancel = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => {
-      frames.delete(id)
-    })
-
-    render(<Avatar definition={definition} expression="blinking" />)
-
-    act(() => {
-      const callback = [...frames.values()].at(-1)
-      frames.clear()
-      callback?.(1_000)
-    })
-
-    expect(request).toHaveBeenCalledTimes(2)
-    expect(frames).toHaveLength(1)
-    request.mockRestore()
-    cancel.mockRestore()
-  })
-
-  it('fires once-completion exactly once under Strict Mode', () => {
-    let nextFrame = 0
-    const frames = new Map<number, FrameRequestCallback>()
-    const request = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
-      frames.set(++nextFrame, callback)
-      return nextFrame
-    })
-    const cancel = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => {
-      frames.delete(id)
-    })
-    const ended = vi.fn()
-    render(
-      <StrictMode>
-        <Avatar definition={definition} defaultAnimation="wave-once" onAnimationEnd={ended} />
-      </StrictMode>
-    )
-    act(() => {
-      const callbacks = [...frames.values()]
-      frames.clear()
-      callbacks.forEach(callback => callback(performance.now() + 1_000))
-    })
-    expect(ended).toHaveBeenCalledTimes(1)
-    expect(ended).toHaveBeenCalledWith('wave-once')
-    request.mockRestore()
-    cancel.mockRestore()
+  it('makes a component from a file of the first format, and refuses a broken one', () => {
+    const Strobi = createAvatar(legacyJson)
+    const { getByRole } = render(<Strobi ariaLabel="Strobi" />)
+    expect(getByRole('img', { name: 'Strobi' })).toBeTruthy()
+    expect(() => createAvatar({ body: {} })).toThrow(/Invalid avatar character/)
   })
 })

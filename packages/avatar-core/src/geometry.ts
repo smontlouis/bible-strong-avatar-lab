@@ -63,22 +63,6 @@ export type Expression = {
   eyeColor?: string
 }
 
-export type ExpressionNumericField = Exclude<
-  keyof Expression,
-  | 'id'
-  | 'semanticKey'
-  | 'bodyColor'
-  | 'eyeColor'
-  | 'eyeMotion'
-  | 'bodyMotion'
-  | 'eyeShape'
-  | 'mouthEnabled'
-  | 'mouthShape'
-  | 'noseEnabled'
-  | 'noseShape'
-  | 'blinking'
->
-
 export type AvatarPose = {
   expression: Expression
   orientation: Quaternion
@@ -115,22 +99,15 @@ export type RenderAvatarOptions = {
   /** The body's colour, for `mask`: a node of that colour, or of none, is not measured. */
   bodyColor?: string
   eyeOffset?: Readonly<{ x: number; y: number }>
+  /**
+   * The outline of each eye on the face, seen from the front: across and down from the middle
+   * of the face. When given, the eyes are these shapes laid on the head, and the eyes of the
+   * pose are not drawn.
+   */
+  eyeOutlines?: Readonly<{ left: EyeOutline; right: EyeOutline }>
 }
 
-export type EyeEditorGeometry = {
-  visible: boolean
-  selectionPath: string
-  widthGuide: string
-  heightGuide: string
-  rotationGuide: string
-  spacingGuide: string
-  center: Point3
-  widthHandle: Point3
-  heightHandle: Point3
-  rotateHandle: Point3
-  sizeHandle: Point3
-  spacingHandle: Point3
-}
+export type EyeOutline = readonly (readonly [number, number])[]
 
 export type BodyNodeEditorGeometry = {
   center: Point3
@@ -141,46 +118,6 @@ export type BodyNodeEditorGeometry = {
 export const RADIUS = 120
 const FOCAL_LENGTH = 620
 const QUARTER_ARC_SAMPLES = 14
-
-export const expressionFields: ExpressionNumericField[] = [
-  'headX',
-  'headY',
-  'headZ',
-  'positionX',
-  'positionY',
-  'positionZ',
-  'widthLeft',
-  'widthRight',
-  'heightLeft',
-  'heightRight',
-  'spacing',
-  'positionXLeft',
-  'positionXRight',
-  'positionYLeft',
-  'positionYRight',
-  'leftAngle',
-  'rightAngle',
-  'eyeRoundness',
-  'mouthCurve',
-  'mouthWidth',
-  'mouthHeight',
-  'mouthX',
-  'mouthY',
-  'mouthAngle',
-  'noseWidth',
-  'noseRoundness',
-  'noseHeight',
-  'noseX',
-  'noseY',
-  'noseAngle',
-  'perspective',
-]
-
-const mouthShapeGeometryFields = new Set<ExpressionNumericField>([
-  'mouthCurve',
-  'mouthWidth',
-  'mouthHeight',
-])
 
 export const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value))
@@ -576,40 +513,6 @@ export const poseFromExpression = (expression: Expression): AvatarPose => ({
   ),
 })
 
-export const interpolatePose = (from: AvatarPose, to: AvatarPose, progress: number): AvatarPose => {
-  const expression: Expression = { ...from.expression }
-  const mouthShapeChanges =
-    (from.expression.mouthShape ?? 'curve') !== (to.expression.mouthShape ?? 'curve')
-  expressionFields.forEach(field => {
-    let target = to.expression[field]
-    if (
-      field === 'headX' ||
-      field === 'headY' ||
-      field === 'headZ' ||
-      field === 'leftAngle' ||
-      field === 'rightAngle'
-    ) {
-      target = nearestEquivalentAngle(target, from.expression[field])
-    }
-    expression[field] =
-      mouthShapeChanges && mouthShapeGeometryFields.has(field) && progress > 0
-        ? target
-        : from.expression[field] + (target - from.expression[field]) * progress
-  })
-  if (mouthShapeChanges && progress > 0) expression.mouthShape = to.expression.mouthShape
-  if (progress >= 0.5) {
-    expression.eyeShape = to.expression.eyeShape
-    expression.mouthEnabled = to.expression.mouthEnabled
-    if (!mouthShapeChanges) expression.mouthShape = to.expression.mouthShape
-    expression.noseEnabled = to.expression.noseEnabled
-    expression.noseShape = to.expression.noseShape
-  }
-  return {
-    expression,
-    orientation: poseFromExpression(expression).orientation,
-  }
-}
-
 type ProjectedSurfacePoint = { point: Point3; normal: Point3 }
 type LocalSurfacePoint = ProjectedSurfacePoint
 
@@ -920,74 +823,6 @@ const wirePaths = (pose: AvatarPose, surface: SurfaceConfig): string[] => {
   return samples.map(curve =>
     visiblePath(curve.map(sample => projectLocalSurfacePoint(pose, sample)))
   )
-}
-
-const projectEyePoint = (
-  pose: AvatarPose,
-  surface: SurfaceConfig,
-  side: -1 | 1,
-  localX: number,
-  localY: number
-): Point3 => {
-  const expression = pose.expression
-  const suffix = side < 0 ? 'Left' : 'Right'
-  const angle = radians(side < 0 ? expression.leftAngle : expression.rightAngle)
-  const rotatedX = localX * Math.cos(angle) - localY * Math.sin(angle)
-  const rotatedY = localX * Math.sin(angle) + localY * Math.cos(angle)
-  return projectFacePoint(
-    pose,
-    surface,
-    (side * expression.spacing) / 2 + expression[`positionX${suffix}`] + rotatedX,
-    expression[`positionY${suffix}`] + rotatedY
-  ).point
-}
-
-export const renderEyeEditor = (
-  pose: AvatarPose,
-  surface: SurfaceConfig,
-  side: -1 | 1
-): EyeEditorGeometry => {
-  const expression = pose.expression
-  const suffix = side < 0 ? 'Left' : 'Right'
-  const width = expression[`width${suffix}`]
-  const height = expression[`height${suffix}`]
-  const selectedSamples = eyePoints(pose, surface, side, 1)
-  const selectedPoints = selectedSamples.map(sample => sample.point)
-  const center = projectEyePoint(pose, surface, side, 0, 0)
-  const widthHandle = projectEyePoint(pose, surface, side, width / 2 + 9, 0)
-  const heightHandle = projectEyePoint(pose, surface, side, 0, -height / 2 - 9)
-  const rotateHandle = projectEyePoint(pose, surface, side, 0, -height / 2 - 30)
-  const sizeHandle = projectEyePoint(pose, surface, side, width / 2 + 11, height / 2 + 11)
-  const leftCenter = projectEyePoint(pose, surface, -1, 0, 0)
-  const rightCenter = projectEyePoint(pose, surface, 1, 0, 0)
-  const spacingCenterX = (expression.positionXLeft + expression.positionXRight) / 2
-  const spacingCenterY = (expression.positionYLeft + expression.positionYRight) / 2
-  const spacingHandle = projectFacePoint(
-    pose,
-    surface,
-    spacingCenterX,
-    spacingCenterY + height / 2 + 34
-  ).point
-  const spacingMiddle: Point3 = [
-    (leftCenter[0] + rightCenter[0]) / 2,
-    (leftCenter[1] + rightCenter[1]) / 2,
-    (leftCenter[2] + rightCenter[2]) / 2,
-  ]
-  const line = (from: Point3, to: Point3) => path([from, to], false)
-  return {
-    visible: selectedSamples.reduce((total, sample) => total + sample.normal[2], 0) > 0,
-    selectionPath: path(selectedPoints),
-    widthGuide: line(center, widthHandle),
-    heightGuide: line(center, heightHandle),
-    rotationGuide: line(heightHandle, rotateHandle),
-    spacingGuide: `${line(leftCenter, rightCenter)}${line(spacingMiddle, spacingHandle)}`,
-    center,
-    widthHandle,
-    heightHandle,
-    rotateHandle,
-    sizeHandle,
-    spacingHandle,
-  }
 }
 
 const convexHull = (points: Point3[]): Point3[] => {
@@ -1951,8 +1786,17 @@ export const renderAvatar = (
   blink = 1,
   options: RenderAvatarOptions = {}
 ): AvatarGeometry => {
-  const leftSamples = eyePoints(pose, surface, -1, blink, options.eyeOffset)
-  const rightSamples = eyePoints(pose, surface, 1, blink, options.eyeOffset)
+  const outlines = options.eyeOutlines
+  // An outline is given as it is seen from the front: each point drops straight onto the
+  // head's surface. It is not wrapped again, as the eyes of a pose are.
+  const onHead = ([x, y]: readonly [number, number]) =>
+    projectLocalSurfacePoint(pose, surfaceFrontSampleAt(surface, x, y))
+  const leftSamples = outlines
+    ? outlines.left.map(onHead)
+    : eyePoints(pose, surface, -1, blink, options.eyeOffset)
+  const rightSamples = outlines
+    ? outlines.right.map(onHead)
+    : eyePoints(pose, surface, 1, blink, options.eyeOffset)
   const left = leftSamples.map(sample => sample.point)
   const right = rightSamples.map(sample => sample.point)
   const nose = nosePoints(pose, surface)
@@ -1969,8 +1813,9 @@ export const renderAvatar = (
     frontNodeIds: accessories.frontNodeIds,
     frontClipPaths: accessories.frontClipPaths,
     headPath: headPath(pose, surface),
-    leftPath: path(left),
-    rightPath: path(right),
+    // An eye given by its outline is a curve through the outline's points, not a polygon.
+    leftPath: outlines ? smoothClosedPath(left) : path(left),
+    rightPath: outlines ? smoothClosedPath(right) : path(right),
     // Like the eyes, the nose and the mouth are on the face: turned away, they are not drawn.
     nosePath: facesViewer(nose) ? path(nose.map(sample => sample.point)) : '',
     mouthPath: facesViewer(mouth)

@@ -44,10 +44,6 @@
       "types": "./dist/surfaces.d.ts",
       "import": "./dist/surfaces.js"
     },
-    "./ambient-motion": {
-      "types": "./dist/ambientMotion.d.ts",
-      "import": "./dist/ambientMotion.js"
-    },
     "./schema": "./dist/avatarDefinition.schema.json"
   },
   "scripts": {

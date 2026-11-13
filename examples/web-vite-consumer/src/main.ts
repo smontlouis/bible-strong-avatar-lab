@@ -1,21 +1,42 @@
 import { createAvatar } from '@bible-strong/avatar-web'
 
-import definition from '../../react-vite-consumer/src/strobi.avatar.json'
+// A file of the first format: only its character is kept.
+import character from '../../react-vite-consumer/src/strobi.avatar.json'
 import './styles.css'
 
-const avatar = createAvatar('#avatar', {
-  definition,
-  defaultAnimation: 'sleeping',
-  size: '100%',
-})
+const status = document.querySelector<HTMLOutputElement>('#status')!
 
-document.querySelectorAll<HTMLButtonElement>('[data-animation]').forEach(button => {
-  button.addEventListener('click', () => avatar.play(button.dataset.animation ?? 'idle'))
+const avatar = createAvatar('#avatar', {
+  character,
+  state: 'sleeping',
+  size: '100%',
+  followPointer: true,
+  onStateChange: state => {
+    status.value = state ?? 'clip'
+  },
 })
-document.querySelectorAll<HTMLButtonElement>('[data-expression]').forEach(button => {
-  button.addEventListener('click', () =>
-    avatar.setExpression(button.dataset.expression ?? 'neutral')
-  )
+status.value = avatar.getState().state ?? 'clip'
+
+document.querySelectorAll<HTMLButtonElement>('[data-state]').forEach(button => {
+  button.addEventListener('click', () => avatar.setState(button.dataset.state ?? 'idle'))
 })
-document.querySelector('#pause')?.addEventListener('click', () => avatar.pause())
-document.querySelector('#stop')?.addEventListener('click', () => avatar.stop())
+document.querySelectorAll<HTMLButtonElement>('[data-gesture]').forEach(button => {
+  button.addEventListener('click', () => avatar.poke(button.dataset.gesture as 'nod'))
+})
+document.querySelectorAll<HTMLButtonElement>('[data-look]').forEach(button => {
+  button.addEventListener('click', () => {
+    const point = button.dataset.look ? button.dataset.look.split(',').map(Number) : null
+    avatar.setLookAt(point ? [point[0], point[1]] : null)
+  })
+})
+let muted = false
+document.querySelector('#mute')?.addEventListener('click', () => {
+  muted = !muted
+  avatar.setMuted(muted)
+})
+let paused = false
+document.querySelector('#pause')?.addEventListener('click', () => {
+  paused = !paused
+  if (paused) avatar.pause()
+  else avatar.resume()
+})
