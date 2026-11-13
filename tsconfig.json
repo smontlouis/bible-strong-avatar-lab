@@ -24,6 +24,14 @@
     "jsx": "react-jsx",
     "types": ["vite/client", "vitest/globals"]
   },
-  "include": ["src", "server", "api", "packages/*/src", "vite.config.ts", "vitest.config.ts"],
+  "include": [
+    "src",
+    "server",
+    "api",
+    "packages/*/src",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts"
+  ],
   "exclude": ["packages/avatar-react-native"]
 }

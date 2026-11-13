@@ -2,10 +2,10 @@
 
 Every user-visible package change must include a changeset created with `pnpm changeset`.
 
-The three runtime packages use one fixed version while the public API stabilizes. Select:
+The four runtime packages share one fixed version. Since `1.0.0`, select:
 
 - `patch` for compatible fixes and documentation corrections;
-- `minor` for compatible features and for breaking changes while the version is below `1.0.0`;
-- `major` only after the packages have reached `1.0.0`.
+- `minor` for compatible features;
+- `major` for breaking changes.
 
 Merging the generated release pull request publishes the versions recorded in that pull request.
