@@ -1,8 +1,7 @@
 # @bible-strong/avatar-web
 
-DOM renderer for a Bible Strong `AvatarDefinition` (an `.avatar.json` file exported by
-[Avatar Lab](https://avatars.bible-strong.app)), without any framework. It mounts an inline SVG in
-an element and returns a controller.
+DOM renderer for a Bible Strong avatar, without any framework. It mounts an inline SVG in an
+element, runs the avatar's engine at every frame and returns a controller.
 
 MIT licensed. Runs in the browser.
 
@@ -15,7 +14,9 @@ MIT licensed. Runs in the browser.
 | React Native (iOS, Android)  | `@bible-strong/avatar-react-native` |
 | Your own renderer, or a test | `@bible-strong/avatar-core`         |
 
-All four read the same `.avatar.json`.
+All four read the same file: the character exported by
+[Avatar Lab](https://avatars.bible-strong.app), or an `.avatar.json` of the first version, of
+which only the character is kept (body, colours, outline, nose, mouth, perspective).
 
 ## Setup
 
@@ -29,18 +30,15 @@ npm install @bible-strong/avatar-web
 
 ```js
 import { createAvatar } from '@bible-strong/avatar-web'
-import definition from './strobi.avatar.json'
+import strobi from './strobi.avatar.json'
 
-const avatar = createAvatar('#avatar', {
-  definition,
-  defaultAnimation: 'idle',
-  size: 96,
-})
+const avatar = createAvatar('#avatar', { character: strobi, state: 'idle', size: 96 })
 
-avatar.play('happy')
+avatar.setState('thinking')
+avatar.poke('nod')
 ```
 
-`createAvatar` validates the definition, appends its own `span` to the target and starts. Call
+`createAvatar` checks the file, appends its own `span` to the target and starts. Call
 `avatar.destroy()` before removing the target from the page.
 
 Without a bundler, load the ESM build through an import map or a CDN and fetch the JSON:
@@ -50,65 +48,108 @@ Without a bundler, load the ESM build through an import map or a CDN and fetch t
 <script type="module">
   import { createAvatar } from 'https://cdn.example.com/avatar-web.js'
 
-  const definition = await fetch('./strobi.avatar.json').then(response => response.json())
-  createAvatar('#avatar', { definition, defaultExpression: 'neutral' })
+  const character = await fetch('./strobi.avatar.json').then(response => response.json())
+  createAvatar('#avatar', { character })
 </script>
 ```
+
+## What an avatar does
+
+Every character plays the same catalogue, exported by `@bible-strong/avatar-core`.
+
+- **States** (`stateNames`, `stateGroups`): what the avatar is in, as the app declares it. A state
+  draws its clips by its own rule; some hold a face, some turn the body into a spinner, some hand
+  over to the next state when they are over (`finished` goes back to `idle`).
+  - Lifecycle: idle, listening, thinking, streaming, searching, reading, working, coding, running,
+    computing, controlling, waiting, blocked, finished, failed, sleeping, waking
+  - Reactions: happy, excited, laughing, proud, curious, playful, shy, surprised, suspicious,
+    angry, confused, sad, drowsy, bored, scared, celebrate, approving
+  - Spinners: progress, spawning, dictating, sending, receiving, uploading, writing, alerting,
+    bouncing, powering-down
+  - Product: humming, notifying, dragging
+  - Showcase: logo, showcase, turntable
+  - Older names lead to their state: `dots` → `thinking`, `radar` → `searching`, `orbit` →
+    `waiting`, `loading` → `progress`.
+- **Clips** (`clipNames`): one piece of motion, played alone and round and round.
+- **Faces** (`faceNames`): the shape of the eyes, held over whatever plays.
+- **Gestures**: `nod`, `bounce`, `spin`, laid over whatever plays.
 
 ## Options of `createAvatar(target, options)`
 
 `target` is a CSS selector or an `HTMLElement`.
 
-| Option               | Type               | Default             | Behavior                                                  |
-| -------------------- | ------------------ | ------------------- | --------------------------------------------------------- |
-| `definition`         | `unknown`          | required            | The JSON definition, validated before anything is drawn.  |
-| `defaultAnimation`   | `AnimationKey`     | —                   | Timeline started on mount.                                |
-| `defaultExpression`  | `ExpressionKey`    | —                   | Expression shown on mount, without a timeline.            |
-| `autoplay`           | `boolean`          | `true`              | Starts `defaultAnimation` on mount.                       |
-| `size`               | `number \| string` | `240`               | Number or CSS value for the width and height.             |
-| `className`          | `string`           | —                   | Class added to the mounted `span`, next to `bs-avatar`.   |
-| `ariaLabel`          | `string`           | `Procedural avatar` | Accessible name of the image.                             |
-| `onAnimationEnd`     | function           | —                   | Receives the key of a `once` animation when it completes. |
-| `onExpressionChange` | function           | —                   | Receives the key of the displayed expression.             |
-| `onError`            | function           | —                   | Receives an `AvatarRuntimeError` for an unknown key.      |
+| Option          | Type               | Default       | Behavior                                                       |
+| --------------- | ------------------ | ------------- | -------------------------------------------------------------- |
+| `character`     | `unknown`          | required      | The file, checked before anything is drawn.                    |
+| `state`         | `string`           | `idle`        | The state the avatar starts in.                                |
+| `clip`          | `string`           | —             | A clip to play alone instead of a state. A state wins over it. |
+| `face`          | `string`           | —             | A face to hold whatever the avatar does.                       |
+| `emphasis`      | `boolean`          | `false`       | A state without a face of its own shows surprise.              |
+| `paused`        | `boolean`          | `false`       | Start still: nothing is computed until `resume()`.             |
+| `lookAt`        | `[x, y] \| null`   | `null`        | A point to look at: right and up, each from -1 to 1.           |
+| `followPointer` | `boolean`          | `false`       | The head follows the pointer. `lookAt` comes before it.        |
+| `muted`         | `boolean`          | `false`       | Fades every colour to its grey in 300 ms.                      |
+| `settleAfterMs` | `number`           | `0`           | Holds the pose this long after the last request, eyes open.    |
+| `seed`          | `number`           | from the name | Two avatars with the same seed draw the same clips.            |
+| `size`          | `number \| string` | `240`         | Number of pixels, or a CSS value, for the width and height.    |
+| `className`     | `string`           | —             | Class added to the mounted `span`, next to `bs-avatar`.        |
+| `ariaLabel`     | `string`           | `Avatar`      | Accessible name of the image.                                  |
+| `onStateChange` | function           | —             | Receives the new state, or `null` while a clip plays alone.    |
+
+Under 48 pixels an avatar is compact: a state with a shorter list of clips uses it.
 
 ## Controller
 
-| Method                      | Returns               | Behavior                                                      |
-| --------------------------- | --------------------- | ------------------------------------------------------------- |
-| `play(animation)`           | `AvatarCommandResult` | Starts an animation, or resumes it when it is the paused one. |
-| `setExpression(expression)` | `AvatarCommandResult` | Shows one expression with a short transition.                 |
-| `pause()`                   | `void`                | Freezes the exact frame.                                      |
-| `stop()`                    | `void`                | Stops and returns to `neutral`.                               |
-| `getState()`                | `AvatarPlaybackState` | `{ activeAnimation?, activeExpression, status }`.             |
-| `destroy()`                 | `void`                | Cancels the scheduled frame and removes the mounted `span`.   |
+| Method                  | Returns          | Behavior                                                         |
+| ----------------------- | ---------------- | ---------------------------------------------------------------- |
+| `setState(state)`       | `boolean`        | Goes into a state. `false` for a name the catalogue lacks.       |
+| `playClip(clip)`        | `boolean`        | Plays one clip alone. `false` for a name the catalogue lacks.    |
+| `setFace(face \| null)` | `void`           | Holds a face, or lets the avatar decide again.                   |
+| `setEmphasis(on)`       | `void`           | See the option.                                                  |
+| `poke(gesture, turns?)` | `void`           | Lays a gesture over what plays. Gestures add up.                 |
+| `pause()` / `resume()`  | `void`           | Freezes the picture; what is asked meanwhile plays on `resume`.  |
+| `setLookAt(point)`      | `void`           | Looks at a point, or nowhere in particular with `null`.          |
+| `setFollowPointer(on)`  | `void`           | See the option.                                                  |
+| `setMuted(on)`          | `void`           | See the option.                                                  |
+| `setSettleAfterMs(ms)`  | `void`           | See the option. Wakes the avatar.                                |
+| `getState()`            | `AvatarSnapshot` | `{ state, clip, paused }`.                                       |
+| `destroy()`             | `void`           | Stops everything the avatar runs and removes the mounted `span`. |
 
-`play` and `setExpression` return `{ ok: true }` or `{ ok: false, error }`, where `error.code` is
-`unknown_animation` or `unknown_expression`: use a key of the JSON.
+## Looking at a point
+
+`setLookAt([x, y])` (or the option `lookAt`) turns the head towards a point, `x` to the right and `y` up, each from -1 to 1:
+`[-0.6, 0.2]` is up and to the left. The head turns there smoothly, from one point to the next,
+and back with `setLookAt(null)`, whatever the avatar plays. Over a state or a clip the clip goes
+on: the gaze weighs 0.85 over its turns of the head, so it keeps a little of its own. A spinner has
+no head to turn. A new array of the same point is not a change.
 
 ## Errors thrown by `createAvatar`
 
-| Message starts with                                   | Cause                               | Fix                              |
-| ----------------------------------------------------- | ----------------------------------- | -------------------------------- |
-| `Avatar target '…' was not found`                     | The selector matches no element.    | Call it once the element exists. |
-| `Invalid avatar definition`                           | The JSON does not match the schema. | Export it again from Avatar Lab. |
-| `Choose either defaultAnimation or defaultExpression` | Two initial targets were given.     | Keep one.                        |
+| Message starts with               | Cause                            | Fix                              |
+| --------------------------------- | -------------------------------- | -------------------------------- |
+| `Avatar target '…' was not found` | The selector matches no element. | Call it once the element exists. |
+| `Invalid avatar character`        | The file is not a character.     | Export it again from Avatar Lab. |
+| `Invalid avatar definition`       | A first-version file is broken.  | Export it again from Avatar Lab. |
 
 ## Behavior to know
 
-- The frame loop stops by itself on an expression with no blink and no ambient motion, and on a
-  paused avatar.
-- A pose held between two blinks is drawn once: nothing is computed until the next blink or step.
-- An avatar scrolled out of view keeps its timeline and its callbacks, but is not drawn.
-- With `prefers-reduced-motion: reduce`, transitions and ambient motion jump to their target.
+- The avatar always moves: `idle` plays its clips round and round. The frame loop stops while the
+  avatar is out of view, while it is paused, and once `settleAfterMs` has passed since it was
+  last asked for something, at a moment its eyes are open and no gesture plays. Any method but
+  `getState` and `setMuted` wakes it, and so does the pointer when it follows it. Give
+  `settleAfterMs` to an avatar that decorates a row, a card or a list.
+- With `prefers-reduced-motion: reduce`, the avatar holds one settled picture, drawn again when it
+  is asked for something.
+- The body may move past its box while a clip plays (a jump, a stretch): the SVG does not clip
+  it. Leave some room around the target.
 
 ## Check your integration
 
-1. The avatar appears in the target and blinks.
-2. `avatar.play('<key>')` returns `{ ok: true }` for a key of the JSON.
+1. The avatar appears in the target and moves.
+2. `avatar.setState('thinking')` returns `true`, and `onStateChange` receives `thinking`.
 3. `avatar.destroy()` is called wherever the page removes the target.
 
 ## Versions
 
-The package follows Semantic Versioning. While it remains below `1.0.0`, breaking API changes
-increment the minor version and fixes increment the patch version.
+The package follows Semantic Versioning. Version 1 replaced the expressions and animations of
+each avatar with the shared catalogue of states, clips, faces and gestures.

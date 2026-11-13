@@ -4,6 +4,7 @@ import { act, createRef } from 'react'
 import { render } from '@testing-library/react'
 import { vi } from 'vitest'
 
+import legacyJson from '../../../../examples/react-vite-consumer/src/strobi.avatar.json'
 import { Avatar, createAvatar, type AvatarHandle } from '../index'
 
 const character: AvatarCharacter = {
@@ -72,6 +73,17 @@ describe('@bible-strong/avatar-react', () => {
     const before = part(container, 'left').getAttribute('d')
     frames(30)
     expect(part(container, 'left').getAttribute('d')).not.toBe(before)
+  })
+
+  it('computes nothing while it is paused, and goes on when it is not', () => {
+    const { container, rerender } = render(
+      <Avatar character={character} clip="Streaming_A" paused />
+    )
+    expect(pending).toHaveLength(0)
+    const held = part(container, 'left').getAttribute('d')
+    rerender(<Avatar character={character} clip="Streaming_A" />)
+    frames(30)
+    expect(part(container, 'left').getAttribute('d')).not.toBe(held)
   })
 
   it('is idle when nothing is asked of it, and goes to the state it is given', () => {
@@ -143,9 +155,78 @@ describe('@bible-strong/avatar-react', () => {
     expect(front.getAttribute('clip-path')).toMatch(/^url\(#.*-front-0\)$/)
   })
 
+  it('looks at the point it is given, turning there smoothly over what it plays', () => {
+    const middle = (container: HTMLElement) => {
+      const numbers = (
+        part(container, 'left')
+          .getAttribute('d')!
+          .match(/-?\d+\.?\d*/g) ?? []
+      ).map(Number)
+      const xs = numbers.filter((_, index) => index % 2 === 0)
+      return xs.reduce((sum, x) => sum + x, 0) / xs.length
+    }
+    const { container, rerender } = render(<Avatar character={character} clip="Blocked_B" />)
+    frames(30)
+    const ahead = middle(container)
+    rerender(<Avatar character={character} clip="Blocked_B" lookAt={[1, 0]} />)
+    frames(1)
+    const first = middle(container)
+    frames(90)
+    const right = middle(container)
+    // To the right of the screen, reached over many frames rather than in one.
+    expect(right - ahead).toBeGreaterThan(10)
+    expect(first - ahead).toBeLessThan((right - ahead) / 2)
+    // A new array of the same point changes nothing; null brings the head back.
+    rerender(<Avatar character={character} clip="Blocked_B" lookAt={[1, 0]} />)
+    frames(1)
+    expect(middle(container)).toBeCloseTo(right, 3)
+    rerender(<Avatar character={character} clip="Blocked_B" lookAt={null} />)
+    frames(90)
+    expect(Math.abs(middle(container) - ahead)).toBeLessThan(2)
+  })
+
+  it('fades to grey when muted', () => {
+    const { container, rerender } = render(<Avatar character={character} />)
+    const svg = container.querySelector('svg')!
+    expect(svg.style.filter).toBe('')
+    rerender(<Avatar character={character} muted />)
+    expect(svg.style.filter).toBe('grayscale(1)')
+    expect(svg.style.transition).toContain('filter')
+  })
+
+  it('stops computing once settled, eyes open, and wakes when asked for something', () => {
+    const handle = createRef<AvatarHandle>()
+    const { container, rerender } = render(
+      <Avatar character={character} ref={handle} settleAfterMs={500} />
+    )
+    frames(20)
+    expect(pending).toHaveLength(1)
+    // Within a few seconds the eyes are open past the delay: the loop stops.
+    frames(60 * 6)
+    expect(pending).toHaveLength(0)
+    const held = part(container, 'left').getAttribute('d')
+
+    rerender(<Avatar character={character} ref={handle} settleAfterMs={500} state="happy" />)
+    expect(pending).toHaveLength(1)
+    frames(60 * 6)
+    expect(pending).toHaveLength(0)
+
+    act(() => handle.current!.poke('nod'))
+    expect(pending).toHaveLength(1)
+    frames(10)
+    expect(part(container, 'left').getAttribute('d')).not.toBe(held)
+  })
+
   it('makes a component for one character', () => {
     const Fixture = createAvatar(character)
     const { getByRole } = render(<Fixture ariaLabel="Mine" size={32} />)
     expect(getByRole('img', { name: 'Mine' })).toBeTruthy()
+  })
+
+  it('makes a component from a file of the first format, and refuses a broken one', () => {
+    const Strobi = createAvatar(legacyJson)
+    const { getByRole } = render(<Strobi ariaLabel="Strobi" />)
+    expect(getByRole('img', { name: 'Strobi' })).toBeTruthy()
+    expect(() => createAvatar({ body: {} })).toThrow(/Invalid avatar character/)
   })
 })

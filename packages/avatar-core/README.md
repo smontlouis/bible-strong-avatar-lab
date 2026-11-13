@@ -1,9 +1,9 @@
 # @bible-strong/avatar-core
 
-Validation, playback and scene generation for Bible Strong procedural avatars, with no React, DOM,
-Motion or storage dependency. An avatar is one `.avatar.json` file exported by
-[Avatar Lab](https://avatars.bible-strong.app); this package turns it into SVG path strings, frame
-after frame.
+The engine, the catalogue and the geometry of Bible Strong procedural avatars, with no React, DOM
+or storage dependency. A character exported by [Avatar Lab](https://avatars.bible-strong.app)
+plays the shared catalogue of states, clips, faces and gestures; this package turns it into SVG
+path strings, frame after frame.
 
 MIT licensed. Runs in Node, in the browser, and on the UI thread of React Native.
 
@@ -16,8 +16,8 @@ MIT licensed. Runs in Node, in the browser, and on the UI thread of React Native
 | Browser without React        | `@bible-strong/avatar-web`          |
 | Your own renderer, or a test | `@bible-strong/avatar-core`         |
 
-Install this package directly only to validate a definition, to type one, or to write a renderer.
-The three renderers already depend on it.
+Install this package directly only to read a character, to list the catalogue, or to write a
+renderer. The three renderers already depend on it.
 
 ## Setup
 
@@ -25,145 +25,125 @@ The three renderers already depend on it.
 npm install @bible-strong/avatar-core
 ```
 
-## The definition
+## The character
 
 ```ts
-type AvatarDefinition = {
-  schema: 'bible-strong/avatar-definition'
-  schemaVersion: 1
+type AvatarCharacter = {
   name?: string
   body: { primary: Surface; nodes: BodyNode[] }
   colors: { body: HexColor; eyes: HexColor }
   style?: { outline?: { enabled: boolean; color: HexColor; width: number; opacity: number } }
-  expressions: Record<ExpressionKey, AvatarExpressionDefinition>
-  expressionOrder: ExpressionKey[]
-  animations: Record<AnimationKey, AvatarAnimationDefinition>
-  animationOrder: AnimationKey[]
+  face: {
+    // The build of the eyes against the standard face: 1 is the standard size and gap.
+    eyes: { width: number; height: number; gap: number; shiftY: number }
+    nose?: Nose
+    mouth?: Mouth
+    perspective: number // 0 draws the face flat on the body
+  }
 }
 ```
 
-- Keys are semantic, in kebab case (`happy`, `side-glance`). `neutral` always exists and comes
-  first in `expressionOrder`.
-- An animation is a list of steps. Each step names an expression, a transition (`spring`, `smooth`
-  or `snappy`) and two durations: `transitionMs` to reach it, then `holdMs` on it.
-- `playbackMode` is `loop`, `once` or `pingPong`.
-- The JSON is the only source of what an avatar can play: nothing is added implicitly.
-- Do not write a definition by hand. Author it in Avatar Lab and export it.
+A character carries no motion of its own: every character plays the same catalogue. Do not write
+one by hand. Author it in Avatar Lab and export it.
 
-The JSON Schema (Draft 2020-12) is exported as `@bible-strong/avatar-core/schema`.
-
-## Validate
+## Read a file
 
 ```ts
-import { parseAvatarDefinition, validateAvatarDefinition } from '@bible-strong/avatar-core'
+import { characterOf, readCharacter } from '@bible-strong/avatar-core'
 
-// Untrusted text: enforces 256 KiB, a depth of 32 and no duplicate keys before the schema.
-const parsed = parseAvatarDefinition(jsonText)
+// A result to inspect…
+const read = readCharacter(JSON.parse(jsonText))
+if (!read.ok) throw new Error(`${read.errors[0].path}: ${read.errors[0].message}`)
 
-// A value already in memory, such as an imported JSON module.
-const validated = validateAvatarDefinition(avatarJson)
-
-if (!validated.ok) {
-  const { path, code, message } = validated.errors[0]
-  throw new Error(`${path}: ${message} (${code})`)
-}
-const definition = validated.value
+// …or the character outright, with an error that names the first fault.
+const character = characterOf(strobiJson)
 ```
 
-Both return `{ ok: true, value }` or `{ ok: false, errors }` and never mutate the input. The value
-is deeply frozen. Each error has an RFC 6901 JSON Pointer `path`, a `code` and a `message`.
+`readCharacter` accepts a character, and an `.avatar.json` of the first version, of which only the
+character is kept: body, colours, outline, nose, mouth, perspective and the height of the eyes. Its
+expressions and animations are not read. `validateCharacter` accepts a character only, and
+`validateAvatarDefinition` a file of the first version only. Each returns `{ ok: true, value }` or
+`{ ok: false, errors }`, where each error has an RFC 6901 JSON Pointer `path`, a `code` and a
+`message`; the value is a copy.
 
-| `code`                   | Meaning                                                         |
-| ------------------------ | --------------------------------------------------------------- |
-| `invalid_json`           | The text is not JSON.                                           |
-| `max_bytes`              | The text is over 256 KiB.                                       |
-| `unknown_expression`     | An animation step names an expression that does not exist.      |
-| `incomplete_order`       | `expressionOrder` or `animationOrder` misses a key.             |
-| `unknown_order_key`      | An order lists a key that does not exist.                       |
-| `neutral_not_first`      | `neutral` is not the first expression.                          |
-| `invalid_interval_range` | A blink has `minIntervalMs` above `maxIntervalMs`.              |
-| `unsupported_version`    | `schemaVersion` is not 1.                                       |
-| other codes              | A schema rule, named after the JSON Schema keyword that failed. |
+## The catalogue
 
-## Play and render
+| Export                   | What it is                                             |
+| ------------------------ | ------------------------------------------------------ |
+| `states`, `stateNames`   | The states, and how each draws its clips.              |
+| `stateGroups`            | The states by group, for display only.                 |
+| `stateAliases`           | Older names: `dots`, `radar`, `orbit`, `loading`.      |
+| `resolveStateName(name)` | The state an alias leads to, or the name itself.       |
+| `clips`, `clipNames`     | The clips, each a set of tracks with keys and easings. |
+| `faces`, `faceNames`     | The nine shapes of the eyes.                           |
+| `gestureNames`           | `nod`, `bounce`, `spin`.                               |
+| `spinnerPatterns`        | The thirteen patterns of marks a body can turn into.   |
 
-Playback is a pure state machine: you supply the clock and the random source.
+A state plays its clips by a rule: shuffled without end, a single clip looping, once then the next
+state, or for a time then the next state. It may hold a face, and it may turn the body into a
+spinner.
+
+## Run an avatar
+
+The engine is a plain mutable object. You supply the time step; it holds its own seeded random
+source, so two engines with the same seed and the same steps draw the same clips.
 
 ```ts
 import {
-  advanceAvatarPlayback,
-  playAvatarAnimation,
-  renderAvatarFrame,
+  advanceEngine,
+  createAvatarEngine,
+  engineFrame,
+  renderCharacterFrame,
+  seedOfName,
+  setEngineState,
 } from '@bible-strong/avatar-core'
 
-const environment = { random: Math.random, reduceMotion: false }
+const engine = createAvatarEngine({ seed: seedOfName(character.name ?? 'avatar') })
+setEngineState(engine, 'idle')
 
-const started = playAvatarAnimation(definition, 'idle', performance.now())
-if (!started.ok) throw new Error(started.error.message)
-let state = started.value
-
+let last: number | undefined
 function tick(now: number) {
-  state = advanceAvatarPlayback(definition, state, now, environment)
-  const scene = renderAvatarFrame(definition, state, now, environment)
-  draw(scene)
+  advanceEngine(engine, last === undefined ? 0 : (now - last) / 1000)
+  last = now
+  draw(renderCharacterFrame(character, engineFrame(engine)))
   requestAnimationFrame(tick)
 }
 requestAnimationFrame(tick)
 ```
 
-| Function                                                          | Use                                                               |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `createAvatarPlaybackState()`                                     | A stopped state on `neutral`.                                     |
-| `playAvatarAnimation(definition, key, now, from?)`                | A state playing `key`. `from` is the frame to transition from.    |
-| `advanceAvatarPlayback(definition, state, now, env)`              | The state at `now`. Call it once per frame.                       |
-| `pauseAvatarPlayback(state, now)`                                 | Freezes the exact position.                                       |
-| `resumeAvatarPlayback(state, now)`                                | Resumes where it paused.                                          |
-| `sampleAvatarFrame(definition, state, now, env)`                  | The interpolated expression, colours and blink of a frame.        |
-| `renderAvatarFrame(definition, state, now, env)`                  | The scene of a frame, ambient motion included.                    |
-| `renderAvatarSample(definition, sample, env)`                     | The scene of a frame you already sampled, without sampling twice. |
-| `nextAvatarFrameAt(definition, state, now, env)`                  | When the picture can next change. See « Skip identical frames ».  |
-| `renderAvatarDefinition(definition, expressionKey?)`              | The static scene of one expression. Throws on an unknown key.     |
-| `renderAvatarExpression(definition, expression, colors?, blink?)` | The scene of an expression you sampled yourself.                  |
-| `resolveAnimation`, `resolveExpression`                           | Look a key up, with a typed error.                                |
+| Function                                      | Use                                                                    |
+| --------------------------------------------- | ---------------------------------------------------------------------- |
+| `createAvatarEngine({ seed?, compact? })`     | An engine at rest. `compact` picks the shorter lists of small sizes.   |
+| `setEngineState(engine, name)`                | Goes into a state, from where the body is. An unknown name is a no-op. |
+| `playEngineClip(engine, clip)`                | Plays one clip of `clips` alone, outside any state.                    |
+| `setEngineFace(engine, face \| null)`         | Holds a face over everything, or lets the clip and the state decide.   |
+| `setEngineEmphasis(engine, on)`               | A state without a face of its own holds `surprised`.                   |
+| `pokeEngine(engine, gesture, turns?)`         | Lays a gesture over what plays. Gestures add up and fade away.         |
+| `setEngineGaze(engine, [x, y] \| null)`       | Looks at a point, each axis from -1 to 1.                              |
+| `setEngineLookAt(engine, [x, y] \| null)`     | Looks at a point whatever plays: 0.85 over a clip's turns of the head. |
+| `engineAtRest(engine)`                        | No gesture, no turning gaze, no join back on its way.                  |
+| `setEngineGazeAlways(engine, on)`             | On, the gaze is laid over a clip that plays; off, only a still body.   |
+| `pauseEngine(engine)`, `resumeEngine(engine)` | Stops and restarts the clip where it is.                               |
+| `stopEngine(engine)`                          | Leaves the avatar at rest: no state, no clip, no gesture.              |
+| `seekEngine(engine, seconds)`                 | Puts the clip that plays at a time.                                    |
+| `setEngineHandover(engine, on)`               | Off, a state that would hand over starts again instead.                |
+| `setEnginePose(engine, pose \| null)`         | A pose set by hand takes the place of what the clip asks.              |
+| `releaseEnginePose(engine)`                   | Lets the pose go, joining back to the clip.                            |
+| `advanceEngine(engine, seconds)`              | Moves time on. A step is capped at a tenth of a second.                |
+| `engineFrame(engine)`                         | What to draw now: the pose, the face, the eyelids, the spinner.        |
+| `renderCharacterFrame(character, frame)`      | The scene of that frame for a character.                               |
 
-Functions that take a key return `{ ok: true, value }` or `{ ok: false, error }`, where
-`error.code` is `unknown_animation` or `unknown_expression`.
-
-With `reduceMotion: true`, transitions and ambient motion jump to their target; blinks declared by
-an animation stay.
-
-### Skip identical frames
-
-A pose held between two blinks is the same picture frame after frame, and computing the geometry
-is nearly all the cost of a frame. After drawing the frame at `now`, ask when the picture can next
-change and do nothing until then:
-
-```ts
-let nextFrameAt = 0
-
-function tick(now: number) {
-  if (now >= nextFrameAt) {
-    state = advanceAvatarPlayback(definition, state, now, environment)
-    draw(renderAvatarFrame(definition, state, now, environment))
-    nextFrameAt = nextAvatarFrameAt(definition, state, now, environment)
-  }
-  requestAnimationFrame(tick)
-}
-```
-
-`nextAvatarFrameAt` returns `now` while the picture is changing (a transition, a blink, ambient
-motion), the time of the next blink or step during a held pose, and `Infinity` when nothing will
-change until a new command. Pass it the state that `advanceAvatarPlayback` just returned for the
-same `now`, and reset `nextFrameAt` to 0 whenever you replace the state. The picture shown is
-exactly the one of a loop that draws every frame; on an avatar whose expressions have no ambient
-motion, about four frames in five are skipped. The three renderers do this.
+`engine.state` is the state that plays, or `null` while a clip plays alone; `engine.player.clip`
+is the clip. A state that hands over changes `engine.state` by itself: compare it after each step
+to report it.
 
 ## The scene
 
-Every render function returns the same shape. All paths share the view box `-150 -150 300 300`.
+`renderCharacterFrame` returns a `CharacterScene`. All paths share the view box
+`-150 -150 300 300`.
 
 ```ts
-type AvatarScene = {
+type CharacterScene = {
   geometry: {
     backPaths: string[] // body nodes behind the head, back to front
     headPath: string
@@ -173,23 +153,29 @@ type AvatarScene = {
     rightVisible: boolean
     nosePath: string
     mouthPath: string
-    mouthStrokeWidth: number // above 0: stroke the mouth; 0: fill it
     frontPaths: string[] // body nodes in front of the head
     frontClipPaths: string[] // one clip per front path, or an empty string
   }
   colors: { body: string; eyes: string }
   bodyColors: { back: string[]; front: string[] } // one colour per body path
+  transform: [a, b, c, d, e, f] // how the clip moves the drawing: SVG `matrix(a b c d e f)`
+  spinner: null | {
+    marks: { d: string; opacity: number; strokeWidth?: number }[] // under the body, not moved
+    round: number // 0 to 1: fade the parts and the face by it, draw `disc` with it as opacity
+    disc: string
+    opacity: number // of the body as a whole
+  }
 }
 ```
 
-`geometry` also carries `backNodeIds`, `frontNodeIds` and `wirePaths`, which a renderer of the
-finished avatar does not need.
-
-Draw in this order: `backPaths`, `headPath`, then eyes, nose and mouth clipped to `headPath`, then
-`frontPaths`. When `frontClipPaths[i]` is not empty, clip `frontPaths[i]` by it: that path is the part of a coloured node that is nearer than the head's surface (see below). A body node moves between `backPaths` and `frontPaths` as the head turns, so a
-renderer keeps `definition.body.nodes.length + 2` slots on each side and reads an empty string for
-an unused slot. When `definition.style.outline.enabled` is true, stroke the body and head paths
-underneath with its colour, width and opacity.
+Draw the spinner's marks first, then, inside a group moved by `transform`: `backPaths`,
+`headPath`, the eyes, nose and mouth clipped to `headPath`, `frontPaths`, and the disc. When
+`frontClipPaths[i]` is not empty, clip `frontPaths[i]` by it: that path is the part of a coloured
+node that is nearer than the head's surface (see below). A body node moves between `backPaths` and
+`frontPaths` as the head turns, so a renderer keeps `character.body.nodes.length + 2` slots on
+each side and reads an empty string for an unused slot. A spinner draws at most twelve marks at
+once. When `character.style.outline.enabled` is true, stroke the body and head paths underneath
+with its colour, width and opacity. A clip may move the body past the view box: do not clip it.
 
 ### Coloured nodes and the head
 
@@ -220,14 +206,12 @@ it along the same line as above.
 ## Entry points
 
 - `@bible-strong/avatar-core`: everything above.
-- `@bible-strong/avatar-core/schema`: the JSON Schema.
-- `@bible-strong/avatar-core/geometry`, `/body`, `/surfaces`, `/ambient-motion`: pure primitives
-  for renderer authors.
+- `@bible-strong/avatar-core/schema`: the JSON Schema of a file of the first version.
+- `@bible-strong/avatar-core/geometry`, `/body`, `/surfaces`: pure primitives for renderer
+  authors.
 
 ## Versions
 
-Definitions from the earlier pre-release export may contain `standardAnimationSet: 1`; the marker
-is accepted and adds no animation.
-
-The package follows Semantic Versioning. While it remains below `1.0.0`, breaking API changes
-increment the minor version and fixes increment the patch version.
+The package follows Semantic Versioning. Version 1 replaced the expressions and animations of each
+avatar, and their playback (`playAvatarAnimation`, `renderAvatarFrame` and the rest), with the
+engine and the shared catalogue. A file of the first version is still read, for its character.

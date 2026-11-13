@@ -1,11 +1,10 @@
 import type {
   AvatarBodyDefinition,
-  AvatarDefinition,
   AvatarExpressionDefinition,
   ExpressionKey,
 } from './avatarDefinition'
 import type { AvatarBody } from './body'
-import { poseFromExpression, renderAvatar, type AvatarGeometry, type Expression } from './geometry'
+import type { AvatarGeometry, Expression } from './geometry'
 
 export const expressionFromDefinition = (
   key: ExpressionKey,
@@ -73,43 +72,4 @@ export type AvatarScene = {
   geometry: AvatarGeometry
   colors: { body: string; eyes: string }
   bodyColors: { back: string[]; front: string[] }
-}
-
-export const renderAvatarExpression = (
-  definition: Readonly<AvatarDefinition>,
-  expression: Expression,
-  colors: { body?: string; eyes?: string } = {},
-  blink = 1
-): AvatarScene => {
-  const body = bodyFromDefinition(definition.body)
-  const bodyColor = colors.body ?? expression.bodyColor ?? definition.colors.body
-  // A node of another colour than the body sinks into the head where the head is nearer. A
-  // node of the body's colour is not measured: it costs what it always did.
-  const geometry = renderAvatar(poseFromExpression(expression), body.primary, blink, {
-    bodyNodes: body.nodes,
-    nodeOcclusion: 'mask',
-    bodyColor,
-  })
-  const nodeColors = new Map(body.nodes.map(node => [node.id, node.color ?? bodyColor]))
-  return {
-    geometry,
-    colors: {
-      body: bodyColor,
-      eyes: colors.eyes ?? expression.eyeColor ?? definition.colors.eyes,
-    },
-    bodyColors: {
-      back: geometry.backNodeIds.map(id => (id ? (nodeColors.get(id) ?? bodyColor) : bodyColor)),
-      front: geometry.frontNodeIds.map(id => (id ? (nodeColors.get(id) ?? bodyColor) : bodyColor)),
-    },
-  }
-}
-
-export const renderAvatarDefinition = (
-  definition: Readonly<AvatarDefinition>,
-  expressionKey: ExpressionKey = 'neutral'
-): AvatarScene => {
-  const publicExpression = definition.expressions[expressionKey]
-  if (!publicExpression) throw new Error(`Unknown expression '${expressionKey}'`)
-  const expression = expressionFromDefinition(expressionKey, publicExpression)
-  return renderAvatarExpression(definition, expression, publicExpression.colors)
 }

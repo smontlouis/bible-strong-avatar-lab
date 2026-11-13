@@ -26,132 +26,52 @@ const readStoredStudioLanguage = (): StudioLanguage => {
 }
 
 const english: Record<string, string> = {
-  'Playground de l’avatar': 'Avatar playground',
   Arrêté: 'Stopped',
-  'Aperçu procédural en direct': 'Live procedural preview',
-  'Aperçu de l’avatar': 'Avatar preview',
-  'Choisissez une animation exportée pour la lancer.': 'Choose an exported animation to play it.',
   Lecture: 'Playback',
-  'Contrôlez l’animation active.': 'Control the active animation.',
-  Lire: 'Play',
   Arrêter: 'Stop',
-  'API JavaScript': 'JavaScript API',
-  'Le module réutilisable est disponible dans avatar.js.':
-    'The reusable module is available as avatar.js.',
-  'Ouvrez cette démo directement, ou servez le dossier localement pour importer avatar.js depuis un autre module.':
-    'Open this demo directly, or serve the folder locally to import avatar.js from another module.',
   'Langue de l’interface': 'Interface language',
   'Redimensionner l’aperçu et l’éditeur': 'Resize preview and editor',
   'Nom de l’avatar': 'Avatar name',
   sélecteur: 'picker',
   hexadécimal: 'hex value',
-  'Lier width': 'Link widths',
-  'Lier height': 'Link heights',
-  'Lier size': 'Link sizes',
-  'Lier la position des yeux': 'Link eye positions',
   'Glisser horizontalement pour modifier': 'Drag horizontally to adjust',
   'En lecture': 'Playing',
   'En pause': 'Paused',
   'Réinitialiser la rotation de la tête': 'Reset head rotation',
   'Réinitialiser la position et la rotation de': 'Reset position and rotation of',
-  'Avatar procédural': 'Procedural avatar',
   'Gizmo de rotation': 'Rotation gizmo',
-  'Retour aux expressions': 'Back to expressions',
-  'Retour aux animations': 'Back to animations',
   'Retour au studio': 'Back to studio',
-  'Preset en mémoire': 'Saved preset',
-  'Nouvelle expression': 'New expression',
-  'Identité runtime': 'Runtime identity',
-  'Nom public stable utilisé par les applications qui chargent cet avatar.':
-    'Stable public name used by applications that load this avatar.',
-  'Clé sémantique': 'Semantic key',
-  'Clé sémantique manquante': 'Missing semantic key',
-  'Clé publique stable utilisée par l’API runtime, par exemple happy-smile.':
-    'Stable public key used by the runtime API, for example happy-smile.',
-  'Clé publique stable utilisée par l’API runtime, par exemple thinking.':
-    'Stable public key used by the runtime API, for example thinking.',
-  'Ajoute une clé pour inclure cet élément dans l’export runtime.':
-    'Add a key to include this item in the runtime export.',
-  'Utilise des lettres minuscules, des chiffres et des tirets, par exemple happy-smile.':
-    'Use lowercase letters, numbers, and hyphens, for example happy-smile.',
-  'neutral est réservé à l’apparence neutre de l’avatar.':
-    'neutral is reserved for the avatar neutral appearance.',
-  'Apparence neutre': 'Neutral appearance',
-  'Cette clé est déjà utilisée dans cette bibliothèque.':
-    'This key is already used in this library.',
-  'L’avatar à gauche affiche cette expression en direct.':
-    'The avatar on the left previews this expression live.',
-  Corps: 'Body',
-  Rendu: 'Rendering',
-  'Choisis la finition visuelle propre à cet avatar.':
-    'Choose the visual finish specific to this avatar.',
-  'Type de rendu': 'Rendering type',
-  'Le rendu Pixel est temporairement désactivé.': 'Pixel rendering is temporarily disabled.',
-  'Le mode Vectoriel est utilisé pour l’instant.': 'Vector rendering is currently used.',
-  'Pixel utilise une palette franche, sans lissage ni couleur intermédiaire.':
-    'Pixel uses a hard palette, with no smoothing or intermediate colors.',
-  Vectoriel: 'Vector',
   Pixel: 'Pixel',
-  'Définition de la grille': 'Grid resolution',
-  'Apparence et orientation générale de l’avatar.': 'General avatar appearance and orientation.',
   'Couleur du corps': 'Body color',
   'Couleur de la forme': 'Shape color',
   Automatique: 'Automatic',
-  'Automatique : laisser le clip décider': 'Automatic: let the clip decide',
   Avatars: 'Avatars',
   'Ce fichier n’est pas une définition d’avatar.': 'This file is not an avatar definition.',
-  'Chaque clip passe une fois par tour, dans un ordre retiré à chaque tour. Ce n’est pas une liste de lecture.':
-    'Each clip plays once per round, in an order drawn anew each round. It is not a playlist.',
-  'Chaque piste a ses propres images clés : une rotation peut partir avant un déplacement. Les clips se lisent, ils ne se modifient pas ici.':
-    'Each track has its own keyframes: a rotation can start before a move. Clips are played here, not edited.',
-  'Cligne avec les clips': 'Blinks with the clips',
-  'Clip en cours': 'Current clip',
   Clips: 'Clips',
   'Couleur du contour': 'Outline color',
-  'Couleur du fond': 'Background color',
   Couleurs: 'Colors',
   'Courbure au repos': 'Curve at rest',
-  'Dans l’ordre': 'In order',
-  'En degrés, autour de X, Y et Z.': 'In degrees, about X, Y and Z.',
   'En rayons du corps ; la taille de repos vaut 0,6.': 'In body radii; the size at rest is 0.6.',
-  'Fond de couleur': 'Colored background',
-  Gestes: 'Gestures',
   'Glisse pour tourner l’avatar': 'Drag to turn the avatar',
   'Hauteur des yeux': 'Eye height',
   Image: 'Picture',
   'Le corps et le visage.': 'The body and the face.',
-  'Le corps se rassemble en un petit disque et un motif se dessine autour. Le clip s’arrête pendant ce temps.':
-    'The body gathers into a small disc and a pattern is drawn around it. The clip stops meanwhile.',
-  'Le corps, les couleurs et le visage. Les clips, les états et les visages viennent avec la bibliothèque.':
-    'The body, the colors and the face. Clips, states and faces come with the library.',
   'Les yeux gardent leurs proportions sur tous les avatars. Leur taille, leur écart et leur hauteur se règlent.':
     'Eyes keep their proportions on every avatar. Their size, gap and height can be set.',
   'À 0, l’avatar est vu à plat : rien ne grossit en venant vers l’avant. À 1, la vue habituelle.':
     'At 0 the avatar is seen flat: nothing grows as it comes forward. At 1, the usual view.',
-  'Aucun état ne joue ce clip.': 'No state plays this clip.',
-  'Clip courant': 'Current clip',
-  'Clips alternés par le moteur': 'Clips alternated by the engine',
-  'Derniers clips': 'Latest clips',
   'Dernière image clé : la valeur tient jusqu’à la fin du clip.':
     'Last keyframe: the value holds until the end of the clip.',
   Début: 'Start',
-  'Effacer les filtres': 'Clear filters',
-  'Explorateur de clips': 'Clip explorer',
   Fermer: 'Close',
-  'Image clé': 'Keyframe',
   Morphing: 'Morphing',
   'Rechercher un clip': 'Search a clip',
   'Rechercher un clip…': 'Search a clip…',
   'Rechercher un état': 'Search a state',
-  'Temps de lecture': 'Playhead',
-  'Tous les clips · aucun filtre': 'All clips · no filter',
-  'Un seul clip, en boucle': 'A single clip, looping',
   'Utilisé par': 'Used by',
   Vitesse: 'Speed',
-  'Voir les clips d’un état': 'Show the clips of a state',
   clips: 'clips',
   clip: 'clip',
-  'idle, reading, radar…': 'idle, reading, radar…',
   'images clés': 'keyframes',
   sec: 'cut',
   État: 'State',
@@ -160,10 +80,6 @@ const english: Record<string, string> = {
   degrés: 'degrees',
   facteur: 'factor',
   '0 ouvert · 1 fermé': '0 open · 1 closed',
-  'Lecture de l’état · touche la timeline pour passer sur ce clip seul.':
-    'State playing · touch the timeline to switch to this clip alone.',
-  'Mode clip : l’état est en pause, ce clip tourne seul.':
-    'Clip mode: the state is on hold, this clip plays alone.',
   'Reprendre l’état': 'Resume the state',
   'Clip seul': 'Clip alone',
   Clip: 'Clip',
@@ -171,7 +87,6 @@ const english: Record<string, string> = {
     'Drag the avatar on the stage, from any tab: what it does pauses and it follows your hand. Refine it here with the gizmo or the values. Play makes it go on from where it was.',
   'posé à la main': 'posed by hand',
   Mélangé: 'Shuffled',
-  'Un seul clip': 'A single clip',
   'Rechercher un état…': 'Search a state…',
   'Aucun état': 'No state',
   'Aucun clip': 'No clip',
@@ -180,51 +95,35 @@ const english: Record<string, string> = {
   arrêté: 'stopped',
   'Visage tenu par l’état': 'Face held by the state',
   'Se transforme en spinner': 'Turns into a spinner',
-  'Sort 2 fois plus souvent': 'Comes out 2 times as often',
-  'Sort 3 fois plus souvent': 'Comes out 3 times as often',
-  'Sort 4 fois plus souvent': 'Comes out 4 times as often',
   'Tire ses clips au hasard, chacun une fois par tour, sans fin':
     'Draws its clips at random, each once a round, without end',
-  'Joue son clip en boucle, sans fin': 'Plays its clip round and round, without end',
   Enchaîner: 'Hand over',
+  Intégration: 'Integration',
+  'Choisis le paquet qui correspond à ton projet.': 'Choose the package that fits your project.',
+  'Navigateur, sans framework': 'Browser, no framework',
+  'Instructions copiées dans le presse-papiers.': 'Instructions copied to the clipboard.',
+  'Impossible de copier les instructions.': 'Could not copy the instructions.',
+  'Le corps, les couleurs et le visage. Les états, les clips et les visages viennent avec le paquet.':
+    'The body, the colours and the face. States, clips and faces come with the package.',
+  'Le Bundle Mode de react-native-worklets est obligatoire : les instructions pour l’IA et le README expliquent comment l’activer.':
+    'The Bundle Mode of react-native-worklets is required: the instructions for AI and the README explain how to turn it on.',
   'Taille des yeux': 'Eye size',
   'Écart des yeux': 'Eye gap',
-  'L’avatar tel qu’il est sur la scène. Règle sa pose dans l’onglet Pose.':
-    'The avatar as it is on the stage. Set its pose in the Pose tab.',
-  'Ne cligne pas': 'Does not blink',
-  'Paquet mélangé, en boucle': 'Shuffled rounds, looping',
   Paupières: 'Eyelids',
   Personnage: 'Character',
-  'Place l’avatar librement : glisse sur la scène pour le tourner, ou règle les valeurs. Le clip est arrêté ; l’image de l’onglet Export reprend cette pose.':
-    'Place the avatar freely: drag on the stage to turn it, or set the values. The clip is stopped; the picture of the Export tab uses this pose.',
   Position: 'Position',
   'Position et taille': 'Position and size',
-  'Raccord : le corps rejoint la pose de départ du clip.':
-    "Join: the body is led to the clip's starting pose.",
-  'Raccord vers': 'Join to',
-  Regard: 'Gaze',
   'Remettre au repos': 'Back to rest',
-  'Revenir à idle': 'Back to idle',
   Rotation: 'Rotation',
   Spinners: 'Spinners',
   'Suit le pointeur': 'Follows the pointer',
-  Temporisé: 'Timed',
-  'Temps du clip': 'Clip time',
   Télécharger: 'Download',
-  'Télécharger le personnage (.json)': 'Download the character (.json)',
   'Un avatar importé garde son corps, ses couleurs, son nez et sa bouche. Ses expressions et ses animations ne sont pas reprises.':
     'An imported avatar keeps its body, colors, nose and mouth. Its expressions and animations are not brought in.',
-  'Un geste se pose par-dessus ce qui joue, sans le relancer. Plusieurs gestes s’additionnent.':
-    'A gesture is laid over what plays, without restarting it. Several gestures add up.',
-  'Un visage, c’est la forme des deux yeux. Le clip choisit le visage, sauf si un état le tient ou si tu en imposes un ici.':
-    'A face is the shape of the two eyes. The clip chooses the face, unless a state holds one or you set one here.',
   'Une bouche en trait suit le visage : elle se relève pour happy, tombe pour sad.':
     'A mouth drawn as a line follows the face: it rises for happy and drops for sad.',
   Visage: 'Face',
-  Visages: 'Faces',
-  automatique: 'automatic',
   morphing: 'morphing',
-  'pose libre': 'free pose',
   raccord: 'join',
   visage: 'face',
   'au repos': 'at rest',
@@ -237,29 +136,17 @@ const english: Record<string, string> = {
   'Pose l’avatar, cadre-le, choisis un fond et enregistre-le en PNG ou en SVG.':
     'Pose the avatar, frame it, choose a background and save it as PNG or SVG.',
   visages: 'faces',
-  'Un geste se pose par-dessus la pose, puis s’efface. Plusieurs gestes s’additionnent.':
-    'A gesture is laid over the pose, then goes away. Several gestures add up.',
   'Couleur héritée': 'Inherited color',
   'Suit la rotation du corps': 'Follows the body rotation',
   'Désactivé, la forme reste en place quand le corps tourne. Elle le suit toujours quand il se déplace.':
     'When off, the shape stays in place while the body turns. It still follows the body when it moves.',
   'Rotation de la tête': 'Head rotation',
-  Yeux: 'Eyes',
-  'Forme, placement et orientation propres au regard.': 'Eye shape, placement and orientation.',
   'Couleur des yeux': 'Eye color',
   Largeur: 'Width',
   Hauteur: 'Height',
   Échelle: 'Scale',
-  'Taille proportionnelle': 'Proportional size',
-  'Œil gauche': 'Left eye',
-  'Œil droit': 'Right eye',
-  'Position et espacement': 'Position and spacing',
-  Horizontale: 'Horizontal',
-  Verticale: 'Vertical',
-  Espacement: 'Spacing',
   'Rotation locale': 'Local rotation',
   Projection: 'Projection',
-  'Perspective appliquée à la surface active.': 'Perspective applied to the active surface.',
   Perspective: 'Perspective',
   Supprimer: 'Delete',
   Enregistrer: 'Save',
@@ -275,419 +162,29 @@ const english: Record<string, string> = {
   Expressions: 'Expressions',
   Animations: 'Animations',
   Exporter: 'Export',
-  'Exporter l’avatar': 'Export avatar',
-  'Exporter le JSON runtime': 'Export runtime JSON',
-  Nouveau: 'New',
-  'Exporte le fichier .avatar.json utilisé par les nouveaux packages npm.':
-    'Export the .avatar.json file used by the new npm packages.',
-  'JSON runtime + createAvatar': 'Runtime JSON + createAvatar',
-  'Télécharge la définition portable complète de l’avatar actif.':
-    'Download the complete portable definition for the active avatar.',
-  'Définition runtime': 'Runtime definition',
-  'Fichier .avatar.json portable': 'Portable .avatar.json file',
-  'Export runtime incomplet': 'Runtime export is incomplete',
-  'Corrige les clés signalées dans les éditeurs Expressions ou Animations.':
-    'Fix the highlighted keys in the Expressions or Animations editors.',
-  'Télécharger la définition .avatar.json': 'Download .avatar.json definition',
-  'Copier le JSON formaté': 'Copy formatted JSON',
-  'Copier le JSON': 'Copy JSON',
-  'JSON runtime copié dans le presse-papiers.': 'Runtime JSON copied to the clipboard.',
-  'Impossible de copier le JSON runtime.': 'Could not copy the runtime JSON.',
   Installation: 'Installation',
-  'Lancer l’exemple': 'Run example',
-  'Masquer l’aperçu': 'Hide preview',
-  'Aperçu avec le package React': 'Preview using the React package',
   Preview: 'Preview',
-  'Définition prête à tester': 'Definition ready to test',
-  'Démarrage rapide': 'Quick start',
-  'Preview de la définition exportée': 'Exported definition preview',
-  'Teste les animations et expressions réellement présentes dans le fichier .avatar.json.':
-    'Test the animations and expressions actually included in the .avatar.json file.',
-  'Fermer la preview': 'Close preview',
-  'Définition exportée': 'Exported definition',
-  'Animation active': 'Active animation',
-  'Expression active': 'Active expression',
-  'Contrôles de lecture': 'Playback controls',
-  'Animations exportées': 'Exported animations',
-  'Expressions exportées': 'Exported expressions',
-  'Clique pour lancer': 'Click to play',
-  'Clique pour afficher': 'Click to display',
-  'Aucune animation exportée': 'No exported animation',
-  'Aperçu runtime de l’avatar actif': 'Runtime preview of the active avatar',
-  'Animation de départ': 'Starting animation',
-  'Expression de départ': 'Starting expression',
-  'Aucune animation sélectionnée': 'No animation selected',
-  'Guide d’utilisation': 'Usage guide',
   'Voir le guide complet': 'View full usage guide',
-  'Copier les instructions pour l’IA': 'Copy instruction for AI',
-  'Guide d’utilisation copié dans le presse-papiers.': 'Usage guide copied to the clipboard.',
-  'Impossible de copier le guide d’utilisation.': 'Could not copy the usage guide.',
-  'Guide d’utilisation de l’avatar React': 'React avatar usage guide',
-  'Guide d’utilisation de l’avatar JavaScript': 'JavaScript avatar usage guide',
-  'Installe le package, crée ton composant et choisis le niveau de contrôle adapté.':
-    'Install the package, create your component and choose the right control level.',
-  'Fermer le guide': 'Close guide',
-  'Ajoute le package React et ses dépendances.': 'Add the React package and its dependencies.',
-  'Installe le module ESM, charge la définition JSON et monte l’avatar dans un élément du DOM.':
-    'Install the ESM module, load the JSON definition and mount the avatar in a DOM element.',
-  'Ajoute le renderer DOM, qui utilise automatiquement avatar-core.':
-    'Add the DOM renderer, which automatically uses avatar-core.',
-  'Utilisation avec un bundler ESM': 'Using an ESM bundler',
-  'Vite et les bundlers modernes résolvent le package et importent le même fichier .avatar.json que React.':
-    'Vite and modern bundlers resolve the package and import the same .avatar.json file as React.',
-  'Options de createAvatar': 'createAvatar options',
-  'Référence des valeurs acceptées lors du montage dans le DOM.':
-    'Reference for values accepted when mounting into the DOM.',
-  'Obligatoire. Définition JSON validée avant la création des éléments SVG.':
-    'Required. JSON definition validated before the SVG elements are created.',
-  'Optionnelle. Animation lancée au montage lorsque autoplay vaut true. Mutuellement exclusive avec defaultExpression.':
-    'Optional. Animation started on mount when autoplay is true. Mutually exclusive with defaultExpression.',
-  'Optionnelle. Expression initiale affichée sans lancer de timeline. Mutuellement exclusive avec defaultAnimation.':
-    'Optional. Initial expression displayed without starting a timeline. Mutually exclusive with defaultAnimation.',
-  'Optionnelle, défaut true. Contrôle uniquement le lancement automatique de defaultAnimation.':
-    'Optional, defaults to true. Only controls whether defaultAnimation starts automatically.',
-  'Optionnelle, défaut 240. Largeur et hauteur CSS du conteneur rendu.':
-    'Optional, defaults to 240. CSS width and height of the rendered container.',
-  'Optionnelle. Classe CSS ajoutée au conteneur rendu.':
-    'Optional. CSS class added to the rendered container.',
-  'Optionnelle, défaut « Procedural avatar ». Nom accessible du rendu.':
-    'Optional, defaults to “Procedural avatar”. Accessible name for the rendered avatar.',
-  'Optionnelle. Reçoit les erreurs de clé inconnue utilisées lors de l’initialisation.':
-    'Optional. Receives unknown-key errors encountered during initialization.',
-  'Optionnelle. Appelée lorsqu’une animation once se termine.':
-    'Optional. Called when a once animation completes.',
-  'Optionnelle. Appelée lorsque l’expression active change.':
-    'Optional. Called when the active expression changes.',
-  'API du contrôleur DOM': 'DOM controller API',
-  'createAvatar retourne immédiatement ces commandes impératives.':
-    'createAvatar immediately returns these imperative commands.',
-  'Lance ou reprend une animation par sa clé.': 'Starts or resumes an animation by key.',
-  'Affiche une expression avec une transition courte.':
-    'Displays an expression with a short transition.',
-  'Arrête la lecture et revient à neutral.': 'Stops playback and returns to neutral.',
-  'Annule la frame planifiée et retire uniquement le conteneur créé par avatar-web.':
-    'Cancels the scheduled frame and removes only the container created by avatar-web.',
-  'Navigateur sans bundler': 'Browser without a bundler',
-  'Utilise une URL ESM via un CDN ou une import map, puis charge la définition avec fetch.':
-    'Use an ESM URL through a CDN or import map, then load the definition with fetch.',
-  'Les packages sont publiés sur npm sous licence MIT. Le README de chaque package, présent dans node_modules, contient la référence complète.':
-    'The packages are published on npm under the MIT license. The README of each package, present in node_modules, holds the complete reference.',
-  'API recommandée : créer un avatar concret': 'Recommended API: create a concrete avatar',
-  'createAvatar valide le JSON et retourne un composant dédié dont les clés d’animations sont typées.':
-    'createAvatar validates the JSON and returns a dedicated component with typed animation keys.',
-  'Props de l’avatar': 'Avatar props',
-  'Référence complète : type, valeur par défaut, comportement et contraintes de chaque prop.':
-    'Complete reference: type, default value, behavior and constraints for every prop.',
-  'Cible et lecture': 'Target and playback',
-  'Obligatoire. Objet AvatarDefinition validé contenant les expressions et les animations à afficher.':
-    'Required. Validated AvatarDefinition object containing the expressions and animations to display.',
-  'Optionnelle. Contrôle une timeline par sa clé. Chaque étape choisit l’expression affichée. Mutuellement exclusive avec expression ; une cible contrôlée prend priorité sur les valeurs default.':
-    'Optional. Controls a timeline by key. Each step chooses the displayed expression. Mutually exclusive with expression; a controlled target takes priority over default values.',
-  'Optionnelle. Contrôle directement une expression par sa clé. Mutuellement exclusive avec animation ; une cible contrôlée prend priorité sur les valeurs default.':
-    'Optional. Directly controls an expression by key. Mutually exclusive with animation; a controlled target takes priority over default values.',
-  'Optionnelle. Définit la timeline initiale en mode non contrôlé. Lue au montage ; autoplay est activé par défaut. Mutuellement exclusive avec defaultExpression.':
-    'Optional. Defines the initial timeline in uncontrolled mode. Read on mount; autoplay is enabled by default. Mutually exclusive with defaultExpression.',
-  'Optionnelle. Définit l’expression initiale en mode non contrôlé. Lue au montage, sans lancer de timeline. Mutuellement exclusive avec defaultAnimation.':
-    'Optional. Defines the initial expression in uncontrolled mode. Read on mount without starting a timeline. Mutually exclusive with defaultAnimation.',
-  'Optionnelle, défaut true. Lance automatiquement defaultAnimation ; sans defaultAnimation, elle n’a aucun effet.':
-    'Optional, defaults to true. Automatically starts defaultAnimation; without defaultAnimation, it has no effect.',
-  'Optionnelle. Donne accès à l’API impérative AvatarController.':
-    'Optional. Provides access to the imperative AvatarController API.',
-  Présentation: 'Presentation',
-  'Optionnelle, défaut 240. Nombre ou valeur CSS utilisée pour la largeur et la hauteur du conteneur.':
-    'Optional, defaults to 240. Number or CSS value used for the container width and height.',
-  'Optionnelle. Classe CSS ajoutée au conteneur externe.':
-    'Optional. CSS class added to the outer container.',
-  'Optionnelle. Styles inline du conteneur externe ; width et height viennent de size.':
-    'Optional. Inline styles for the outer container; width and height come from size.',
-  'Optionnelle, défaut « Procedural avatar ». Nom accessible annoncé aux lecteurs d’écran.':
-    'Optional, defaults to “Procedural avatar”. Accessible name announced to screen readers.',
-  'Callbacks de lecture': 'Playback callbacks',
-  'Optionnelle. Reçoit la clé de l’animation once terminée naturellement.':
-    'Optional. Receives the key of a once animation when it completes naturally.',
-  'Optionnelle. Reçoit la clé de l’expression chaque fois que l’expression sémantique affichée change.':
-    'Optional. Receives the expression key whenever the displayed semantic expression changes.',
-  'Optionnelle. Reçoit une erreur typée lorsqu’une prop animation, expression ou default référence une clé inconnue.':
-    'Optional. Receives a typed error when an animation, expression or default prop references an unknown key.',
-  'Avatar générique': 'Generic Avatar',
-  'Utilise Avatar directement lorsque la définition est chargée à l’exécution ou change entre plusieurs avatars.':
-    'Use Avatar directly when the definition is loaded at runtime or changes between multiple avatars.',
-  'API impérative': 'Imperative API',
-  'La ref expose les commandes de lecture et l’état courant de l’avatar.':
-    'The ref exposes playback commands and the avatar’s current state.',
-  'Les commandes de cible sont disponibles en mode non contrôlé ; sinon utilise les props.':
-    'Target commands are available in uncontrolled mode; otherwise use props.',
-  'Lance ou reprend une animation et retourne un résultat typé.':
-    'Starts or resumes an animation and returns a typed result.',
-  'Met en pause la timeline à sa position exacte.': 'Pauses the timeline at its exact position.',
-  'En mode non contrôlé, arrête la lecture et revient à neutral. En mode contrôlé, les props restent la source de vérité.':
-    'In uncontrolled mode, stops playback and returns to neutral. In controlled mode, props remain the source of truth.',
-  'Affiche directement une expression.': 'Directly displays an expression.',
-  'Retourne l’animation, l’expression et le statut actifs.':
-    'Returns the active animation, expression and status.',
+  'Copier les instructions pour l’IA': 'Copy instructions for AI',
   Expression: 'Expression',
   Animation: 'Animation',
-  'Une étape référence une expression qui ne peut pas être exportée.':
-    'A step references an expression that cannot be exported.',
-  'Valeur incompatible avec le format runtime': 'Value incompatible with the runtime format',
-  'Télécharge un composant autonome avec les animations de ton choix.':
-    'Download a standalone component with the animations you choose.',
-  'Génère l’export ZIP autonome React ou JavaScript qui existait déjà.':
-    'Generate the existing standalone React or JavaScript ZIP export.',
-  'Choisis les animations puis exporte le JSON runtime ou un package autonome.':
-    'Choose animations, then export runtime JSON or a standalone package.',
-  'Choisis les animations puis utilise la même définition JSON avec React, React Native ou JavaScript.':
-    'Choose animations, then use the same JSON definition with React, React Native or JavaScript.',
-  'Avatar sélectionné': 'Selected avatar',
   Format: 'Format',
-  'Choisis l’intégration correspondant à ton projet.':
-    'Choose the integration that matches your project.',
-  'Composant TSX autonome': 'Standalone TSX component',
-  'Package React local (.zip)': 'Local React package (.zip)',
-  'JavaScript / ESM': 'JavaScript / ESM',
-  'JSON runtime + avatar-web': 'Runtime JSON + avatar-web',
-  'Module ES autonome': 'Standalone ES module',
-  'Projet HTML + module JS (.zip)': 'HTML project + JS module (.zip)',
-  sélectionnées: 'selected',
-  'Animations à exporter': 'Animations to export',
-  'Tout sélectionner': 'Select all',
-  'Tout désélectionner': 'Deselect all',
-  Personnaliser: 'Customize',
-  'Masquer la sélection': 'Hide selection',
-  'Télécharger le composant TSX': 'Download TSX component',
-  'Télécharger le package React': 'Download React package',
-  'Télécharger le module': 'Download module',
-  'Intégration ESM avec le package avatar-web': 'ESM integration with the avatar-web package',
-  'Le ZIP contient le JSON exporté, une démo index.html et son README. La démo charge avatar-web depuis un CDN.':
-    'The ZIP contains the exported JSON, an index.html demo and its README. The demo loads avatar-web from a CDN.',
-  'Le ZIP contient le JSON exporté et un projet Vite React TypeScript prêt à lancer avec npm install puis npm run dev.':
-    'The ZIP contains the exported JSON and a ready-to-run Vite React TypeScript project. Start it with npm install, then npm run dev.',
-  'Télécharger l’intégration ESM (.zip)': 'Download ESM integration (.zip)',
-  'Télécharger la démo React (.zip)': 'Download React demo (.zip)',
-  'Télécharger la démo ESM (.zip)': 'Download ESM demo (.zip)',
-  'Télécharger le JSON': 'Download JSON',
-  'Guide d’utilisation de l’avatar React Native': 'React Native avatar usage guide',
-  'Installe le package, active le Bundle Mode, puis crée ton composant.':
-    'Install the package, turn on Bundle Mode, then create your component.',
-  'JSON runtime + avatar-react-native': 'Runtime JSON + avatar-react-native',
-  'Télécharge la définition .avatar.json et importe-la dans ton projet React Native. Le guide décrit la configuration à faire une fois.':
-    'Download the .avatar.json definition and import it in your React Native project. The guide describes the one-time setup.',
-  'Ajoute le renderer React Native et ses dépendances natives. avatar-core est installé automatiquement.':
-    'Add the React Native renderer and its native dependencies. avatar-core is installed automatically.',
-  'Configuration obligatoire : Bundle Mode': 'Required setup: Bundle Mode',
-  'L’avatar calcule chaque image sur le thread UI. Active le Bundle Mode de react-native-worklets et transmets avatar-core au thread UI ; sans cela, le composant lève une erreur au premier rendu.':
-    'The avatar computes every frame on the UI thread. Turn on the Bundle Mode of react-native-worklets and forward avatar-core to the UI thread; without it, the component throws on first render.',
-  'babel.config.js, avec le plugin worklets en dernier :':
-    'babel.config.js, with the worklets plugin last:',
-  'metro.config.js :': 'metro.config.js:',
-  'Redémarre ensuite Metro avec un cache vide (npx expo start --clear). Pour le web et pour Jest, laisse bundleMode désactivé.':
-    'Then restart Metro with a clean cache (npx expo start --clear). For the web and for Jest, keep bundleMode off.',
-  'Optionnelle, défaut 240. Largeur et hauteur en points.':
-    'Optional, default 240. Width and height in points.',
-  'Optionnelle. Style de la View qui entoure l’avatar ; width et height viennent de size.':
-    'Optional. Style of the View around the avatar; width and height come from size.',
-  'Optionnelle, défaut « Procedural avatar ». L’avatar est exposé comme une seule image portant ce nom.':
-    'Optional, default “Procedural avatar”. The avatar is exposed as one image with this name.',
-  'Optionnelle, défaut false. Fait passer toutes les couleurs à leur gris en 300 ms.':
-    'Optional, default false. Fades every colour to its grey in 300 ms.',
-  'Optionnelle, défaut 0. Arrête le calcul ce délai après le début d’une cible, sur la prochaine pose tenue, yeux ouverts. À donner à tout avatar décoratif.':
-    'Optional, default 0. Stops computing this long after a target starts, at the next held pose with eyes open. Give it to any decorative avatar.',
-  'Optionnelle, défaut 30. Images calculées par seconde sur le thread UI.':
-    'Optional, default 30. Frames computed per second on the UI thread.',
-  'Erreurs et corrections': 'Errors and fixes',
-  'Chaque erreur a une cause précise. Applique la correction indiquée plutôt que de contourner.':
-    'Each error has one precise cause. Apply the fix given instead of working around it.',
-  'Retournée par play() ou transmise à onError : la clé n’existe pas dans definition.animations. Utilise une clé du JSON.':
-    'Returned by play() or passed to onError: the key is not in definition.animations. Use a key of the JSON.',
-  'Retournée par setExpression() ou transmise à onError : la clé n’existe pas dans definition.expressions. Utilise une clé du JSON.':
-    'Returned by setExpression() or passed to onError: the key is not in definition.expressions. Use a key of the JSON.',
-  'Retournée par play() ou setExpression() quand la prop animation ou expression est définie. Change la prop, ou retire-la.':
-    'Returned by play() or setExpression() when the animation or expression prop is set. Change the prop, or remove it.',
-  'Levée au rendu : le JSON ne respecte pas le schéma. Réexporte-le depuis le Studio.':
-    'Thrown on render: the JSON does not match the schema. Export it again from the Studio.',
-  'Levée au rendu : deux cibles ont été données (animation et expression, ou leurs variantes default). Gardes-en une.':
-    'Thrown on render: two targets were given (animation and expression, or their default variants). Keep one.',
-  'Levée au rendu : la configuration du Bundle Mode manque, ou Metro a gardé un ancien cache. Applique la configuration ci-dessus puis redémarre Metro avec --clear.':
-    'Thrown on render: the Bundle Mode setup is missing, or Metro kept an old cache. Apply the setup above, then restart Metro with --clear.',
-  'Levée au rendu : le composant a été rendu sur le web. Utilise @bible-strong/avatar-react dans un fichier .web.tsx.':
-    'Thrown on render: the component was rendered on the web. Use @bible-strong/avatar-react in a .web.tsx file.',
-  'Levée par createAvatar : le sélecteur ne correspond à aucun élément. Appelle createAvatar une fois l’élément présent.':
-    'Thrown by createAvatar: the selector matches no element. Call createAvatar once the element exists.',
-  'Levée au rendu côté serveur : le composant lit window. Rends-le uniquement dans un composant client.':
-    'Thrown when rendering on a server: the component reads window. Render it in a client component only.',
-  'À ne pas faire': 'Do not',
-  'Ces raccourcis ont été mesurés et coûtent cher.':
-    'These shortcuts were measured and are expensive.',
-  'Ne calcule pas les images sur le thread JS (requestAnimationFrame avec renderAvatarFrame) : 12 à 19 % d’un cœur au repos, et une boucle folle en arrière-plan.':
-    'Do not compute frames on the JS thread (requestAnimationFrame with renderAvatarFrame): 12 to 19 % of a core at rest, and a runaway loop in background.',
-  'N’écris pas les tracés avec setNativeProps : environ 64 ms par image, contre environ 2 ms avec ce package.':
-    'Do not write the paths with setNativeProps: about 64 ms a frame, against about 2 ms with this package.',
-  'N’importe pas ce package dans un fichier chargé par le bundle web.':
-    'Do not import this package in a file that the web bundle loads.',
-  'Ne reconstruis pas l’objet definition à chaque rendu : une nouvelle référence relance l’avatar.':
-    'Do not rebuild the definition object at every render: a new reference restarts the avatar.',
-  'Vérifier l’intégration': 'Check your integration',
-  'Avant de considérer l’intégration terminée, vérifie chaque point.':
-    'Before calling the integration done, check each point.',
-  'npx tsc --noEmit passe, et une clé d’animation fausse est une erreur de type avec createAvatar.':
-    'npx tsc --noEmit passes, and a wrong animation key is a type error with createAvatar.',
-  'L’avatar apparaît et cligne des yeux sur un simulateur iOS et sur un émulateur Android.':
-    'The avatar appears and blinks on an iOS simulator and on an Android emulator.',
-  'Changer animation fait partir l’avatar de sa pose actuelle, sans saut.':
-    'Changing animation moves the avatar from its current pose, without a jump.',
-  'Aucune image n’est calculée une fois l’app en arrière-plan.':
-    'No frame is computed once the app is in background.',
-  'L’avatar apparaît à la taille attendue : s’il est sans style, l’import de la feuille de style manque.':
-    'The avatar appears at the expected size: if it is unstyled, the stylesheet import is missing.',
-  'L’avatar apparaît dans la cible et cligne des yeux.':
-    'The avatar appears in the target and blinks.',
-  'avatar.play() retourne { ok: true } pour une clé du JSON.':
-    'avatar.play() returns { ok: true } for a key of the JSON.',
-  'avatar.destroy() est appelé partout où la page retire la cible.':
-    'avatar.destroy() is called wherever the page removes the target.',
-  'La référence complète est dans le README du package, lisible dans node_modules.':
-    'The complete reference is in the package README, readable in node_modules.',
   'Utilisation minimale': 'Minimal usage',
-  'Utiliser cet avatar': 'Use this avatar',
-  'Prêt à exporter': 'Ready to export',
   Snapshot: 'Snapshot',
   'Mode photo': 'Photo Mode',
-  'Talk Mode': 'Talk Mode',
-  'Ouvrir le Talk Mode': 'Open Talk Mode',
-  Dialogue: 'Dialogue',
-  'Écris une phrase et fais parler l’avatar directement dans le navigateur.':
-    'Write a sentence and make the avatar speak directly in the browser.',
-  'Texte de l’avatar': 'Avatar text',
-  'Le texte reste local et n’est envoyé à aucun service.':
-    'The text stays local and is not sent to any service.',
-  'Texte à prononcer': 'Text to speak',
-  'Écris ce que ton avatar doit dire…': 'Write what your avatar should say…',
-  'Ajouter une action': 'Add an action',
-  'Copier le dialogue': 'Copy dialogue',
   Retour: 'Back',
-  'Ajouter une transformation': 'Add a transform',
-  'Ajouter la transformation': 'Insert transform',
-  'Les tags déclenchent l’avatar avant le mot suivant.':
-    'Tags trigger the avatar before the next word.',
-  'Retirer le tag': 'Remove tag',
-  'Choisir une expression ou une animation': 'Choose an expression or animation',
-  'Choisir une expression, une animation ou une transformation':
-    'Choose an expression, animation, or transform',
-  Transformation: 'Transform',
-  'Surcharge de pose': 'Pose override',
-  Activer: 'Enable',
-  'Durée personnalisée': 'Custom duration',
-  'Aucun tag correspondant': 'No matching tag',
-  'Chargement…': 'Loading…',
-  'Arrêter la voix': 'Stop voice',
-  'Faire parler': 'Speak',
-  'Timeline du dialogue': 'Dialogue timeline',
-  'Mettre le dialogue en pause': 'Pause dialogue',
-  'Lire le dialogue': 'Play dialogue',
-  'Position dans le dialogue': 'Dialogue position',
-  'Couper le son du scrub': 'Mute scrubbing audio',
-  'Activer le son du scrub': 'Enable scrubbing audio',
-  'Revenir au début': 'Return to start',
-  'Laisser Jev mettre en scène': 'Let Jev direct',
-  'Jev choisit les expressions…': 'Jev is choosing expressions…',
-  'Jev n’a pas pu mettre en scène ce texte.': 'Jev could not direct this text.',
-  'Ouvrir le Stream Mode': 'Open Stream Mode',
-  'Stream Mode': 'Stream Mode',
-  'Flux simulé': 'Simulated stream',
-  'Simule une réponse LLM, dirige chaque beat avec Jev et prépare son audio en continu.':
-    'Simulate an LLM response, direct every beat with Jev, and prepare its audio continuously.',
-  'Texte source': 'Source text',
-  'Le texte est émis progressivement comme un flux de tokens.':
-    'The text is emitted progressively like a token stream.',
-  'Intervalle des tokens': 'Token interval',
-  'Arrêter le stream': 'Stop stream',
-  'Démarrer le stream': 'Start stream',
-  'Le stream a échoué.': 'The stream failed.',
-  'Pipeline en direct': 'Live pipeline',
-  'Chaque beat avance indépendamment jusqu’à sa lecture.':
-    'Each beat progresses independently until playback.',
-  'État du pipeline': 'Pipeline status',
-  'Flux reçu': 'Received stream',
-  'En direct': 'Live',
-  Prêt: 'Ready',
-  'Le texte reçu apparaîtra ici…': 'Received text will appear here…',
-  directing: 'Directing',
-  synthesizing: 'Synthesizing',
-  queued: 'Queued',
   playing: 'Playing',
   played: 'Played',
   error: 'Error',
-  Voix: 'Voice',
-  'Les réglages affichés dépendent de la banque sélectionnée.':
-    'The displayed settings depend on the selected voice bank.',
-  'Banque de voix': 'Voice bank',
-  Animalese: 'Animalese',
-  'RPG Blips': 'RPG Blips',
-  'Game boy': 'Game Boy',
-  'Registre de voix': 'Voice register',
-  'Grave · 100 Hz': 'Low · 100 Hz',
-  'Masculine · 120 Hz': 'Male · 120 Hz',
-  'Moyenne · 150 Hz': 'Medium · 150 Hz',
-  'Féminine · 180 Hz': 'Female · 180 Hz',
-  'Aiguë · 280 Hz': 'High · 280 Hz',
-  'Langue, hauteur, vitesse et caractère mélodique de la synthèse.':
-    'Language, pitch, speed and melodic character of the synthesis.',
-  'Langue de la voix': 'Voice language',
-  Français: 'French',
-  Anglais: 'English',
-  Japonais: 'Japanese',
-  'Hauteur de voix': 'Pitch',
-  'Vitesse de parole': 'Speaking speed',
-  'Variation aléatoire': 'Random variation',
-  'Fréquence mélodique': 'Melody rate',
-  'Amplitude mélodique': 'Melody amplitude',
-  Volume: 'Volume',
-  Rythme: 'Timing',
-  'Pauses et ponctuation utilisées pour cadencer les phrases.':
-    'Pauses and punctuation used to pace sentences.',
-  'Pause entre les mots': 'Space delay',
-  'Pause de ponctuation': 'Punctuation delay',
-  'Tentatives de chargement': 'Loading retries',
-  'Caractères de ponctuation': 'Punctuation characters',
-  'Réinitialiser les réglages de voix': 'Reset voice settings',
-  'Synthèse Animalese locale propulsée par': 'Local Animalese synthesis powered by',
-  'Les bips RPG sont générés directement par le navigateur.':
-    'RPG blips are generated directly by the browser.',
-  'La synthèse Game Boy adapte': 'Game Boy synthesis adapts',
   Cadrage: 'Framing',
   Quitter: 'Exit',
-  'Outils du mode photo': 'Photo Mode tools',
-  'Orientation, regard, couleurs et perspective.': 'Orientation, gaze, colors and perspective.',
   'Position, zoom et coins du cadre photo.': 'Position, zoom and photo frame corners.',
   'Ouvrir le mode photo': 'Open Photo Mode',
   'Recentrer le cadrage': 'Reset framing',
-  'Réinitialiser la pose et le cadrage': 'Reset pose and framing',
-  'Choisis l’expression visible sur la photo.': 'Choose the expression shown in the picture.',
-  'Utilise l’outil Cadrage dans l’aperçu ou saisis des valeurs précises.':
-    'Use the Framing tool in the preview or enter precise values.',
-  'Prépare une image statique directement dans l’aperçu principal.':
-    'Prepare a static image directly in the main preview.',
-  'Composer dans le live preview': 'Compose in the live preview',
-  'Choisis une expression, ajuste la pose et cadre l’avatar dans un espace dédié.':
-    'Choose an expression, adjust the pose and frame the avatar in a dedicated workspace.',
-  'Utilise Pose pour orienter l’avatar et Cadrage pour le déplacer ou le zoomer.':
-    'Use Pose to orient the avatar and Framing to move or zoom it.',
-  'Ouvre le mode photo pour choisir une expression, cadrer puis exporter l’avatar.':
-    'Open Photo Mode to choose an expression, frame the avatar and export it.',
-  'Capture une image statique de l’avatar.': 'Capture a static image of the avatar.',
-  'Les options de capture seront configurées ici.': 'Snapshot options will be configured here.',
-  'Aperçu du Snapshot': 'Snapshot preview',
-  'Aperçu du mode photo': 'Photo Mode preview',
   'Cadre du logo. Glisse pour déplacer l’avatar et utilise la molette pour zoomer.':
     'Logo frame. Drag to move the avatar and use the wheel to zoom.',
-  'Glisse l’avatar pour le placer. La molette zoome sans faire défiler la page.':
-    'Drag the avatar to position it. The wheel zooms without scrolling the page.',
-  'Cadrage du logo': 'Logo framing',
-  'Place, agrandis et recadre l’avatar sans modifier sa géométrie.':
-    'Position, enlarge and crop the avatar without changing its geometry.',
   Zoom: 'Zoom',
   'Coins arrondis': 'Rounded corners',
-  'Exporter le logo': 'Export logo',
   'Arrière-plan': 'Background',
   'Choisis un fond transparent, uni ou en dégradé.':
     'Choose a transparent, solid or gradient background.',
@@ -702,44 +199,18 @@ const english: Record<string, string> = {
   Départ: 'Start',
   Arrivée: 'End',
   Définition: 'Resolution',
-  'Dimensions inscrites dans le fichier SVG.': 'Dimensions embedded in the SVG file.',
   'Dimensions du fichier exporté.': 'Dimensions of the exported file.',
-  'Définition du Snapshot': 'Snapshot resolution',
   'Définition du mode photo': 'Photo Mode resolution',
-  'Télécharger le Snapshot SVG': 'Download SVG snapshot',
-  'Télécharger en SVG': 'Download SVG',
-  'Télécharger en PNG': 'Download PNG',
   'Format d’export': 'Export format',
   'Format d’export du mode photo': 'Photo Mode export format',
   'Choisis le type de fichier généré par le mode photo.':
     'Choose the file type generated by Photo Mode.',
   'Prendre une photo': 'Take a picture',
-  'Informations sur le mode photo': 'Photo Mode information',
-  'Tu peux modifier le format, le fond et la définition du mode photo dans Export.':
-    'You can change the format, background and resolution for Photo Mode in Export.',
-  'Projet du Studio': 'Studio project',
-  'Transfère tous les avatars, expressions et animations vers un autre navigateur.':
-    'Transfer every avatar, expression and animation to another browser.',
-  'Télécharger le projet JSON': 'Download JSON project',
-  'Importer un projet JSON': 'Import JSON project',
-  'Ce fichier n’est ni un avatar .avatar.json ni un projet Avatar Studio valide.':
-    'This file is neither a .avatar.json avatar nor a valid Avatar Studio project.',
   'Ajouter un avatar': 'Add an avatar',
   'Importer un .avatar.json': 'Import a .avatar.json',
-  'Importer cet avatar ?': 'Import this avatar?',
-  'Cet avatar sera ajouté à ta bibliothèque avec ses expressions et animations, puis sélectionné. Les autres avatars sont conservés.':
-    'This avatar will be added to your library with its expressions and animations, then selected. Your other avatars are kept.',
-  'Importer ce projet ?': 'Import this project?',
-  'Le projet local actuel sera remplacé par les avatars, expressions, animations et état de lecture de ce fichier.':
-    'The current local project will be replaced with the avatars, expressions, animations and playback state from this file.',
-  'Le projet n’a pas pu être enregistré dans ce navigateur. Libère de l’espace puis réessaie.':
-    'The project could not be saved in this browser. Free up some space and try again.',
   Importer: 'Import',
-  'Construction, forme et couleur de la tête de l’avatar.':
-    'Build, shape and color of the avatar head.',
   'Une forme principale porte les yeux. Les autres primitives se placent autour d’elle.':
     'One primary shape carries the eyes. Other primitives are placed around it.',
-  'Forme principale': 'Primary shape',
   Principale: 'Primary',
   'porte les yeux': 'carries the eyes',
   'Ajouter une forme': 'Add a shape',
@@ -753,228 +224,43 @@ const english: Record<string, string> = {
     'Drag an axis to move the shape, or a ring to rotate it.',
   Profondeur: 'Depth',
   'Position locale': 'Local position',
-  'Cette surface est la référence du visage et porte les yeux.':
-    'This surface is the face reference and carries the eyes.',
   'Rondeur des arêtes': 'Edge roundness',
   Rondeur: 'Roundness',
-  'Rondeur morphologique': 'Morph roundness',
-  'Rondeur de la pointe': 'Tip roundness',
-  'Rondeur de la base': 'Base roundness',
   'Rondeur globale': 'Global roundness',
   'Rondeur pointe': 'Tip roundness',
   'Rondeur base': 'Base roundness',
   Trapèze: 'Trapezoid',
   'Largeur du sommet': 'Top width',
   'Largeur de la base': 'Bottom width',
-  'Finition vectorielle et contour de la silhouette.': 'Vector finish and silhouette outline.',
-  'Le mode vectoriel peut recevoir un contour de style cel-shading.':
-    'Vector rendering can use a cel-shaded outline.',
-  'Afficher le contour': 'Show outline',
   Contour: 'Outline',
   Épaisseur: 'Thickness',
   Opacité: 'Opacity',
-  'Forme des yeux': 'Eye shape',
-  'Ellipse parfaite ou rectangle aux coins réglables.':
-    'Perfect ellipse or rectangle with adjustable corners.',
-  Forme: 'Shape',
-  'Rectangle arrondi': 'Rounded rectangle',
   Ellipse: 'Ellipse',
-  Nez: 'Nose',
-  'Caractéristique permanente du visage neutre.': 'Permanent feature of the neutral face.',
   'Afficher le nez': 'Show nose',
-  'Triangle inversé': 'Inverted triangle',
-  Arrondi: 'Rounded',
-  'Forme du nez': 'Nose shape',
   'Position X': 'X position',
   'Position Y': 'Y position',
-  'Position Z': 'Z position',
-  'Position dans l’espace': 'Position in space',
-  'Position de l’avatar': 'Avatar position',
-  'Déplace la pose sur les axes X, Y et Z.': 'Move the pose along the X, Y, and Z axes.',
-  'Position neutre héritée par toutes les poses et expressions.':
-    'Neutral position inherited by every pose and expression.',
-  'X et Y déplacent l’avatar dans le plan ; Z l’avance ou le recule.':
-    'X and Y move the avatar in the plane; Z moves it forward or backward.',
-  'Bouche neutre': 'Neutral mouth',
-  'Base héritée puis modifiable ou masquable dans chaque expression.':
-    'Inherited base that each expression can change or hide.',
   'Afficher la bouche': 'Show mouth',
-  Courbe: 'Curve',
-  'Triangle arrondi': 'Rounded triangle',
-  'Forme de la bouche': 'Mouth shape',
   Courbure: 'Curve amount',
-  Bouche: 'Mouth',
-  'Surcharge la bouche neutre pour cette expression.':
-    'Override the neutral mouth for this expression.',
-  Visibilité: 'Visibility',
-  'Hériter du visage neutre': 'Inherit neutral face',
   Afficher: 'Show',
-  Masquer: 'Hide',
-  'Visibilité de la bouche': 'Mouth visibility',
-  'Couleur de base utilisée par les poses et les expressions.':
-    'Base color used by poses and expressions.',
-  'Forme, placement, orientation et couleur du regard par défaut.':
-    'Default eye shape, placement, orientation and color.',
-  'Définis l’identité du regard de cet avatar. Les poses s’ajoutent ensuite à cette base.':
-    'Define this avatar’s default eyes. Poses are then applied on top of this base.',
-  'Coordonnées propres à l’avatar, indépendantes des poses.':
-    'Avatar-specific coordinates, independent from poses.',
-  'Inclinaison par défaut propre à chaque œil.': 'Default tilt for each eye.',
-  'Orientation et apparence générale de la pose.': 'General pose orientation and appearance.',
-  'La pose peut remplacer temporairement la couleur de l’avatar.':
-    'The pose can temporarily override the avatar color.',
-  'Reprendre la couleur de l’avatar': 'Use avatar color',
   'Les libellés ↔ sont scrubbables, comme dans Figma.':
     'Labels marked ↔ can be scrubbed, like in Figma.',
-  'Forme, placement, orientation et couleur du regard.':
-    'Eye shape, placement, orientation and color.',
-  'Coordonnées communes projetées sur la forme choisie.':
-    'Shared coordinates projected onto the selected shape.',
-  'Inclinaison propre à chaque œil.': 'Tilt applied to each eye.',
-  'Perspective et repères appliqués à la surface active.':
-    'Perspective and guides applied to the active surface.',
-  'Profondeur simulée du visage.': 'Simulated face depth.',
-  'Afficher le maillage': 'Show wireframe',
   Réinitialiser: 'Reset',
-  Mouvement: 'Motion',
-  'Mouvement perpétuel': 'Perpetual motion',
-  'Aucun mouvement': 'No motion',
-  'Dérive lente': 'Slow drift',
-  'Micro-ajustements': 'Micro-adjustments',
-  Tremblement: 'Shake',
-  'Ajoute une légère présence ou un tremblement continu au corps.':
-    'Adds a subtle living presence or a continuous shake to the body.',
-  'Anime le regard par petites saccades naturelles ou par tremblement.':
-    'Animates the gaze with natural micro-saccades or a continuous shake.',
-  'Clignements automatiques': 'Automatic blinking',
-  'Cligne naturellement à des intervalles aléatoires avec cette expression.':
-    'Blinks naturally at random intervals with this expression.',
-  'Motion interpole les valeurs et notre moteur effectue le slerp quaternion.':
-    'Motion interpolates values while the engine performs quaternion slerp.',
-  'Vitesse du ressort': 'Spring speed',
-  'Une animation est en cours de lecture': 'An animation is currently playing',
-  'Mettez l’animation en pause avant de manipuler les paramètres de pose.':
-    'Pause the animation before adjusting pose parameters.',
-  'Mettez l’animation en pause avant de choisir ou personnaliser une expression.':
-    'Pause the animation before selecting or customizing an expression.',
-  Cligner: 'Blink',
-  'Expression aléatoire': 'Random expression',
-  'Cycle de vie': 'Life cycle',
-  Réactions: 'Reactions',
-  'Éditeur d’animation': 'Animation editor',
-  'Modifier l’animation': 'Edit animation',
-  'Nouvelle animation': 'New animation',
-  'Compose les expressions, leur cadence et les clignements de cette animation.':
-    'Compose the expressions, timing and blinks for this animation.',
-  'Prévisualiser l’animation': 'Preview animation',
-  'Arrêter l’animation': 'Stop animation',
-  Identité: 'Identity',
-  'Nom, catégorie et comportement de lecture de l’animation.':
-    'Animation name, category and playback behavior.',
   Nom: 'Name',
-  Catégorie: 'Category',
   Description: 'Description',
-  'Mode de lecture': 'Playback mode',
   Boucle: 'Loop',
   'Une fois': 'Once',
-  'Aller-retour': 'Ping-pong',
   Timeline: 'Timeline',
-  'Glisse les étapes pour les réordonner, puis sélectionne-en une pour régler sa cadence.':
-    'Drag steps to reorder them, then select one to adjust its timing.',
-  'Ajoute une expression pour commencer.': 'Add an expression to get started.',
-  'Étape sélectionnée': 'Selected step',
-  'Durée visible avant de passer à l’expression suivante.':
-    'Visible duration before moving to the next expression.',
-  'Supprimer cette étape': 'Delete this step',
-  'Temps d’affichage': 'Display time',
-  'Durée de transition': 'Transition duration',
   Transition: 'Transition',
-  Ressort: 'Spring',
-  Douce: 'Smooth',
-  Rapide: 'Snappy',
-  'Ajouter une expression': 'Add expression',
-  'Sélectionne un preset pour l’ajouter à la fin de la timeline.':
-    'Select a preset to append it to the timeline.',
-  Clignements: 'Blinks',
-  'Le blink fonctionne indépendamment des changements d’expression.':
-    'Blinking runs independently from expression changes.',
-  'Activer les clignements': 'Enable blinking',
-  'Intervalle minimum': 'Minimum interval',
-  'Intervalle maximum': 'Maximum interval',
-  'Intervalle du clignement': 'Blink interval',
-  'Durée du clignement': 'Blink duration',
   animations: 'animations',
-  'Chaque étape possède sa propre durée et sa propre transition.':
-    'Each step has its own duration and transition.',
   Désactivé: 'Disabled',
-  'comportement de la timeline': 'timeline behavior',
-  'Supprimer cette animation ?': 'Delete this animation?',
-  'Cette action supprimera définitivement cette animation.':
-    'This permanently deletes this animation.',
-  'Cette animation enchaîne un pool de presets et des clignements.':
-    'This animation cycles through presets and blinks.',
-  'Cet état enchaîne un pool de presets et des clignements.':
-    'This animation cycles through presets and blinks.',
-  'Expressions de l’animation': 'Animation expressions',
-  'Les presets sont joués dans cet ordre, puis la boucle recommence.':
-    'Presets play in this order, then the loop starts again.',
-  'Logique de clignement': 'Blink behavior',
-  'Le rythme reste naturel grâce à un intervalle légèrement aléatoire.':
-    'A slightly randomized interval keeps the rhythm natural.',
-  'Premier clignement': 'First blink',
-  'après le lancement': 'after launch',
-  Intervalle: 'Interval',
-  'tirage aléatoire': 'randomized',
-  Durée: 'Duration',
-  'fermeture et ouverture': 'close and open',
-  'Changement d’expression': 'Expression change',
-  'cadence de l’animation': 'animation tempo',
-  'Détails de l’animation': 'Animation details',
-  'Afficher les détails de l’animation': 'Show animation details',
-  'Masquer les détails de l’animation': 'Hide animation details',
-  Relancer: 'Restart',
-  Lancer: 'Play',
   Pause: 'Pause',
   Reprendre: 'Resume',
   Annuler: 'Cancel',
-  'Supprimer cette expression ?': 'Delete this expression?',
-  'Cette action retirera définitivement le preset de la bibliothèque de cet avatar.':
-    'This permanently removes the preset from this avatar’s library.',
-  'Cette expression sera aussi retirée des animations suivantes :':
-    'This expression will also be removed from the following animations:',
-  'Si une animation ne contient que cette expression, l’expression de repli lui sera assignée pour qu’elle reste jouable.':
-    'If an animation only contains this expression, the fallback expression will be assigned so it remains playable.',
-  'Le corps, les expressions et les animations propres à cet avatar seront définitivement supprimés. La bibliothèque de base sera conservée.':
-    'This avatar’s body, expressions and animations will be permanently deleted. The base library will be preserved.',
-  'Glisse sur la surface pour orienter la tête. Les anneaux du gizmo contrôlent X, Y et Z.':
-    'Drag on the surface to orient the head. The gizmo rings control X, Y and Z.',
   Sphère: 'Sphere',
   Curseur: 'Cursor',
   Cylindre: 'Cylinder',
   Cône: 'Cone',
   Diamant: 'Diamond',
-  'Yeux presque fermés, respiration lente et expression de sommeil.':
-    'Nearly closed eyes, slow breathing and a sleepy expression.',
-  'Animation courte de réveil avant retour vers une expression neutre.':
-    'Short waking animation before returning to a neutral expression.',
-  'Séquence courte de réveil avant retour vers une expression neutre.':
-    'Short waking animation before returning to a neutral expression.',
-  'Micro-mouvements lents, expressions 00 et 08, clignement rare.':
-    'Slow micro-movements, expressions 00 and 08, infrequent blinking.',
-  'Expressions 10, 01 et 19, regard stable et clignement attentif.':
-    'Expressions 10, 01 and 19, steady gaze and attentive blinking.',
-  'Regard haut et latéral, expressions asymétriques et changements fréquents.':
-    'Upward side gaze, asymmetric expressions and frequent changes.',
-  'Balayage rapide et changements très fréquents.': 'Fast scanning and very frequent changes.',
-  'Rythme régulier, regard concentré et micro-variations.':
-    'Steady rhythm, focused gaze and subtle variations.',
-  'Grandes expressions positives et mouvements rapides.':
-    'Big positive expressions and fast movements.',
-  'Inclinaisons et rotations rapides pour simuler un agent en mouvement.':
-    'Fast tilts and rotations to simulate a moving agent.',
-  'Rythme régulier et expressions concentrées.': 'Steady rhythm and focused expressions.',
-  'Grandes expressions et transitions rapides.': 'Big expressions and fast transitions.',
-  'Inclinaisons et forte asymétrie.': 'Tilts and strong asymmetry.',
   sleeping: 'sleeping',
   waking: 'waking',
   idle: 'idle',
@@ -1020,14 +306,6 @@ const frenchStates: Record<string, string> = {
   loop: 'boucle',
   once: 'une fois',
   pingPong: 'aller-retour',
-  Custom: 'Personnalisé',
-  'Untitled animation': 'Animation sans titre',
-  // Compatibilité avec les animations intégrées déjà persistées avant le renommage.
-  'Untitled sequence': 'Animation sans titre',
-  'Cet état enchaîne un pool de presets et des clignements.':
-    'Cette animation enchaîne un pool de presets et des clignements.',
-  'Séquence courte de réveil avant retour vers une expression neutre.':
-    'Animation courte de réveil avant retour vers une expression neutre.',
   sleeping: 'sommeil',
   waking: 'réveil',
   idle: 'au repos',
@@ -1081,6 +359,7 @@ const dynamicTranslations: [RegExp, string][] = [
   [/^Réinitialiser la position et la rotation de (.+)$/, 'Reset position and rotation of $1'],
   [/^Animation en cours : (.+)$/, 'Active animation: $1'],
   [/^Mettre (.+) en pause$/, 'Pause $1'],
+  [/^Sort (\d+) fois plus souvent$/, 'Comes out $1 times as often'],
   [/^Reprendre (.+)$/, 'Resume $1'],
   [/^Arrêter (.+)$/, 'Stop $1'],
   [/^(.+) expressions$/, '$1 expressions'],

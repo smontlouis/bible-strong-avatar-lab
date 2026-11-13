@@ -4,6 +4,7 @@ import {
   setEnginePose,
   setEngineState,
   advanceEngine,
+  validateCharacter,
 } from '@bible-strong/avatar-core'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
@@ -365,6 +366,12 @@ describe('the picture of an avatar', () => {
 })
 
 describe('an avatar saved as a file', () => {
+  it('is a character every renderer reads, for every avatar of the library', () => {
+    for (const avatar of loadLibrary().avatars) {
+      expect(validateCharacter(JSON.parse(JSON.stringify(characterOfAvatar(avatar)))).ok).toBe(true)
+    }
+  })
+
   it('comes back with its body, its colours and its face', () => {
     const avatar = loadLibrary().avatars.find(item => item.body.nodes.length > 0)!
     const character = characterOfAvatar(avatar)
