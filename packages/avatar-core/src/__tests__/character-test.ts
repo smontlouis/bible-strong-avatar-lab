@@ -57,11 +57,22 @@ const resting = (): PlayerFrame => playerFrame(createAvatarPlayer())
 describe('characters', () => {
   const character: AvatarCharacter = characterFromLegacyDefinition(legacy)
 
-  it('keeps the size and place of the eyes of an avatar of the first format', () => {
-    expect(character.face.eyes.width).toBeCloseTo(1, 3)
-    expect(character.face.eyes.height).toBeCloseTo(1, 3)
-    expect(character.face.eyes.gap).toBeCloseTo(1, 3)
-    expect(character.face.eyes.shiftY).toBeCloseTo(-0.1, 6)
+  it('gives every character the standard eyes, at the height its own were', () => {
+    expect(character.face.eyes).toEqual({ width: 1, height: 1, gap: 1, shiftY: -0.1 })
+    const small = characterFromLegacyDefinition({
+      ...legacy,
+      expressions: {
+        neutral: {
+          ...legacy.expressions.neutral,
+          eyes: {
+            left: { width: 12, height: 30, x: 0, y: -12, angle: 0 },
+            right: { width: 12, height: 30, x: 0, y: -12, angle: 0 },
+            spacing: 30,
+          },
+        },
+      },
+    })
+    expect(small.face.eyes).toEqual(character.face.eyes)
   })
 
   it('draws the standard eyes at rest: two upright bars, level, each side of the middle', () => {

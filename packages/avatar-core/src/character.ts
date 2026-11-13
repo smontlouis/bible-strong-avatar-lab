@@ -38,13 +38,6 @@ export type AvatarCharacter = {
   face: CharacterFace
 }
 
-// The standard face, in head radii: the size of the neutral eye, and half the gap between the
-// two eyes.
-const STANDARD_EYE_WIDTH = 0.26
-const STANDARD_EYE_HEIGHT = 0.57
-const STANDARD_EYE_REACH = 0.31535
-// How close the eyes may be set for their width, against the standard face.
-const CLOSEST_EYE_GAP = 0.92
 // The least room each eye leaves between itself and the middle of the face, in head radii.
 const EYE_CLEARANCE = 0.02
 
@@ -58,34 +51,23 @@ const bodyRadius = (character: Readonly<AvatarCharacter>) =>
 
 /**
  * The character of an avatar of the first format. Its body, colours, nose and mouth are kept,
- * and its eyes keep their size and place. Its expressions and animations are not: a character
- * plays the standard clips.
+ * and its eyes stay at the height they were on the face. Their size and gap are not kept: the
+ * standard faces are drawn for the standard eyes, and look stretched on any others. Its
+ * expressions and animations are not kept either: a character plays the standard clips.
  */
 export const characterFromLegacyDefinition = (
   definition: Readonly<AvatarDefinition>
 ): AvatarCharacter => {
   const neutral = definition.expressions.neutral
   const radius = Math.min(definition.body.primary.width, definition.body.primary.height) / 2
-  const { left, right, spacing } = neutral.eyes
-  const width = (left.width + right.width) / 2 / (STANDARD_EYE_WIDTH * radius)
-  // The standard faces are drawn for eyes set apart as the standard ones are: the wide ones,
-  // such as `calm`, would run into each other on eyes set closer than that for their width.
-  const gap = Math.max(
-    (spacing + right.x - left.x) / (2 * STANDARD_EYE_REACH * radius),
-    CLOSEST_EYE_GAP * width
-  )
+  const { left, right } = neutral.eyes
   return {
     ...(definition.name ? { name: definition.name } : {}),
     body: definition.body,
     colors: definition.colors,
     ...(definition.style ? { style: definition.style } : {}),
     face: {
-      eyes: {
-        width,
-        height: (left.height + right.height) / 2 / (STANDARD_EYE_HEIGHT * radius),
-        gap,
-        shiftY: (left.y + right.y) / 2 / radius,
-      },
+      eyes: { width: 1, height: 1, gap: 1, shiftY: (left.y + right.y) / 2 / radius },
       ...(neutral.nose ? { nose: neutral.nose } : {}),
       ...(neutral.mouth ? { mouth: neutral.mouth } : {}),
       perspective: neutral.perspective,
