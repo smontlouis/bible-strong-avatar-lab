@@ -52,7 +52,7 @@ JavaScript use this exact same file, so visual behavior does not diverge between
 
 ### Runtime packages
 
-Four MIT-licensed npm packages render the definition. Choose by target:
+Four MIT-licensed npm packages render a character. Choose by target:
 
 | Target                       | Package                                                                         |
 | ---------------------------- | ------------------------------------------------------------------------------- |
@@ -61,9 +61,10 @@ Four MIT-licensed npm packages render the definition. Choose by target:
 | Browser without React        | [`@bible-strong/avatar-web`](./packages/avatar-web/README.md)                   |
 | Your own renderer, or a test | [`@bible-strong/avatar-core`](./packages/avatar-core/README.md)                 |
 
-The three renderers depend on `avatar-core` for validation, playback and geometry, and share one
-API: `createAvatar` for a definition known at build time, the same props or options, the same
-controller (`play`, `pause`, `stop`, `setExpression`, `getState`) and the same typed errors.
+The three renderers depend on `avatar-core` for reading files, the engine and geometry, and share
+one API: `createAvatar` for a file known at build time (a character, or an `.avatar.json` of the
+first version, of which only the character is kept), and the same `state`, `clip`, `face`,
+`paused` and gestures over the shared catalogue.
 
 Each package README is written to be followed step by step, by a person or by a coding agent:
 setup, a minimal example, every prop, every error with its fix, and a checklist to verify the
