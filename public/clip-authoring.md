@@ -6,8 +6,10 @@ the Studio through a link, and how to look at what you made before you hand it o
 
 - Studio: https://avatars.bible-strong.app/
 - JSON Schema of a clip: https://avatars.bible-strong.app/clip.schema.json
-- Real clips to learn from: the Studio's Clips tab lists the 28 clips of the catalogue. Pick one,
-  then "Dupliquer pour modifier" (Duplicate to edit) and its link holds its whole JSON.
+- The 28 clips of the catalogue, to learn from: https://avatars.bible-strong.app/catalogue/clips.json
+  (and the states that play them: https://avatars.bible-strong.app/catalogue/states.json). Read the
+  ones closest to what you are asked for before writing.
+- Everything else for agents (packages, character files): https://avatars.bible-strong.app/llms.txt
 
 ## Handing a clip to the Studio: the link
 
@@ -46,7 +48,15 @@ the curve of every track. One screenshot shows the whole clip:
 - **Faces**: each frame is drawn with the face it shows at that time, blends included.
 
 12 frames per second is enough to judge timing and keeps the sheet small; use 24 or 30 to check a
-quick move. The sheet plays the clip from its start exactly as the stage does.
+quick move. The sheet plays the clip from its start exactly as the stage does. Dashed lines in
+every cell mark where the middle of the body is at rest: a body that rises or slides shows against
+them.
+
+**Take a screenshot you can read.** In a small window the cells are a few pixels wide and the
+sheet tells nothing. Use a window at least 1400 px wide, or capture the sheet element alone at a
+device scale factor of 2 (with Playwright: `page.locator('[data-sheet]').screenshot()`). The
+element `[data-sheet]` holds the cells and the curves; each cell's `aria-label` reads
+`Image 5 · 0.33 s · happy` in French, `Picture 5 · 0.33 s · happy` in English.
 
 ## The format
 
