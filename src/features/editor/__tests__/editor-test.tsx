@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+  clips,
   createAvatarEngine,
   setEnginePose,
   setEngineState,
@@ -123,6 +124,53 @@ describe('the editor', () => {
     )
     expect(points).toHaveLength(18)
     expect(getByRole('button', { name: 'État reading' })).toBeTruthy()
+  })
+
+  it('makes a custom clip, keys it, undoes a change and keeps it after a reload', () => {
+    const stored = () =>
+      JSON.parse(window.localStorage.getItem('bible-strong-avatar-studio-clips-v1') ?? 'null')
+        ?.clips as { name: string; tracks: Record<string, { t: number; v: number[] }[]> }[]
+    const view = open()
+    fireEvent.click(view.getByRole('button', { name: 'Clips' }))
+    fireEvent.click(view.getByRole('button', { name: 'Nouveau clip' }))
+    frames(4)
+    expect((view.getByRole('textbox', { name: 'Nom du clip' }) as HTMLInputElement).value).toBe(
+      'Nouveau clip'
+    )
+    fireEvent.click(view.getByRole('button', { name: 'Ajouter une image clé · Rotation' }))
+    frames(2)
+    expect(stored()[0].tracks.rotation).toEqual([{ t: 0, v: [0, 0, 0], ease: [0.42, 0, 0.58, 1] }])
+    // The key just added is picked: its numbers can be typed.
+    const y = view.getByRole('spinbutton', { name: 'Y' })
+    fireEvent.focus(y)
+    fireEvent.change(y, { target: { value: '90' } })
+    fireEvent.blur(y)
+    frames(2)
+    expect(stored()[0].tracks.rotation[0].v).toEqual([0, 90, 0])
+    fireEvent.click(view.getByRole('button', { name: 'Annuler' }))
+    frames(2)
+    expect(stored()[0].tracks.rotation[0].v).toEqual([0, 0, 0])
+    view.unmount()
+
+    const again = open()
+    fireEvent.click(again.getByRole('button', { name: 'Clips' }))
+    expect(stored().map(clip => clip.name)).toEqual(['Nouveau clip'])
+  })
+
+  it('duplicates a catalogue clip into the custom clips, leaving the catalogue as it is', async () => {
+    const view = open()
+    fireEvent.click(view.getByRole('button', { name: 'Clips' }))
+    await pick('Clip', 'Done_A')
+    fireEvent.click(view.getByRole('button', { name: 'Dupliquer pour modifier' }))
+    frames(4)
+    expect((view.getByRole('textbox', { name: 'Nom du clip' }) as HTMLInputElement).value).toBe(
+      'Done_A copie'
+    )
+    expect(clips.Done_A.name).toBe('Done_A')
+    const keys = view
+      .getAllByRole('button')
+      .filter(button => button.getAttribute('aria-label')?.startsWith('Rotation · '))
+    expect(keys).toHaveLength(clips.Done_A.tracks.rotation!.length)
   })
 
   it('leaves a state for its clip when a keyframe is picked, until the state is resumed', async () => {

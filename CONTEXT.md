@@ -27,9 +27,16 @@ head's turn or stay still while the head turns.
 ### Clip
 
 A piece of motion of a set length, made of tracks (position, rotation, stretch, zoom, eyelids,
-face), each with its own keys and the easing between them. Clips are read-only data of the
-catalogue. Avoid “animation” and “sequence”: everything the avatar does is animated, and a Clip's
+face), each with its own keys and the easing between them. The catalogue's Clips are read-only
+data. Avoid “animation” and “sequence”: everything the avatar does is animated, and a Clip's
 tracks run side by side, not one after the other.
+
+### Custom Clip
+
+A Clip a creator makes in the Studio, from nothing or as a copy of another Clip; the copied Clip
+stays as it was. It has the shape of a catalogue Clip and a name no catalogue Clip has. Custom
+Clips are kept by the Studio beside the Avatars, not inside one: every Avatar plays them. The
+runtime packages do not know them yet, and no State draws them. Shown as “My clips”.
 
 ### Key
 
