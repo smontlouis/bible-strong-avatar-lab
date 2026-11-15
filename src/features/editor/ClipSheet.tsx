@@ -97,7 +97,7 @@ export function ClipSheet({
             key={index}
             onClick={() => onPick(time)}
           >
-            <span className="relative aspect-square w-full">
+            <span className="relative aspect-square w-full overflow-hidden rounded-sm">
               <CellGuides />
               <Scene
                 scene={renderCharacterFrame(character, frame)}
