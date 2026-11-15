@@ -177,6 +177,7 @@ const english: Record<string, string> = {
     'The character format and its link, for agents that make characters',
   'Planche du personnage': 'Character sheet',
   'Enregistrer dans mes avatars': 'Save to my avatars',
+  Silhouette: 'Silhouette',
   'Mes clips': 'My clips',
   'Nouveau clip': 'New clip',
   'Dupliquer pour modifier': 'Duplicate to edit',

@@ -6,7 +6,11 @@ the Studio through a link, and how to look at what you made before you hand it o
 
 - Studio: https://avatars.bible-strong.app/
 - JSON Schema of a clip: https://avatars.bible-strong.app/clip.schema.json
-- The 28 clips of the catalogue, to learn from: https://avatars.bible-strong.app/catalogue/clips.json
+- The 28 clips of the catalogue, to learn from: https://avatars.bible-strong.app/catalogue/clips.json,
+  an object of clips by name. Their `workArea.end` is not always their duration and their `body`
+  names the shape they were drawn for (`sphere`, `clover`, `cloud`): both are informative. Every
+  clip plays on every body, but a clip drawn for another shape may need its amplitudes checked on
+  the frame sheet of yours.
   (and the states that play them: https://avatars.bible-strong.app/catalogue/states.json). Read the
   ones closest to what you are asked for before writing.
 - Everything else for agents (packages, character files): https://avatars.bible-strong.app/llms.txt

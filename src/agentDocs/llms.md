@@ -55,10 +55,12 @@ characters, ready to use:
   in the Studio, the frame sheet, joins and loops, easing presets, the craft of motion, and a
   complete example.
 - [Clip schema]({{origin}}/clip.schema.json): JSON Schema (draft 2020-12) of a clip.
-- [Catalogue clips]({{origin}}/catalogue/clips.json): the 28 clips every avatar plays, by name.
-  Read the ones closest to what you are asked for, and reuse their amplitudes and timing.
+- [Catalogue clips]({{origin}}/catalogue/clips.json): the 28 clips every avatar plays, an object
+  of clips by name. Read the ones closest to what you are asked for, and reuse their amplitudes and
+  timing.
 - [Catalogue states]({{origin}}/catalogue/states.json): the states an app asks for (`idle`,
-  `thinking`, `happy`…), the clips each one draws and how.
+  `thinking`, `happy`…), as `{ states, groups, aliases }`: each state by name, the states by group
+  of use (Lifecycle, Reactions, Spinners, Product, Showcase), and older names.
 
 A link `{{origin}}/#avatar=strobi&view=frames&clip={...}` opens a clip on the avatar named by its
 file above, with the frame sheet; the guide says how to capture the sheet and read it.

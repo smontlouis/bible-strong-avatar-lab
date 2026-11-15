@@ -322,7 +322,7 @@ describe('the editor', () => {
     expect(view.getByRole('heading', { level: 1 }).textContent).toBe('Avatars')
     expect(view.getByText('Fox · brouillon')).toBeTruthy()
     const sheet = view.container.querySelector('[data-character-sheet]')!
-    expect(sheet.querySelectorAll('[data-view]')).toHaveLength(8)
+    expect(sheet.querySelectorAll('[data-view]')).toHaveLength(10)
     expect(sheet.querySelectorAll('[data-face]')).toHaveLength(9)
     await wait(LINK_WRITE_MS + 50)
     const linked = readStudioLink(window.location.hash)

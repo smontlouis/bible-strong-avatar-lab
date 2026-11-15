@@ -53,6 +53,15 @@ describe('the documentation for agents', () => {
     }
   })
 
+  it('publishes a catalogue every clip of which meets the clip schema', () => {
+    const validate = new Ajv2020({ allErrors: true }).compile(
+      JSON.parse(read('public/clip.schema.json'))
+    )
+    for (const clip of Object.values(JSON.parse(files['catalogue/clips.json']))) {
+      expect(validate(clip), (clip as { name: string }).name).toBe(true)
+    }
+  })
+
   it('publishes the catalogue', () => {
     expect(Object.keys(JSON.parse(files['catalogue/clips.json']))).toEqual(clipNames)
     expect(Object.keys(JSON.parse(files['catalogue/states.json']).states)).toEqual(stateNames)

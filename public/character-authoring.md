@@ -38,16 +38,18 @@ https://avatars.bible-strong.app/#character={"name":"Fox","body":{...},"colors":
   - Colours are written in lowercase, and node turns within ±360.
 
 Once saved, the avatar plays every clip and state; a clip or a state link with
-`avatar=<file name of its name>` shows them on it.
+`avatar=<its name in lowercase, dashes for the rest>` (`avatar=pip`) shows them on it.
 
 ## Looking at your work: the character sheet
 
 The Avatars tab shows the **sheet** of the avatar shown (`[data-character-sheet]`): the character
 from the front, three quarters right, right profile, back, left profile, three quarters left,
 from above and from below (`[data-view="front"]`, `three-quarter-right`, `right`, `back`, `left`,
-`three-quarter-left`, `from-above`, `from-below`), then with each of the nine faces
-(`[data-face="happy"]`…). A dashed square marks the view box, −150…150: what goes past it may be
-cut in an app.
+`three-quarter-left`, `from-above`, `from-below`), its silhouette all in one colour from the
+front and three quarters (`silhouette`, `silhouette-three-quarter`), then with each of the nine
+faces (`[data-face="happy"]`…). "Right profile" is the character turned a quarter toward the right
+of the screen (its face points right); "left profile" toward the left. A dashed square marks the
+view box, −150…150: what goes past it may be cut in an app. Nothing checks it for you: look.
 
 Clips turn an avatar all the way round (whole turns about y, and about x), so every side is seen.
 Check on the sheet that the parts stay attached from every side, that nothing in front covers the
@@ -101,19 +103,22 @@ To see it move, open a clip or state link on it once it is saved, with `view=fra
 }
 ```
 
+This file shows every field. The Studio's own characters leave out the outline, the nose and the
+mouth (see the house style below).
+
 **Every object refuses keys it does not know.** Nothing is filled in by the reader.
 
-| Path                      | Rule                                                                  | Required           |
-| ------------------------- | --------------------------------------------------------------------- | ------------------ |
-| `name`                    | text, up to 120 characters; also the file name of the avatar in links | no                 |
-| `body.primary`            | a surface (below): the shape that carries the face                    | yes                |
-| `body.nodes`              | a list of parts, at most 16                                           | **yes, even `[]`** |
-| `colors.body`             | the head, every part without its own colour, the spinner              | yes                |
-| `colors.eyes`             | fills the eyes, the nose **and** the mouth                            | yes                |
-| `style.outline`           | `{ enabled, color, width 0…24, opacity 0…1 }`, all four when present  | no                 |
-| `face.eyes`               | `{ width 0.1…4, height 0.1…4, gap 0…4, shiftY −1…1 }`, all four       | yes                |
-| `face.nose`, `face.mouth` | below; absent means none                                              | no                 |
-| `face.perspective`        | 0…10 in the file; use 0…1.5                                           | yes                |
+| Path                      | Rule                                                                                                                                | Required           |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| `name`                    | text, up to 120 characters; in links the avatar is named by it in lowercase, every other character a dash (`Grok bot` → `grok-bot`) | no                 |
+| `body.primary`            | a surface (below): the shape that carries the face                                                                                  | yes                |
+| `body.nodes`              | a list of parts, at most 16                                                                                                         | **yes, even `[]`** |
+| `colors.body`             | the head, every part without its own colour, the spinner                                                                            | yes                |
+| `colors.eyes`             | fills the eyes, the nose **and** the mouth                                                                                          | yes                |
+| `style.outline`           | `{ enabled, color, width 0…24, opacity 0…1 }`, all four when present                                                                | no                 |
+| `face.eyes`               | `{ width 0.1…4, height 0.1…4, gap 0…4, shiftY −1…1 }`, all four                                                                     | yes                |
+| `face.nose`, `face.mouth` | below; absent means none                                                                                                            | no                 |
+| `face.perspective`        | 0…10 in the file; use 0…1.5                                                                                                         | yes                |
 
 Colours are `#` and six **lowercase** hex digits: `#e8742f`. `#E8742F` and `#fff` are refused.
 
@@ -125,7 +130,8 @@ Colours are `#` and six **lowercase** hex digits: `#e8742f`. `#E8742F` and `#fff
   SVG, use y down.)
 - A surface's `width`, `height` and `depth` are its full extents along x, y and z: a sphere 240
   wide has a radius of 120.
-- Keep the resting silhouette within about ±130: clips move the body up to 0.27 body radii, zoom
+- Keep the resting silhouette within about ±130, a margin inside the ±150 view box that is advice,
+  not a rule: clips move the body up to 0.27 body radii, zoom
   it up to 1.07× and stretch it up to 1.12×.
 
 ## Surfaces: the primary and the parts
@@ -146,17 +152,17 @@ Colours are `#` and six **lowercase** hex digits: `#e8742f`. `#E8742F` and `#fff
 `type`, `width`, `height`, `depth` (each above 0) and `roundness` (0…5) are required. The other
 keys are optional, accepted on any type, and read only by the types below.
 
-| type        | shape                                                                         | reads                                                                                                                           | preset (w × h × d, roundness)             |
-| ----------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `sphere`    | an ellipsoid; round only when width = height = depth                          | width, height, depth                                                                                                            | 240 × 240 × 240                           |
-| `capsule`   | two round caps joined by a straight part                                      | width, height, depth                                                                                                            | 205 × 270 × 205                           |
-| `cube`      | a box from sharp (`roundness` 0) to an ellipsoid (2)                          | roundness 0…2                                                                                                                   | 220 × 220 × 200, 0                        |
-| `diamond`   | an octahedron from sharp (0) to an ellipsoid (2)                              | roundness 0…2                                                                                                                   | 235 × 260 × 215, 0                        |
-| `cylinder`  | an upright cylinder                                                           | `roundness` rounds the cap edges (keep ≤ 2: above ≈ 2.27 the profile folds); `morphRoundness` 0…2 blends it toward an ellipsoid | 235 × 250 × 215, 0.45, morph 0            |
-| `cone`      | **tip up** (at −height/2), base down                                          | `tipRoundness` 0…2, `baseRoundness` 0…2, `morphRoundness` 0…2 (toward a drop or a lemon); `roundness` unused                    | 250 × 265 × 225, all 0                    |
-| `trapezoid` | a tapered rounded box                                                         | `topScale` and `bottomScale` 0.05…1.5 (width at the top and the bottom), roundness 0…5 (angular to round)                       | 210 × 205 × 185, 0, top 0.82, bottom 1.08 |
-| `mickey`    | an ellipsoid with two round ears, always behind; **primary only**             | width, height, depth                                                                                                            | 220 × 210 × 145                           |
-| `cursor`    | a pointer: a cone on a short cylinder that carries the face; **primary only** | width, height, depth, roundness (cylinder edges)                                                                                | 175 × 260 × 145, 0                        |
+| type        | shape                                                                         | reads                                                                                                                                                                                                                       | preset (w × h × d, roundness)             |
+| ----------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `sphere`    | an ellipsoid; round only when width = height = depth                          | width, height, depth                                                                                                                                                                                                        | 240 × 240 × 240                           |
+| `capsule`   | two round caps joined by a straight part                                      | width, height, depth                                                                                                                                                                                                        | 205 × 270 × 205                           |
+| `cube`      | a box from sharp (`roundness` 0) to an ellipsoid (2)                          | roundness 0…2                                                                                                                                                                                                               | 220 × 220 × 200, 0                        |
+| `diamond`   | an octahedron from sharp (0) to an ellipsoid (2)                              | roundness 0…2                                                                                                                                                                                                               | 235 × 260 × 215, 0                        |
+| `cylinder`  | an upright cylinder                                                           | `roundness` rounds the cap edges (keep ≤ 2: above ≈ 2.27 the profile folds); `morphRoundness` 0…2 blends it toward an ellipsoid                                                                                             | 235 × 250 × 215, 0.45, morph 0            |
+| `cone`      | **tip up** (at −height/2), base down                                          | `tipRoundness` 0…2, `baseRoundness` 0…2, `morphRoundness` 0…2 blends toward an ellipsoid (0 a cone, about 1 a drop, 2 an egg; with `tipRoundness` and `baseRoundness` near 1–2, a lemon or a rice ball); `roundness` unused | 250 × 265 × 225, all 0                    |
+| `trapezoid` | a tapered rounded box                                                         | `topScale` and `bottomScale` 0.05…1.5 (width at the top and the bottom), roundness 0…5 (angular to round)                                                                                                                   | 210 × 205 × 185, 0, top 0.82, bottom 1.08 |
+| `mickey`    | an ellipsoid with two round ears, always behind; **primary only**             | width, height, depth                                                                                                                                                                                                        | 220 × 210 × 145                           |
+| `cursor`    | a pointer: a cone on a short cylinder that carries the face; **primary only** | width, height, depth, roundness (cylinder edges)                                                                                                                                                                            | 175 × 260 × 145, 0                        |
 
 Sizes the Studio offers: a primary 120…300 wide and high, 100…300 deep; a part 10…300 on each axis.
 A part may not be `mickey` or `cursor`.
@@ -194,7 +200,17 @@ Exactly these five keys; `color` and `followsHead` are optional. No `id` or `nam
   unless its centre is clearly in front: z above a tenth of its half-depth. z 0 is behind.
 - A part **of another colour** is cut where it sinks into the head: a muzzle at z 55 shows only
   the part that sticks out of the face.
-- Parts are layered against each other whole, by the depth of their centres.
+- Parts are layered against each other whole, by the depth of their centres: the nearer centre is
+  drawn over. Against the head, a part of its own colour behind the head shows only where it
+  reaches out of the head's outline.
+- **A part laid on another** (an inner ear on an ear, a spot on a tail): same place, a centre a
+  few units nearer than the part under it, smaller and thinner so that it stays inside it. Pip's
+  inner ears: cones 48 × 62 × 14 at z −8 on ears 84 × 106 × 32 at z −16. At z −4 they vanished, at
+  z +4 only a sliver showed: try a few depths and look at the sheet.
+- **Parts of the body's colour merge into the head** where they overlap it, since nothing draws
+  a line between them unless the character has an outline. Such a part reads only where it sticks
+  out of the silhouette: a tail tucked behind the head disappears in profile, and a tip of another
+  colour left on it looks like a floating dot. Let it reach out, or give it a colour.
 - **Parts in front are drawn over the eyes, the nose and the mouth.** Keep them below the face, or
   behind.
 - From behind (clips spin the avatar), parts behind the head come to the front: make them read
@@ -270,6 +286,19 @@ the face. White eyes work on a dark or warm body.
 | Stretched or exploded picture | perspective too high                                                                                                  | 0…1.5                                                            |
 | Cut at the edges in an app    | parts past ±150                                                                                                       | keep the silhouette within ±130                                  |
 
+## The house style
+
+The Studio's characters share one look, and "in the style of the other avatars" means it:
+
+- **the standard eyes** (`width`, `height` and `gap` 1), slightly raised or lowered to suit the
+  body, which carry every expression;
+- **no nose, no mouth, no outline**: flat shapes of solid colour;
+- **soft, rounded shapes** and **flattened parts behind the head** that make the silhouette;
+- **one body colour and at most one or two accents** (a muzzle, inner ears, a tip), and dark eyes
+  on a light body or white eyes on a dark one.
+
+A nose, a mouth and an outline exist for characters that leave the house style on purpose.
+
 ## Making a good character
 
 - **Start from a primary that already reads**: a sphere for a face, a rounded cube for a sturdy
@@ -277,89 +306,165 @@ the face. White eyes work on a dark or warm body.
 - **Add the few parts that say what it is**: ears for an animal, a tuft, petals, feet. Two to six
   parts are usually enough; the built-ins use 0 to 8.
 - **Silhouette first**: parts behind the head, flattened, reaching out of its outline. Check the
-  front view of the sheet: you should recognise the character in black.
+  silhouette cells of the sheet: you should recognise the character in black.
 - **Two or three colours**: the body, one accent part (a muzzle, a belly, a tuft), and the eyes.
 - **Keep the face clear** and in proportion: the standard eyes, a small nose and mouth if any,
   scaled to the head.
 - **Check every side** on the sheet: from behind, from above, and with every face.
 
-## A complete example: a fox
+## A complete example: a fox in the house style
 
 ```json
 {
-  "name": "Fox",
+  "name": "Pip",
   "body": {
-    "primary": { "type": "sphere", "width": 220, "height": 200, "depth": 200, "roundness": 1 },
+    "primary": {
+      "type": "sphere",
+      "width": 214,
+      "height": 202,
+      "depth": 200,
+      "roundness": 1
+    },
     "nodes": [
       {
         "surface": {
           "type": "cone",
-          "width": 70,
-          "height": 95,
-          "depth": 40,
+          "width": 84,
+          "height": 106,
+          "depth": 32,
           "roundness": 0,
-          "morphRoundness": 0,
-          "tipRoundness": 0.6,
-          "baseRoundness": 0
+          "morphRoundness": 0.25,
+          "tipRoundness": 0.45,
+          "baseRoundness": 0.4
         },
-        "position": [-62, -95, -20],
-        "rotation": [0, 0, -18]
+        "position": [-62, -86, -16],
+        "rotation": [0, 0, -22]
       },
       {
         "surface": {
           "type": "cone",
-          "width": 70,
-          "height": 95,
-          "depth": 40,
+          "width": 84,
+          "height": 106,
+          "depth": 32,
           "roundness": 0,
-          "morphRoundness": 0,
-          "tipRoundness": 0.6,
-          "baseRoundness": 0
+          "morphRoundness": 0.25,
+          "tipRoundness": 0.45,
+          "baseRoundness": 0.4
         },
-        "position": [62, -95, -20],
-        "rotation": [0, 0, 18]
+        "position": [62, -86, -16],
+        "rotation": [0, 0, 22]
       },
       {
-        "color": "#fff4e6",
-        "surface": { "type": "sphere", "width": 120, "height": 80, "depth": 90, "roundness": 1 },
-        "position": [0, 75, 55],
+        "color": "#ffe9d4",
+        "surface": {
+          "type": "cone",
+          "width": 48,
+          "height": 62,
+          "depth": 14,
+          "roundness": 0,
+          "morphRoundness": 0.25,
+          "tipRoundness": 0.45,
+          "baseRoundness": 0.4
+        },
+        "position": [-62, -92, -8],
+        "rotation": [0, 0, -22]
+      },
+      {
+        "color": "#ffe9d4",
+        "surface": {
+          "type": "cone",
+          "width": 48,
+          "height": 62,
+          "depth": 14,
+          "roundness": 0,
+          "morphRoundness": 0.25,
+          "tipRoundness": 0.45,
+          "baseRoundness": 0.4
+        },
+        "position": [62, -92, -8],
+        "rotation": [0, 0, 22]
+      },
+      {
+        "color": "#ffe9d4",
+        "surface": {
+          "type": "sphere",
+          "width": 78,
+          "height": 56,
+          "depth": 60,
+          "roundness": 1
+        },
+        "position": [-25, 64, 66],
+        "rotation": [0, 0, 8]
+      },
+      {
+        "color": "#ffe9d4",
+        "surface": {
+          "type": "sphere",
+          "width": 78,
+          "height": 56,
+          "depth": 60,
+          "roundness": 1
+        },
+        "position": [25, 64, 66],
+        "rotation": [0, 0, -8]
+      },
+      {
+        "surface": {
+          "type": "cone",
+          "width": 72,
+          "height": 112,
+          "depth": 54,
+          "roundness": 0,
+          "morphRoundness": 1.2,
+          "tipRoundness": 1,
+          "baseRoundness": 1.4
+        },
+        "position": [80, 78, -60],
+        "rotation": [0, 0, 68]
+      },
+      {
+        "color": "#ffe9d4",
+        "surface": {
+          "type": "sphere",
+          "width": 36,
+          "height": 36,
+          "depth": 30,
+          "roundness": 1
+        },
+        "position": [118, 62, -62],
         "rotation": [0, 0, 0]
       }
     ]
   },
-  "colors": { "body": "#e8742f", "eyes": "#1b1410" },
-  "style": { "outline": { "enabled": true, "color": "#3a1d0b", "width": 4, "opacity": 1 } },
+  "colors": {
+    "body": "#f2873f",
+    "eyes": "#2b1a12"
+  },
   "face": {
-    "eyes": { "width": 0.85, "height": 0.85, "gap": 1.15, "shiftY": -0.1 },
-    "nose": {
-      "enabled": true,
-      "shape": "inverted-triangle",
-      "roundness": 60,
-      "width": 18,
-      "height": 13,
-      "x": 0,
-      "y": 30,
-      "angle": 0
-    },
-    "mouth": {
-      "enabled": true,
-      "shape": "curve",
-      "curve": 45,
-      "width": 22,
-      "height": 5,
-      "x": 0,
-      "y": 48,
-      "angle": 0
+    "eyes": {
+      "width": 1,
+      "height": 1,
+      "gap": 1,
+      "shiftY": -0.08
     },
     "perspective": 1
   }
 }
 ```
 
-Two cone ears with rounded tips behind the head, leaning out (z −18 / +18); a cream muzzle of its
-own colour sunk into the bottom of the face, so only what sticks out shows and the nose and the
-mouth sit above it; an outline; eyes a little smaller and wider apart than the standard, raised a
-little. Its link:
+Pip is a sphere a little wider than high, with:
+
+- two cone ears behind the head (z −16), rounded at the tip and the base, leaning out (z −22 /
+  +22), each with a smaller cream inner ear laid on it (z −8, see "A part laid on another");
+- two overlapping cream cheek patches of their own colour in front (z 66), sunk into the bottom of
+  the face, below the eyes: they read as a white muzzle;
+- a tail of the body's colour behind the head, low and turned (z 68°), that flicks out at the
+  lower right, with a cream tip at the edge of the silhouette;
+- the standard eyes raised a little (`shiftY` −0.08), no nose, no mouth, no outline.
+
+It took six looks at the sheet: the ears first hid behind the head, the inner ears vanished, the
+cheeks first stuck out like mittens, and the tail disappeared into the head in profile until it
+reached out of the silhouette. Its link:
 
 ```
 https://avatars.bible-strong.app/#character=<the JSON above>
@@ -371,4 +476,4 @@ https://avatars.bible-strong.app/#character=<the JSON above>
 2. Write the character and open its link. If it does not open, read `[data-link-problem]`.
 3. Capture the sheet and look at every side and every face. Fix and reopen.
 4. Hand the link to the person; they adjust it in the Studio (Avatars → Modifier) and the address
-   follows. Once saved, show it moving with a clip or state link and `avatar=fox`.
+   follows. Once saved, show it moving with a clip or state link and `avatar=pip`.

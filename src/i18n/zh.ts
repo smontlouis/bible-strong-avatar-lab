@@ -148,6 +148,7 @@ export const chinese: Record<string, string> = {
     '角色格式及其链接，供创建角色的智能体参考',
   'Planche du personnage': '角色总览',
   'Enregistrer dans mes avatars': '保存到我的头像',
+  Silhouette: '剪影',
   'Mes clips': '我的片段',
   'Nouveau clip': '新片段',
   'Dupliquer pour modifier': '复制后编辑',

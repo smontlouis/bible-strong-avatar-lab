@@ -9,7 +9,10 @@ and how to check what it does over time.
 - Studio: https://avatars.bible-strong.app/
 - JSON Schema of a state: https://avatars.bible-strong.app/state.schema.json
 - The 50 states of the catalogue, to learn from:
-  https://avatars.bible-strong.app/catalogue/states.json
+  https://avatars.bible-strong.app/catalogue/states.json, an object
+  `{ "states": { name: state }, "groups": [{ "label", "states": [names] }], "aliases": { alias: name } }`.
+  The groups (Lifecycle, Reactions, Spinners, Product, Showcase) sort the states by use: start
+  from the group of what you are asked for.
 - The clips they play: https://avatars.bible-strong.app/catalogue/clips.json
 - Writing a clip: https://avatars.bible-strong.app/clip-authoring.md
 - Everything else for agents: https://avatars.bible-strong.app/llms.txt
@@ -47,8 +50,9 @@ How a state plays its clips follows from `next` and `holdSeconds`:
 | **Once, then next**       | `next`                 | Plays each clip once, in the order of the list, then goes to `next`.                                                                                              | `finished` (Done_B, Done_A → idle) |
 | **For a time, then next** | `next` + `holdSeconds` | Shuffles its clips for `holdSeconds`, then goes to `next`, wherever the clip is.                                                                                  | `waking` (1.6 s → idle)            |
 
-- The very first clip an avatar plays starts partway through, at random, so that two avatars
-  started together do not move together; every clip after it starts at its beginning.
+- A state's clips start at their beginning. Only the very first clip a brand new avatar plays
+  starts partway through, at random, so that two avatars started together do not move together;
+  the run shows the state as entered from another one, from the beginning of its first clip.
 - Between two clips, and when a clip ends away from its rest pose, the body is led to the next
   clip's rest pose in 0.35 s: a **join**. Clips that end where they start join less.
 - States that play the same list share their rounds: going from one to another does not start
@@ -106,7 +110,8 @@ Studio's "Enchaîner" switch does on the stage.
   `data-from` and `data-to` (seconds), `data-state` (the state that plays: it changes at the
   hand-over), `data-clip`, `data-joining` (`true` for a join) and `data-morph`.
 
-Read the segments to check the rule: the order of a sequence, the time of the hand-over, how often
+Times are read every sixtieth of a second and given to the hundredth: a clip of 4 s may show as
+ending at 4.02. Read the segments to check the rule: the order of a sequence, the time of the hand-over, how often
 each clip comes out of a shuffle, and that nothing is missing (a clip that is not known shows as
 "introuvable" in the list of clips and never plays).
 
@@ -124,11 +129,18 @@ says (a window 1500 px wide and tall enough, `page.locator('[data-sheet]').scree
   twice so that it comes out more often, as `idle` does with `Idle_B`.
 - **A reaction is short.** Use _once, then next_ back to `idle` for a reaction (`finished`,
   `approving`), and _for a time, then next_ when the reaction is a mood that fades (`waking`).
+- **"For about N seconds, then idle"**: _for a time_ cuts the clip that plays when the time is up,
+  wherever it is. For a reaction that must play whole, make a clip of N seconds that ends at rest
+  and use _once, then next_.
 - **Hold a face that matches the clips.** A held face is laid over every clip; a `happy` face on a
   clip that slumps reads wrong.
 - **A spinner says the avatar is busy.** Use `morph` with `Idle_B` underneath, as the catalogue's
   spinner states do; the clips barely show while it turns.
-- **Name states for what the app is doing or feeling**, in English, lowercase, with dashes.
+- **Name states for what the app is doing or feeling**, in English, lowercase, with dashes. A name
+  near a catalogue state's (`celebrating` beside `celebrate`) is allowed; say why it differs.
+- **Mind the link's length.** A state that brings a clip of a few seconds makes a link of a few
+  kilobytes (7 KB for a 4 s dance with about 80 keys): fine in a browser, long for some chat apps.
+  Hand over a `.state.json` file instead when it grows (the Studio imports it from the States tab).
 
 ## A working loop with the person
 

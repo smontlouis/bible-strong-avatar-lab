@@ -89,8 +89,20 @@ function Cell({
   )
 }
 
+/** The character all in one colour, eyes included: what reads of it from afar. */
+const silhouetteOf = (character: AvatarCharacter): AvatarCharacter => ({
+  ...character,
+  colors: { body: '#1f2328', eyes: '#1f2328' },
+  body: {
+    ...character.body,
+    nodes: character.body.nodes.map(node => ({ ...node, color: '#1f2328' })),
+  },
+  style: undefined,
+})
+
 export function CharacterSheet({ character }: { character: AvatarCharacter }) {
   const { t } = useStudioLanguage()
+  const silhouette = silhouetteOf(character)
   return (
     <div className="flex flex-col gap-2" data-character-sheet>
       <p className="text-[0.7rem] text-muted-foreground">
@@ -108,6 +120,18 @@ export function CharacterSheet({ character }: { character: AvatarCharacter }) {
             key={view.id}
           />
         ))}
+        <Cell
+          character={silhouette}
+          rotation={[0, 0, 0]}
+          label={t('Silhouette')}
+          data={{ 'data-view': 'silhouette' }}
+        />
+        <Cell
+          character={silhouette}
+          rotation={[0, 35, 0]}
+          label={`${t('Silhouette')} 3/4`}
+          data={{ 'data-view': 'silhouette-three-quarter' }}
+        />
       </div>
       <p className="eyebrow">{t('Visages')}</p>
       <div className="grid grid-cols-5 gap-1">

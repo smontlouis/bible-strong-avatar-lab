@@ -66,7 +66,11 @@ export const agentDocs = (sources: AgentDocSources): Record<string, string> => {
     if (sources.readmes[name]) files[`docs/${name}.md`] = sources.readmes[name]
   }
   for (const item of characters) files[`characters/${item.file}`] = json(item.character)
-  files['catalogue/clips.json'] = json(clips)
+  // The catalogue as an agent reads it to learn from: a field it leaves empty (`null`) is left
+  // out, as the clip schema has it.
+  files['catalogue/clips.json'] = json(
+    JSON.parse(JSON.stringify(clips, (_, value) => (value === null ? undefined : value)))
+  )
   files['catalogue/states.json'] = json({ states, groups: stateGroups, aliases: stateAliases })
   // The schema of a character, at the address its `$id` gives.
   files['schema/avatar-character.json'] = json(avatarCharacterSchema)

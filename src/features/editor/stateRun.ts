@@ -45,7 +45,8 @@ export type RunSegment = {
 // A step where a clip ends, joins back to itself and gives way to the next is not a play.
 const MIN_SEGMENT_SECONDS = 0.05
 
-const STEP = 1 / 30
+// The run is read every sixtieth of a second, and its times are given to the hundredth.
+const STEP = 1 / 60
 
 /** How long to run a state to see what it does: its rounds, its time, its hand-over and after. */
 export const runSeconds = (library: EngineLibraryInput, name: string) => {
@@ -77,6 +78,9 @@ const settleFace = (engine: AvatarEngine) => {
 
 const start = (library: EngineLibraryInput, name: string, handover: boolean) => {
   const engine = createAvatarEngine({ seed: 1, ...library })
+  // As in an app that goes into the state from another: its first clip starts at its beginning.
+  // Only a brand new avatar starts its very first clip partway through.
+  engine.started = true
   setEngineHandover(engine, handover)
   setEngineState(engine, name)
   settleFace(engine)
@@ -111,7 +115,7 @@ export const stateRun = (
       now.morph !== current.morph ||
       now.joining !== current.joining
     ) {
-      const at = Math.round((time + STEP) * 1000) / 1000
+      const at = Math.round((time + STEP) * 100) / 100
       segments.push({ ...current, to: at })
       current = { ...now, from: at }
     }
