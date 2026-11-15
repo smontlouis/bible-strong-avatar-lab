@@ -83,10 +83,35 @@ const english: Record<string, string> = {
   'Reprendre l’état': 'Resume the state',
   'Clip seul': 'Clip alone',
   Clip: 'Clip',
+  'Le clip du catalogue reste tel quel : la copie s’ouvre en brouillon.':
+    'The catalogue clip stays as it is: the copy opens as a draft.',
+  'Le format des clips et leur lien, pour les agents qui en écrivent':
+    'The clip format and its link, for agents that write clips',
+  Guide: 'Guide',
+  Brouillon: 'Draft',
+  brouillon: 'draft',
+  'Enregistrer remplace': 'Saving replaces',
+  'Il vit dans l’adresse de la page tant qu’il n’est pas enregistré.':
+    'It lives in the page address until it is saved.',
+  'Copier l’adresse du brouillon, à donner à un agent':
+    'Copy the draft’s address, to give to an agent',
+  'Lien copié': 'Link copied',
+  'Copier le lien': 'Copy link',
+  'Enregistrer dans mes clips': 'Save to my clips',
+  'Ouvrir une copie de travail dans l’adresse, pour la donner à un agent':
+    'Open a working copy in the address, to give to an agent',
+  'Abandonner le brouillon': 'Discard draft',
+  'Abandonner le brouillon ?': 'Discard the draft?',
+  'Le brouillon disparaît de la page. Exporte-le d’abord pour en garder une copie.':
+    'The draft leaves the page. Export it first to keep a copy.',
+  Abandonner: 'Discard',
+  'Affichage du clip': 'Clip view',
+  Planche: 'Frame sheet',
+  images: 'frames',
+  'images par seconde': 'frames per second',
+  'Le lien ne contient pas un clip valide.': 'The link holds no valid clip.',
   'Mes clips': 'My clips',
   'Nouveau clip': 'New clip',
-  'Le clip du catalogue reste tel quel : la copie va dans tes clips.':
-    'The catalogue clip stays as it is: the copy goes into your clips.',
   'Dupliquer pour modifier': 'Duplicate to edit',
   'Importer un .clip.json': 'Import a .clip.json',
   'Ce fichier n’est pas un clip.': 'This file is not a clip.',
@@ -111,8 +136,6 @@ const english: Record<string, string> = {
   'Image clé suivante': 'Next keyframe',
   'Supprimer l’image clé': 'Delete keyframe',
   Temps: 'Time',
-  'Changement sec': 'Hard cut',
-  'Le visage change d’un coup, sans fondu.': 'The face changes at once, without a blend.',
   'Appliquer cette courbe à toute la piste': 'Apply this curve to the whole track',
   'Voir les courbes de la piste': 'Show the track’s curves',
   'Ajouter une image clé': 'Add a keyframe',

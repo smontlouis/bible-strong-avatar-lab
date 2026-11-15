@@ -110,7 +110,7 @@ export function Stage({
     handover,
     clipLibrary,
   } = editor
-  const doingClip = 'clip' in doing ? clipLibrary.find(doing.clip) : undefined
+  const doingClip = 'clip' in doing ? clipLibrary.find(doing.clip, doing.draft) : undefined
   const svg = useRef<SVGSVGElement>(null)
   const [scene, setScene] = useState<CharacterScene | null>(null)
   const speedRef = useRef(speed)

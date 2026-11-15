@@ -5,7 +5,19 @@ import {
   type ClipFaceKey,
   type ClipKey,
 } from '@bible-strong/avatar-core'
-import { ArrowLeft, ArrowRight, Copy, Download, Plus, Redo2, Trash2, Undo2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Copy,
+  Download,
+  Link2,
+  Pencil,
+  Plus,
+  Redo2,
+  Save,
+  Trash2,
+  Undo2,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import {
@@ -20,7 +32,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
 import {
   ClipTransport,
@@ -55,7 +66,9 @@ import {
   type TrackName,
 } from '@/features/editor/clipLibrary'
 import { NumericField } from '@/features/editor/controls'
+import { ClipSheet } from '@/features/editor/ClipSheet'
 import { EaseEditor } from '@/features/editor/EaseEditor'
+import type { ClipRef } from '@/features/editor/useClipLibrary'
 import type { Editor } from '@/features/editor/useEditor'
 
 // The editor of a custom clip: its settings, its tracks with their keys, which are added,
@@ -94,12 +107,25 @@ const download = (clip: ClipDefinition) => {
   URL.revokeObjectURL(link.href)
 }
 
-function ClipSettings({ editor, clip }: { editor: Editor; clip: ClipDefinition }) {
+function ClipSettings({
+  editor,
+  clip,
+  clipRef,
+}: {
+  editor: Editor
+  clip: ClipDefinition
+  clipRef: ClipRef
+}) {
   const { t, clipLibrary, setDoing, setPlaying } = editor
+  const isDraft = 'draft' in clipRef
   const [name, setName] = useState(clip.name)
-  const [deleting, setDeleting] = useState(false)
+  const [leaving, setLeaving] = useState<'delete' | 'discard' | null>(null)
+  const [copied, setCopied] = useState(false)
   useEffect(() => setName(clip.name), [clip.name])
-  const problem = clipNameProblem(name, clipLibrary.clips, clip.name)
+  // A draft opened from a saved clip may keep that clip's name: saving puts it in its place.
+  const source = isDraft ? clipLibrary.draft?.source : undefined
+  const others = clipLibrary.clips.filter(item => item.name !== source)
+  const problem = clipNameProblem(name, others, clip.name)
   const problems = {
     empty: 'Le clip doit avoir un nom.',
     catalogue: 'Ce nom est celui d’un clip du catalogue.',
@@ -111,13 +137,55 @@ function ClipSettings({ editor, clip }: { editor: Editor; clip: ClipDefinition }
       if (problem) setName(clip.name)
       return
     }
-    clipLibrary.update(clip.name, renameClip(clip, next))
-    setDoing({ clip: next })
+    clipLibrary.update(clipRef, renameClip(clip, next))
+    setDoing(isDraft ? { clip: next, draft: true } : { clip: next })
   }
-  const update = (next: ClipDefinition, tag: string) => clipLibrary.update(clip.name, next, tag)
+  const update = (next: ClipDefinition, tag: string) => clipLibrary.update(clipRef, next, tag)
+  const openSaved = (saved: string | null) => {
+    if (!saved) return
+    setPlaying(false)
+    setDoing({ clip: saved })
+  }
+  const openDraft = (opened: string | null) => {
+    if (!opened) return
+    setPlaying(false)
+    setDoing({ clip: opened, draft: true })
+  }
 
   return (
     <div className={`${surface} @container flex flex-col gap-3 p-3`}>
+      {isDraft && (
+        <div className="-mx-3 -mt-3 flex flex-wrap items-center gap-2 rounded-t-2xl border-b border-border bg-secondary/60 px-3 py-2">
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold text-secondary-foreground ring-1 ring-ring/40">
+            {t('Brouillon')}
+          </span>
+          <span className="min-w-0 flex-1 text-[0.7rem] text-muted-foreground">
+            {source
+              ? `${t('Enregistrer remplace')} ${source}.`
+              : t('Il vit dans l’adresse de la page tant qu’il n’est pas enregistré.')}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            title={t('Copier l’adresse du brouillon, à donner à un agent')}
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(window.location.href)
+                setCopied(true)
+                window.setTimeout(() => setCopied(false), 1500)
+              } catch {
+                setCopied(false)
+              }
+            }}
+          >
+            <Link2 /> {t(copied ? 'Lien copié' : 'Copier le lien')}
+          </Button>
+          <Button size="sm" type="button" onClick={() => openSaved(clipLibrary.saveDraft())}>
+            <Save /> {t('Enregistrer dans mes clips')}
+          </Button>
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <Input
           aria-label={t('Nom du clip')}
@@ -204,6 +272,17 @@ function ClipSettings({ editor, clip }: { editor: Editor; clip: ClipDefinition }
           ))}
         </div>
         <div className="flex items-center gap-1">
+          {!isDraft && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              title={t('Ouvrir une copie de travail dans l’adresse, pour la donner à un agent')}
+              onClick={() => openDraft(clipLibrary.edit(clip.name))}
+            >
+              <Pencil /> {t('Brouillon')}
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -219,13 +298,9 @@ function ClipSettings({ editor, clip }: { editor: Editor; clip: ClipDefinition }
             type="button"
             aria-label={t('Dupliquer le clip')}
             title={t('Dupliquer le clip')}
-            onClick={() => {
-              const copy = clipLibrary.duplicate(clip.name, `${clip.name} ${t('copie')}`)
-              if (copy) {
-                setPlaying(false)
-                setDoing({ clip: copy })
-              }
-            }}
+            onClick={() =>
+              openDraft(clipLibrary.duplicate(clip.name, `${clip.name} ${t('copie')}`, isDraft))
+            }
           >
             <Copy />
           </Button>
@@ -233,35 +308,43 @@ function ClipSettings({ editor, clip }: { editor: Editor; clip: ClipDefinition }
             variant="outline"
             size="icon-sm"
             type="button"
-            aria-label={t('Supprimer le clip')}
-            title={t('Supprimer le clip')}
-            onClick={() => setDeleting(true)}
+            aria-label={t(isDraft ? 'Abandonner le brouillon' : 'Supprimer le clip')}
+            title={t(isDraft ? 'Abandonner le brouillon' : 'Supprimer le clip')}
+            onClick={() => setLeaving(isDraft ? 'discard' : 'delete')}
           >
             <Trash2 />
           </Button>
         </div>
       </div>
 
-      <AlertDialog open={deleting} onOpenChange={setDeleting}>
+      <AlertDialog open={leaving !== null} onOpenChange={open => !open && setLeaving(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t('Supprimer')} {clip.name} ?
+              {leaving === 'discard'
+                ? t('Abandonner le brouillon ?')
+                : `${t('Supprimer')} ${clip.name} ?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t('Le clip est retiré de tes clips. Exporte-le d’abord pour en garder une copie.')}
+              {t(
+                leaving === 'discard'
+                  ? 'Le brouillon disparaît de la page. Exporte-le d’abord pour en garder une copie.'
+                  : 'Le clip est retiré de tes clips. Exporte-le d’abord pour en garder une copie.'
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('Garder')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                clipLibrary.remove(clip.name)
+                if (leaving === 'discard') clipLibrary.discardDraft()
+                else clipLibrary.remove(clip.name)
+                setLeaving(null)
                 setDoing({ state: 'idle' })
                 setPlaying(true)
               }}
             >
-              {t('Supprimer')}
+              {t(leaving === 'discard' ? 'Abandonner' : 'Supprimer')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -312,12 +395,14 @@ function FacePicker({
 function KeyInspector({
   editor,
   clip,
+  clipRef,
   selection,
   onSelect,
   seek,
 }: {
   editor: Editor
   clip: ClipDefinition
+  clipRef: ClipRef
   selection: Selection
   onSelect: (selection: Selection | null) => void
   seek: (time: number) => void
@@ -329,7 +414,7 @@ function KeyInspector({
   if (!key) return null
   const meta = trackMeta[track]
   const update = (next: ClipDefinition, tag: string) =>
-    clipLibrary.update(clip.name, next, `${track}-${tag}`)
+    clipLibrary.update(clipRef, next, `${track}-${tag}`)
   const go = (next: number) => {
     onSelect({ track, index: next })
     seek(keys[next].t)
@@ -378,7 +463,7 @@ function KeyInspector({
           aria-label={t('Supprimer l’image clé')}
           title={`${t('Supprimer l’image clé')} (⌫)`}
           onClick={() => {
-            clipLibrary.update(clip.name, deleteClipKey(clip, track, index))
+            clipLibrary.update(clipRef, deleteClipKey(clip, track, index))
             onSelect(keys.length > 1 ? { track, index: Math.max(0, index - 1) } : null)
           }}
         >
@@ -408,19 +493,6 @@ function KeyInspector({
             value={(key as ClipFaceKey).v}
             onPick={face => update(setClipFaceKey(clip, index, { v: face }), `face-${index}`)}
           />
-          <label className="flex items-center justify-between gap-3 text-xs">
-            <span>
-              <strong className="block">{t('Changement sec')}</strong>
-              <span className="text-muted-foreground">
-                {t('Le visage change d’un coup, sans fondu.')}
-              </span>
-            </span>
-            <Switch
-              checked={(key as ClipFaceKey).cut === true}
-              aria-label={t('Changement sec')}
-              onCheckedChange={cut => update(setClipFaceKey(clip, index, { cut }), `cut-${index}`)}
-            />
-          </label>
         </>
       ) : (
         <>
@@ -470,7 +542,7 @@ function KeyInspector({
                 className="self-start"
                 onClick={() =>
                   clipLibrary.update(
-                    clip.name,
+                    clipRef,
                     setClipTrackEase(
                       clip,
                       track as NumericTrackName,
@@ -489,8 +561,18 @@ function KeyInspector({
   )
 }
 
-export function ClipEditor({ editor, clip }: { editor: Editor; clip: ClipDefinition }) {
+export function ClipEditor({
+  editor,
+  clip,
+  clipRef,
+}: {
+  editor: Editor
+  clip: ClipDefinition
+  /** The draft, or the saved custom clip being edited. */
+  clipRef: ClipRef
+}) {
   const { t, clipLibrary, engine } = editor
+  const sheet = clipLibrary.view.view === 'frames'
   const lane = useRef<HTMLDivElement>(null)
   const [loops, setLoops] = useState(true)
   const [selection, setSelection] = useState<Selection | null>(null)
@@ -546,7 +628,7 @@ export function ClipEditor({ editor, clip }: { editor: Editor; clip: ClipDefinit
   }
   const addKey = (track: TrackName, time: number) => {
     const added = addClipKey(clip, track, time)
-    clipLibrary.update(clip.name, added.clip)
+    clipLibrary.update(clipRef, added.clip)
     select({ track, index: added.index })
     seek(added.clip.tracks[track]![added.index].t)
   }
@@ -573,7 +655,7 @@ export function ClipEditor({ editor, clip }: { editor: Editor; clip: ClipDefinit
     if ((event.key === 'Delete' || event.key === 'Backspace') && selected) {
       event.preventDefault()
       const count = clip.tracks[selected.track]!.length
-      clipLibrary.update(clip.name, deleteClipKey(clip, selected.track, selected.index))
+      clipLibrary.update(clipRef, deleteClipKey(clip, selected.track, selected.index))
       select(count > 1 ? { ...selected, index: Math.max(0, selected.index - 1) } : null)
       return
     }
@@ -600,9 +682,30 @@ export function ClipEditor({ editor, clip }: { editor: Editor; clip: ClipDefinit
 
   return (
     <div className="panel-stack" style={{ ['--label' as string]: '6.5rem' }}>
-      <ClipSettings editor={editor} clip={clip} />
+      <ClipSettings editor={editor} clip={clip} clipRef={clipRef} />
 
       <div className={`${surface} group flex flex-col gap-3 p-3`} ref={root} data-joining="false">
+        <div
+          className="grid grid-cols-2 rounded-xl bg-muted p-1"
+          role="group"
+          aria-label={t('Affichage du clip')}
+        >
+          {(['timeline', 'frames'] as const).map(mode => (
+            <button
+              type="button"
+              className={`h-7 rounded-lg text-xs font-semibold ${
+                clipLibrary.view.view === mode
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              aria-pressed={clipLibrary.view.view === mode}
+              key={mode}
+              onClick={() => clipLibrary.setView({ ...clipLibrary.view, view: mode })}
+            >
+              {t(mode === 'timeline' ? 'Timeline' : 'Planche')}
+            </button>
+          ))}
+        </div>
         <ClipTransport
           editor={editor}
           clock={clock}
@@ -612,207 +715,222 @@ export function ClipEditor({ editor, clip }: { editor: Editor; clip: ClipDefinit
           setLoops={setLoops}
         />
 
-        <div
-          className="flex touch-none flex-col gap-1 select-none"
-          onPointerDown={event => {
-            if ((event.target as HTMLElement).closest('[data-still]')) return
-            // A double press on a lane adds a key there. The scrub captures the pointer, which
-            // takes the browser's own double click away from the lane.
-            const track = (event.target as HTMLElement).closest<HTMLElement>('[data-lane]')?.dataset
-              .lane as TrackName | undefined
-            const before = lastPress.current
-            const now = event.timeStamp
-            if (
-              track &&
-              before?.track === track &&
-              now - before.at < DOUBLE_PRESS_MS &&
-              Math.abs(event.clientX - before.x) < DOUBLE_PRESS_PIXELS
-            ) {
-              lastPress.current = null
-              addKey(track, snap(timeAt(event.clientX), track, event.altKey))
-              return
-            }
-            lastPress.current = track ? { track, x: event.clientX, at: now } : null
-            scrubbing.current = true
-            seek(timeAt(event.clientX))
-            try {
-              event.currentTarget.setPointerCapture(event.pointerId)
-            } catch {
-              // Without capture the scrub still follows the pointer over the timeline.
-            }
-          }}
-          onPointerMove={event => {
-            if (scrubbing.current) seek(timeAt(event.clientX))
-          }}
-          onPointerUp={() => (scrubbing.current = false)}
-          onPointerCancel={() => (scrubbing.current = false)}
-        >
-          <div className="grid cursor-ew-resize grid-cols-[var(--label)_1fr] items-center">
-            <span />
-            <div className="relative h-6">
-              <div className={laneArea} ref={lane}>
-                {ticks.map(share => (
-                  <span
-                    className={`absolute bottom-0 text-[0.6rem] whitespace-nowrap text-muted-foreground tabular-nums ${
-                      share === 0 ? '' : share === 1 ? '-translate-x-full' : '-translate-x-1/2'
-                    }`}
-                    style={{ left: `${share * 100}%` }}
-                    key={share}
-                  >
-                    {seconds(share * clip.duration)}
-                  </span>
-                ))}
-                <span
-                  className="pointer-events-none absolute -top-1 h-2.5 w-px bg-secondary-foreground/60"
-                  style={{ left: `${restShare * 100}%` }}
-                  title={t('Pose de repos')}
-                />
-                <span
-                  className="pointer-events-none absolute -bottom-1 size-2 -translate-x-1/2 rotate-45 bg-ring"
-                  style={{ left: 'calc(var(--at, 0) * 100%)' }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {trackOrder.map(track => {
-            const meta = trackMeta[track]
-            const keys = clip.tracks[track] ?? []
-            const present = keys.length > 0
-            const isShown = curveTrack === track
-            return (
-              <div className="grid grid-cols-[var(--label)_1fr] items-center" key={track}>
-                <div data-still className="flex items-center gap-0.5 pr-1">
-                  <button
-                    type="button"
-                    className={`min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left text-xs font-semibold ${
-                      present ? '' : 'text-muted-foreground'
-                    } ${isShown ? 'bg-secondary text-secondary-foreground' : ''}`}
-                    aria-pressed={isShown}
-                    disabled={track === 'expression' || !present}
-                    title={track === 'expression' ? undefined : t('Voir les courbes de la piste')}
-                    onClick={() => {
-                      setShown(isShown ? null : (track as NumericTrackName))
-                      if (isShown) setSelection(null)
-                    }}
-                  >
-                    {t(meta.label)}
-                  </button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="size-6"
-                    type="button"
-                    aria-label={`${t('Ajouter une image clé')} · ${t(meta.label)}`}
-                    title={`${t('Ajouter une image clé à la tête de lecture')} (K)`}
-                    onClick={() => addKey(track, playheadTime())}
-                  >
-                    <Plus />
-                  </Button>
-                </div>
-                <div
-                  className={`relative h-7 cursor-ew-resize rounded-md ${
-                    present ? 'bg-muted' : 'bg-transparent ring-1 ring-border ring-inset'
-                  }`}
-                  data-lane={track}
-                  title={present ? undefined : t('Double-clic pour ajouter une image clé')}
-                >
-                  <div className={laneArea}>
-                    {playhead}
-                    {keys.map((key, index) => {
-                      const chosen = selected?.track === track && selected.index === index
-                      return (
-                        <button
-                          type="button"
-                          data-still
-                          data-key
-                          className="absolute top-1/2 grid size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab place-items-center active:cursor-grabbing"
-                          style={{ left: `${(key.t / clip.duration) * 100}%` }}
-                          aria-label={`${t(meta.label)} · ${seconds(key.t)} · ${
-                            typeof key.v === 'string' ? key.v : key.v.map(short).join(', ')
-                          }`}
-                          aria-pressed={chosen}
-                          key={index}
-                          onPointerDown={event => {
-                            event.stopPropagation()
-                            select({ track, index })
-                            seek(key.t)
-                            dragged.current = {
-                              track,
-                              index,
-                              from: clip,
-                              x: event.clientX,
-                              moved: false,
-                            }
-                            event.currentTarget.setPointerCapture(event.pointerId)
-                          }}
-                          onPointerMove={event => {
-                            const drag = dragged.current
-                            if (!drag) return
-                            if (!drag.moved && Math.abs(event.clientX - drag.x) < 3) return
-                            drag.moved = true
-                            const time = snap(timeAt(event.clientX), track, event.altKey)
-                            const moved = moveClipKey(drag.from, drag.track, drag.index, time)
-                            clipLibrary.update(clip.name, moved.clip, `drag-${track}`)
-                            setSelection({ track, index: moved.index })
-                            seek(time)
-                          }}
-                          onPointerUp={() => (dragged.current = null)}
-                          onPointerCancel={() => (dragged.current = null)}
-                        >
-                          <span
-                            className={`rotate-45 ${
-                              chosen ? 'size-3 ring-2 ring-ring ring-offset-1' : 'size-2.5'
-                            }`}
-                            style={{ background: meta.color }}
-                          />
-                        </button>
-                      )
-                    })}
+        {sheet ? (
+          <ClipSheet
+            editor={editor}
+            clip={clip}
+            fps={clipLibrary.view.fps}
+            onFps={fps => clipLibrary.setView({ ...clipLibrary.view, fps })}
+            onPick={seek}
+          />
+        ) : (
+          <>
+            <div
+              className="flex touch-none flex-col gap-1 select-none"
+              onPointerDown={event => {
+                if ((event.target as HTMLElement).closest('[data-still]')) return
+                // A double press on a lane adds a key there. The scrub captures the pointer, which
+                // takes the browser's own double click away from the lane.
+                const track = (event.target as HTMLElement).closest<HTMLElement>('[data-lane]')
+                  ?.dataset.lane as TrackName | undefined
+                const before = lastPress.current
+                const now = event.timeStamp
+                if (
+                  track &&
+                  before?.track === track &&
+                  now - before.at < DOUBLE_PRESS_MS &&
+                  Math.abs(event.clientX - before.x) < DOUBLE_PRESS_PIXELS
+                ) {
+                  lastPress.current = null
+                  addKey(track, snap(timeAt(event.clientX), track, event.altKey))
+                  return
+                }
+                lastPress.current = track ? { track, x: event.clientX, at: now } : null
+                scrubbing.current = true
+                seek(timeAt(event.clientX))
+                try {
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                } catch {
+                  // Without capture the scrub still follows the pointer over the timeline.
+                }
+              }}
+              onPointerMove={event => {
+                if (scrubbing.current) seek(timeAt(event.clientX))
+              }}
+              onPointerUp={() => (scrubbing.current = false)}
+              onPointerCancel={() => (scrubbing.current = false)}
+            >
+              <div className="grid cursor-ew-resize grid-cols-[var(--label)_1fr] items-center">
+                <span />
+                <div className="relative h-6">
+                  <div className={laneArea} ref={lane}>
+                    {ticks.map(share => (
+                      <span
+                        className={`absolute bottom-0 text-[0.6rem] whitespace-nowrap text-muted-foreground tabular-nums ${
+                          share === 0 ? '' : share === 1 ? '-translate-x-full' : '-translate-x-1/2'
+                        }`}
+                        style={{ left: `${share * 100}%` }}
+                        key={share}
+                      >
+                        {seconds(share * clip.duration)}
+                      </span>
+                    ))}
+                    <span
+                      className="pointer-events-none absolute -top-1 h-2.5 w-px bg-secondary-foreground/60"
+                      style={{ left: `${restShare * 100}%` }}
+                      title={t('Pose de repos')}
+                    />
+                    <span
+                      className="pointer-events-none absolute -bottom-1 size-2 -translate-x-1/2 rotate-45 bg-ring"
+                      style={{ left: 'calc(var(--at, 0) * 100%)' }}
+                    />
                   </div>
                 </div>
               </div>
-            )
-          })}
-        </div>
 
-        {curveTrack && clip.tracks[curveTrack]?.length ? (
-          <div className="flex flex-col gap-1.5" data-still>
-            {trackMeta[curveTrack].parts.map((part, component) => (
-              <Curve
-                keys={clip.tracks[curveTrack] as NumericKey[]}
-                part={component}
-                label={t(part)}
-                color={
-                  trackMeta[curveTrack].parts.length > 1
-                    ? partColors[component]
-                    : trackMeta[curveTrack].color
-                }
-                duration={clip.duration}
-                selected={selected?.track === curveTrack ? selected.index : null}
-                key={part}
-                onPick={index => {
-                  select({ track: curveTrack, index })
-                  seek(clip.tracks[curveTrack]![index].t)
-                }}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            {t(
-              Object.keys(clip.tracks).length
-                ? 'Choisis une image clé pour la régler. Glisse-la pour la déplacer ; Alt la laisse libre.'
-                : 'Ajoute une image clé avec + sur une piste, ou double-clique sur la piste.'
+              {trackOrder.map(track => {
+                const meta = trackMeta[track]
+                const keys = clip.tracks[track] ?? []
+                const present = keys.length > 0
+                const isShown = curveTrack === track
+                return (
+                  <div className="grid grid-cols-[var(--label)_1fr] items-center" key={track}>
+                    <div data-still className="flex items-center gap-0.5 pr-1">
+                      <button
+                        type="button"
+                        className={`min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left text-xs font-semibold ${
+                          present ? '' : 'text-muted-foreground'
+                        } ${isShown ? 'bg-secondary text-secondary-foreground' : ''}`}
+                        aria-pressed={isShown}
+                        disabled={track === 'expression' || !present}
+                        title={
+                          track === 'expression' ? undefined : t('Voir les courbes de la piste')
+                        }
+                        onClick={() => {
+                          setShown(isShown ? null : (track as NumericTrackName))
+                          if (isShown) setSelection(null)
+                        }}
+                      >
+                        {t(meta.label)}
+                      </button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="size-6"
+                        type="button"
+                        aria-label={`${t('Ajouter une image clé')} · ${t(meta.label)}`}
+                        title={`${t('Ajouter une image clé à la tête de lecture')} (K)`}
+                        onClick={() => addKey(track, playheadTime())}
+                      >
+                        <Plus />
+                      </Button>
+                    </div>
+                    <div
+                      className={`relative h-7 cursor-ew-resize rounded-md ${
+                        present ? 'bg-muted' : 'bg-transparent ring-1 ring-border ring-inset'
+                      }`}
+                      data-lane={track}
+                      title={present ? undefined : t('Double-clic pour ajouter une image clé')}
+                    >
+                      <div className={laneArea}>
+                        {playhead}
+                        {keys.map((key, index) => {
+                          const chosen = selected?.track === track && selected.index === index
+                          return (
+                            <button
+                              type="button"
+                              data-still
+                              data-key
+                              className="absolute top-1/2 grid size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab place-items-center active:cursor-grabbing"
+                              style={{ left: `${(key.t / clip.duration) * 100}%` }}
+                              aria-label={`${t(meta.label)} · ${seconds(key.t)} · ${
+                                typeof key.v === 'string' ? key.v : key.v.map(short).join(', ')
+                              }`}
+                              aria-pressed={chosen}
+                              key={index}
+                              onPointerDown={event => {
+                                event.stopPropagation()
+                                select({ track, index })
+                                seek(key.t)
+                                dragged.current = {
+                                  track,
+                                  index,
+                                  from: clip,
+                                  x: event.clientX,
+                                  moved: false,
+                                }
+                                event.currentTarget.setPointerCapture(event.pointerId)
+                              }}
+                              onPointerMove={event => {
+                                const drag = dragged.current
+                                if (!drag) return
+                                if (!drag.moved && Math.abs(event.clientX - drag.x) < 3) return
+                                drag.moved = true
+                                const time = snap(timeAt(event.clientX), track, event.altKey)
+                                const moved = moveClipKey(drag.from, drag.track, drag.index, time)
+                                clipLibrary.update(clipRef, moved.clip, `drag-${track}`)
+                                setSelection({ track, index: moved.index })
+                                seek(time)
+                              }}
+                              onPointerUp={() => (dragged.current = null)}
+                              onPointerCancel={() => (dragged.current = null)}
+                            >
+                              <span
+                                className={`rotate-45 ${
+                                  chosen ? 'size-3 ring-2 ring-ring ring-offset-1' : 'size-2.5'
+                                }`}
+                                style={{ background: meta.color }}
+                              />
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {curveTrack && clip.tracks[curveTrack]?.length ? (
+              <div className="flex flex-col gap-1.5" data-still>
+                {trackMeta[curveTrack].parts.map((part, component) => (
+                  <Curve
+                    keys={clip.tracks[curveTrack] as NumericKey[]}
+                    part={component}
+                    label={t(part)}
+                    color={
+                      trackMeta[curveTrack].parts.length > 1
+                        ? partColors[component]
+                        : trackMeta[curveTrack].color
+                    }
+                    duration={clip.duration}
+                    selected={selected?.track === curveTrack ? selected.index : null}
+                    key={part}
+                    onPick={index => {
+                      select({ track: curveTrack, index })
+                      seek(clip.tracks[curveTrack]![index].t)
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  Object.keys(clip.tracks).length
+                    ? 'Choisis une image clé pour la régler. Glisse-la pour la déplacer ; Alt la laisse libre.'
+                    : 'Ajoute une image clé avec + sur une piste, ou double-clique sur la piste.'
+                )}
+              </p>
             )}
-          </p>
+          </>
         )}
       </div>
 
-      {selected && (
+      {selected && !sheet && (
         <KeyInspector
           editor={editor}
           clip={clip}
+          clipRef={clipRef}
           selection={selected}
           onSelect={select}
           seek={seek}

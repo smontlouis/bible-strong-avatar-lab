@@ -16,6 +16,7 @@ import {
   type ClipKey,
 } from '@bible-strong/avatar-core'
 import {
+  BookOpen,
   ChevronRight,
   Clock,
   Copy,
@@ -718,35 +719,46 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
   const [importError, setImportError] = useState(false)
   // A clip asked for comes first: the stage reports what plays a few frames late. Stopped,
   // nothing plays, and the clip asked for is still the one shown.
-  const clip =
-    ('clip' in doing ? clipLibrary.find(doing.clip) : undefined) ?? clipLibrary.find(status.clip)
-  const custom = clip ? clipLibrary.isCustom(clip.name) : false
+  const onDraft = 'clip' in doing && doing.draft === true
+  const clip = onDraft
+    ? clipLibrary.draft?.clip
+    : (('clip' in doing ? clipLibrary.find(doing.clip) : undefined) ??
+      clipLibrary.find(status.clip))
+  const custom = clip ? onDraft || clipLibrary.isCustom(clip.name) : false
   const users = clip && !custom ? stateNames.filter(state => usesClip(state, clip.name)) : []
-  const sections = clipLibrary.clips.length
-    ? [{ value: t('Mes clips'), items: clipLibrary.clips.map(item => item.name) }, ...clipSections]
-    : clipSections
-  /** Open a clip just made, still, at its start, to be edited. */
+  // The draft is listed apart, under a name that cannot be taken for a saved clip's.
+  const draftItem = clipLibrary.draft ? `${clipLibrary.draft.clip.name} (${t('brouillon')})` : null
+  const sections = [
+    ...(draftItem ? [{ value: t('Brouillon'), items: [draftItem] }] : []),
+    ...(clipLibrary.clips.length
+      ? [{ value: t('Mes clips'), items: clipLibrary.clips.map(item => item.name) }]
+      : []),
+    ...clipSections,
+  ]
+  /** Open the draft just made, still, at its start, to be edited. */
   const edit = (name: string | null) => {
     if (!name) return
     setPlaying(false)
-    setDoing({ clip: name })
+    setDoing({ clip: name, draft: true })
   }
   return (
     <div className="panel-stack">
       <div className={`${surface} flex flex-col gap-0.5 p-1.5`}>
         <SectionCombobox
           label={t('Clip')}
-          value={clip?.name ?? null}
+          value={onDraft ? draftItem : (clip?.name ?? null)}
           sections={sections}
           detail={name => {
-            const found = clipLibrary.find(name)
+            const found = name === draftItem ? clipLibrary.draft?.clip : clipLibrary.find(name)
             return found ? seconds(found.duration) : undefined
           }}
           placeholder={t('Rechercher un clip…')}
           empty={t('Aucun clip')}
           onPick={name => {
             setPlaying(true)
-            setDoing({ clip: name })
+            if (name === draftItem && clipLibrary.draft) {
+              setDoing({ clip: clipLibrary.draft.clip.name, draft: true })
+            } else setDoing({ clip: name })
           }}
         />
         <div className="flex flex-wrap items-center gap-1.5 px-1.5 pt-1 pb-1.5">
@@ -763,7 +775,7 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
               variant="outline"
               size="sm"
               type="button"
-              title={t('Le clip du catalogue reste tel quel : la copie va dans tes clips.')}
+              title={t('Le clip du catalogue reste tel quel : la copie s’ouvre en brouillon.')}
               onClick={() => edit(clipLibrary.duplicate(clip.name, `${clip.name} ${t('copie')}`))}
             >
               <Copy /> {t('Dupliquer pour modifier')}
@@ -772,6 +784,15 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
           <Button variant="ghost" size="sm" type="button" onClick={() => file.current?.click()}>
             <Upload /> {t('Importer un .clip.json')}
           </Button>
+          <a
+            className="ml-auto inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            href="./clip-authoring.md"
+            target="_blank"
+            rel="noreferrer"
+            title={t('Le format des clips et leur lien, pour les agents qui en écrivent')}
+          >
+            <BookOpen className="size-3.5" /> {t('Guide')}
+          </a>
           <input
             ref={file}
             className="hidden"
@@ -790,6 +811,23 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
         </div>
         {importError && (
           <p className="px-3 pb-2 text-xs text-destructive">{t('Ce fichier n’est pas un clip.')}</p>
+        )}
+        {clipLibrary.linkProblem && (
+          <div className="mx-1.5 mb-1.5 flex items-start gap-2 rounded-lg bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
+            <p className="flex-1">
+              {t('Le lien ne contient pas un clip valide.')}{' '}
+              <code className="font-mono text-[0.7rem]">
+                {clipLibrary.linkProblem.path}: {clipLibrary.linkProblem.message}
+              </code>
+            </p>
+            <button
+              type="button"
+              aria-label={t('Fermer')}
+              onClick={() => clipLibrary.setLinkProblem(null)}
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
         )}
         {clip && !custom && (
           <div className="flex items-baseline gap-3 px-3 py-2">
@@ -820,7 +858,14 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
           </div>
         )}
       </div>
-      {clip && custom && <ClipEditor editor={editor} clip={clip} key={clip.name} />}
+      {clip && custom && (
+        <ClipEditor
+          editor={editor}
+          clip={clip}
+          clipRef={onDraft ? { draft: true } : { name: clip.name }}
+          key={onDraft ? 'draft' : clip.name}
+        />
+      )}
       {clip && !custom && (
         <div className={`${surface} p-3`}>
           <ClipTimeline editor={editor} clip={clip} key={clip.name} />

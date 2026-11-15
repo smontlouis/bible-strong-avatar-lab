@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://avatars.bible-strong.app/clip.schema.json",
+  "title": "Bible Strong avatar clip",
+  "description": "A piece of motion every avatar of the Bible Strong Avatar Studio can play. Guide: https://avatars.bible-strong.app/clip-authoring.md",
+  "type": "object",
+  "required": ["name", "duration", "tracks"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Any text but the name of a catalogue clip."
+    },
+    "duration": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Seconds."
+    },
+    "squashAnchor": {
+      "type": "number",
+      "description": "The point a stretch leaves in place: 0 the centre, -1 the base.",
+      "default": 0
+    },
+    "workArea": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Time of the rest pose, which joins and loops aim at."
+        },
+        "end": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "body": {
+      "type": "string",
+      "description": "The body the clip was drawn for. Informative."
+    },
+    "inspect": {
+      "type": "object",
+      "required": ["bias", "follow"],
+      "properties": {
+        "bias": {
+          "type": "number"
+        },
+        "follow": {
+          "type": "boolean"
+        }
+      }
+    },
+    "tracks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "position": {
+          "description": "[x, y] in body radii; +x right, +y up. Rest [0, 0].",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key2"
+          }
+        },
+        "rotation": {
+          "description": "[x, y, z] in degrees; +x looks down, +y turns to the screen's right, +z rolls counterclockwise. Full turns are kept. Rest [0, 0, 0].",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key3"
+          }
+        },
+        "squash": {
+          "description": "[across, up] stretch. Rest [1, 1].",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key2"
+          }
+        },
+        "scale": {
+          "description": "[zoom], clamped to 0.25-2.5. Rest [0.6].",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key1"
+          }
+        },
+        "lids": {
+          "description": "[closed], 0 open to 1 closed; shows on neutral, surprised and inspect only.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key1"
+          }
+        },
+        "expression": {
+          "description": "The face from each key's time on.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["t", "v"],
+            "properties": {
+              "t": {
+                "type": "number",
+                "minimum": 0
+              },
+              "v": {
+                "type": "string",
+                "enum": [
+                  "neutral",
+                  "happy",
+                  "surprised",
+                  "sad",
+                  "sleepy",
+                  "squinted",
+                  "calm",
+                  "inspecting",
+                  "inspect",
+                  "confused",
+                  "blink",
+                  "strange",
+                  "thinking",
+                  "angry",
+                  "squint",
+                  "idle",
+                  "smile",
+                  "sleep"
+                ],
+                "description": "A face, 'blink', or an alias the engine reads: inspect and strange (inspecting), thinking (sad), angry and idle (neutral), squint (squinted), smile (happy), sleep (sleepy)."
+              },
+              "cut": {
+                "type": "boolean",
+                "description": "Accepted and kept; the engine does not use it."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "ease": {
+      "description": "Cubic Bézier [x1, y1, x2, y2] from this key to the next; y may leave 0-1 to overshoot. Linear when left out.",
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "key1": {
+      "type": "object",
+      "required": ["t", "v"],
+      "properties": {
+        "t": {
+          "type": "number",
+          "minimum": 0
+        },
+        "v": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "ease": {
+          "$ref": "#/$defs/ease"
+        }
+      }
+    },
+    "key2": {
+      "type": "object",
+      "required": ["t", "v"],
+      "properties": {
+        "t": {
+          "type": "number",
+          "minimum": 0
+        },
+        "v": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "ease": {
+          "$ref": "#/$defs/ease"
+        }
+      }
+    },
+    "key3": {
+      "type": "object",
+      "required": ["t", "v"],
+      "properties": {
+        "t": {
+          "type": "number",
+          "minimum": 0
+        },
+        "v": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "ease": {
+          "$ref": "#/$defs/ease"
+        }
+      }
+    }
+  }
+}

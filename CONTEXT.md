@@ -33,10 +33,22 @@ tracks run side by side, not one after the other.
 
 ### Custom Clip
 
-A Clip a creator makes in the Studio, from nothing or as a copy of another Clip; the copied Clip
-stays as it was. It has the shape of a catalogue Clip and a name no catalogue Clip has. Custom
-Clips are kept by the Studio beside the Avatars, not inside one: every Avatar plays them. The
-runtime packages do not know them yet, and no State draws them. Shown as “My clips”.
+A Clip a creator keeps in the Studio, saved from a Draft; the Clip it was copied from stays as it
+was. It has the shape of a catalogue Clip and a name no catalogue Clip has. Custom Clips are kept
+by the Studio beside the Avatars, not inside one: every Avatar plays them. The runtime packages
+do not know them yet, and no State draws them. Shown as “My clips”.
+
+### Draft
+
+The Clip being made, before it is saved as a Custom Clip: a new Clip, a copy, a saved Custom Clip
+opened again, or a Clip opened from a link. A Draft lives in the address of the page, not in the
+browser's storage: every change rewrites the address, and a new address changes the Draft. It is
+how a person and an agent work on the same Clip. There is one Draft at a time.
+
+### Sheet
+
+A Clip drawn at every frame of a rate, side by side, with the curves of its tracks: the whole Clip
+in one picture, read the way an animator checks spacing. Avoid “filmstrip” and “storyboard”.
 
 ### Key
 

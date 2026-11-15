@@ -291,27 +291,60 @@ const numericSizes: Record<NumericTrackName, number> = {
   lids: 1,
 }
 
-/** A clip read from anywhere, checked key by key, or `null` when it is not one. */
-export const parseClip = (value: unknown): ClipDefinition | null => {
-  if (!value || typeof value !== 'object') return null
+/** Where a clip read from outside goes wrong: the path of the field, and what is wrong there. */
+export type ClipProblem = { path: string; message: string }
+
+/**
+ * A clip read from anywhere, checked field by field: the clip, or the first problem found, said
+ * in the terms of the file (`tracks.rotation[2].v: expected 3 numbers`) so that whoever wrote it,
+ * a person or an agent, can put it right.
+ */
+export const checkClip = (
+  value: unknown
+): { clip: ClipDefinition; problem?: undefined } | { clip?: undefined; problem: ClipProblem } => {
+  const fail = (path: string, message: string) => ({ problem: { path, message } })
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return fail('clip', 'expected an object')
+  }
   const source = value as Record<string, unknown>
-  if (typeof source.name !== 'string' || !source.name.trim()) return null
-  if (!isNumber(source.duration) || source.duration <= 0) return null
-  if (!source.tracks || typeof source.tracks !== 'object') return null
+  if (typeof source.name !== 'string' || !source.name.trim()) {
+    return fail('name', 'expected a non-empty string')
+  }
+  if (!isNumber(source.duration) || source.duration <= 0) {
+    return fail('duration', 'expected a number of seconds above 0')
+  }
+  if (!source.tracks || typeof source.tracks !== 'object' || Array.isArray(source.tracks)) {
+    return fail('tracks', 'expected an object of tracks')
+  }
   const tracksSource = source.tracks as Record<string, unknown>
+  for (const track of Object.keys(tracksSource)) {
+    if (!(trackOrder as string[]).includes(track)) {
+      return fail(`tracks.${track}`, `unknown track; expected one of ${trackOrder.join(', ')}`)
+    }
+  }
   const tracks: ClipTracks = {}
   for (const track of Object.keys(numericSizes) as NumericTrackName[]) {
     const keys = tracksSource[track]
     if (keys === undefined) continue
-    if (!Array.isArray(keys)) return null
+    if (!Array.isArray(keys)) return fail(`tracks.${track}`, 'expected a list of keys')
     const parsed: NumericKey[] = []
-    for (const key of keys as Record<string, unknown>[]) {
-      if (!key || !isNumber(key.t) || !Array.isArray(key.v)) return null
-      if (key.v.length !== numericSizes[track] || !key.v.every(isNumber)) return null
+    for (const [index, key] of (keys as Record<string, unknown>[]).entries()) {
+      const at = `tracks.${track}[${index}]`
+      if (!key || typeof key !== 'object') return fail(at, 'expected a key { t, v, ease }')
+      if (!isNumber(key.t) || key.t < 0)
+        return fail(`${at}.t`, 'expected a time in seconds, 0 or more')
+      const size = numericSizes[track]
+      if (!Array.isArray(key.v) || key.v.length !== size || !key.v.every(isNumber)) {
+        return fail(`${at}.v`, `expected ${size} number${size > 1 ? 's' : ''}`)
+      }
       const next: NumericKey = { t: key.t, v: [...(key.v as number[])] }
-      if (key.ease !== undefined) {
+      if (key.ease !== undefined && key.ease !== null) {
         if (!Array.isArray(key.ease) || key.ease.length !== 4 || !key.ease.every(isNumber)) {
-          return null
+          return fail(`${at}.ease`, 'expected 4 numbers [x1, y1, x2, y2]')
+        }
+        const [x1, , x2] = key.ease as number[]
+        if (x1 < 0 || x1 > 1 || x2 < 0 || x2 > 1) {
+          return fail(`${at}.ease`, 'x1 and x2 must be between 0 and 1')
         }
         next.ease = [...(key.ease as number[])] as unknown as ClipEase
       }
@@ -321,10 +354,14 @@ export const parseClip = (value: unknown): ClipDefinition | null => {
   }
   const faces = tracksSource.expression
   if (faces !== undefined) {
-    if (!Array.isArray(faces)) return null
+    if (!Array.isArray(faces)) return fail('tracks.expression', 'expected a list of keys')
     const parsed: ClipFaceKey[] = []
-    for (const key of faces as Record<string, unknown>[]) {
-      if (!key || !isNumber(key.t) || typeof key.v !== 'string') return null
+    for (const [index, key] of (faces as Record<string, unknown>[]).entries()) {
+      const at = `tracks.expression[${index}]`
+      if (!key || typeof key !== 'object') return fail(at, 'expected a key { t, v }')
+      if (!isNumber(key.t) || key.t < 0)
+        return fail(`${at}.t`, 'expected a time in seconds, 0 or more')
+      if (typeof key.v !== 'string') return fail(`${at}.v`, 'expected the name of a face')
       parsed.push(key.cut === true ? { t: key.t, v: key.v, cut: true } : { t: key.t, v: key.v })
     }
     if (parsed.length) tracks.expression = sorted(parsed)
@@ -344,8 +381,11 @@ export const parseClip = (value: unknown): ClipDefinition | null => {
   if (inspect && isNumber(inspect.bias) && typeof inspect.follow === 'boolean') {
     clip.inspect = { bias: inspect.bias, follow: inspect.follow }
   }
-  return clip
+  return { clip }
 }
+
+/** A clip read from anywhere, or `null` when it is not one. */
+export const parseClip = (value: unknown): ClipDefinition | null => checkClip(value).clip ?? null
 
 /**
  * The custom clips kept from a store: those that read, each under a name of its own. A name the
