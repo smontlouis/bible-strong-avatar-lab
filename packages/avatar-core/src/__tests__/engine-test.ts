@@ -19,6 +19,7 @@ import {
   engineAtRest,
   LOOK_OVER_CLIP,
   setEngineHandover,
+  setEngineLibrary,
   setEnginePose,
   releaseEnginePose,
   setEngineState,
@@ -464,5 +465,51 @@ describe('a pose set by hand', () => {
     run(engine, 0.25)
     expect(engineFrame(engine).rotation[0]).toBeCloseTo(16, 0)
     expect(engineFrame(engine).rotation[1]).toBe(30)
+  })
+})
+
+describe('an engine with clips and states of its own', () => {
+  const wave = { ...clips.Done_A, name: 'Wave' }
+
+  it('plays its own state, drawing its own clips and the catalogue’s', () => {
+    const engine = createAvatarEngine({
+      clips: { Wave: wave },
+      states: { greeting: { clips: ['Wave', 'Done_B'] } },
+    })
+    setEngineState(engine, 'greeting')
+    expect(engine.state).toBe('greeting')
+    const played = new Set(clipsPlayed(engine, 30))
+    expect(played).toEqual(new Set(['Wave', 'Done_B']))
+  })
+
+  it('hands its own state over to a catalogue state, and the other way', () => {
+    const engine = createAvatarEngine({
+      clips: { Wave: wave },
+      states: {
+        hello: { clips: ['Wave'], next: 'idle' },
+        brief: { clips: ['Done_B'], next: 'hello', holdSeconds: 1 },
+      },
+    })
+    setEngineState(engine, 'brief')
+    clipsPlayed(engine, 1.2)
+    expect(engine.state).toBe('hello')
+    clipsPlayed(engine, wave.duration + 0.6)
+    expect(engine.state).toBe('idle')
+  })
+
+  it('lets its own name take the place of a catalogue name, alias included', () => {
+    const engine = createAvatarEngine({ states: { dots: { clips: ['Done_B'] } } })
+    setEngineState(engine, 'dots')
+    expect(engine.state).toBe('dots')
+    expect(engine.morph).toBeNull()
+  })
+
+  it('takes a new library while it plays, from its next clip', () => {
+    const engine = createAvatarEngine()
+    setEngineState(engine, 'unknown-state')
+    expect(engine.state).toBeNull()
+    setEngineLibrary(engine, { states: { custom: { clips: ['Done_B'] } } })
+    setEngineState(engine, 'custom')
+    expect(engine.player.clip?.name).toBe('Done_B')
   })
 })

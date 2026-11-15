@@ -111,27 +111,44 @@ function tick(now: number) {
 requestAnimationFrame(tick)
 ```
 
-| Function                                      | Use                                                                    |
-| --------------------------------------------- | ---------------------------------------------------------------------- |
-| `createAvatarEngine({ seed?, compact? })`     | An engine at rest. `compact` picks the shorter lists of small sizes.   |
-| `setEngineState(engine, name)`                | Goes into a state, from where the body is. An unknown name is a no-op. |
-| `playEngineClip(engine, clip)`                | Plays one clip of `clips` alone, outside any state.                    |
-| `setEngineFace(engine, face \| null)`         | Holds a face over everything, or lets the clip and the state decide.   |
-| `setEngineEmphasis(engine, on)`               | A state without a face of its own holds `surprised`.                   |
-| `pokeEngine(engine, gesture, turns?)`         | Lays a gesture over what plays. Gestures add up and fade away.         |
-| `setEngineGaze(engine, [x, y] \| null)`       | Looks at a point, each axis from -1 to 1.                              |
-| `setEngineLookAt(engine, [x, y] \| null)`     | Looks at a point whatever plays: 0.85 over a clip's turns of the head. |
-| `engineAtRest(engine)`                        | No gesture, no turning gaze, no join back on its way.                  |
-| `setEngineGazeAlways(engine, on)`             | On, the gaze is laid over a clip that plays; off, only a still body.   |
-| `pauseEngine(engine)`, `resumeEngine(engine)` | Stops and restarts the clip where it is.                               |
-| `stopEngine(engine)`                          | Leaves the avatar at rest: no state, no clip, no gesture.              |
-| `seekEngine(engine, seconds)`                 | Puts the clip that plays at a time.                                    |
-| `setEngineHandover(engine, on)`               | Off, a state that would hand over starts again instead.                |
-| `setEnginePose(engine, pose \| null)`         | A pose set by hand takes the place of what the clip asks.              |
-| `releaseEnginePose(engine)`                   | Lets the pose go, joining back to the clip.                            |
-| `advanceEngine(engine, seconds)`              | Moves time on. A step is capped at a tenth of a second.                |
-| `engineFrame(engine)`                         | What to draw now: the pose, the face, the eyelids, the spinner.        |
-| `renderCharacterFrame(character, frame)`      | The scene of that frame for a character.                               |
+| Function                                        | Use                                                                    |
+| ----------------------------------------------- | ---------------------------------------------------------------------- |
+| `createAvatarEngine({ seed?, compact? })`       | An engine at rest. `compact` picks the shorter lists of small sizes.   |
+| `setEngineLibrary(engine, { clips?, states? })` | Clips and states of its own, by name, besides the catalogue's.         |
+| `setEngineState(engine, name)`                  | Goes into a state, from where the body is. An unknown name is a no-op. |
+| `playEngineClip(engine, clip)`                  | Plays one clip of `clips` alone, outside any state.                    |
+| `setEngineFace(engine, face \| null)`           | Holds a face over everything, or lets the clip and the state decide.   |
+| `setEngineEmphasis(engine, on)`                 | A state without a face of its own holds `surprised`.                   |
+| `pokeEngine(engine, gesture, turns?)`           | Lays a gesture over what plays. Gestures add up and fade away.         |
+| `setEngineGaze(engine, [x, y] \| null)`         | Looks at a point, each axis from -1 to 1.                              |
+| `setEngineLookAt(engine, [x, y] \| null)`       | Looks at a point whatever plays: 0.85 over a clip's turns of the head. |
+| `engineAtRest(engine)`                          | No gesture, no turning gaze, no join back on its way.                  |
+| `setEngineGazeAlways(engine, on)`               | On, the gaze is laid over a clip that plays; off, only a still body.   |
+| `pauseEngine(engine)`, `resumeEngine(engine)`   | Stops and restarts the clip where it is.                               |
+| `stopEngine(engine)`                            | Leaves the avatar at rest: no state, no clip, no gesture.              |
+| `seekEngine(engine, seconds)`                   | Puts the clip that plays at a time.                                    |
+| `setEngineHandover(engine, on)`                 | Off, a state that would hand over starts again instead.                |
+| `setEnginePose(engine, pose \| null)`           | A pose set by hand takes the place of what the clip asks.              |
+| `releaseEnginePose(engine)`                     | Lets the pose go, joining back to the clip.                            |
+| `advanceEngine(engine, seconds)`                | Moves time on. A step is capped at a tenth of a second.                |
+| `engineFrame(engine)`                           | What to draw now: the pose, the face, the eyelids, the spinner.        |
+| `renderCharacterFrame(character, frame)`        | The scene of that frame for a character.                               |
+
+### Clips and states of your own
+
+`createAvatarEngine` and `setEngineLibrary` take clips and states besides the catalogue's, each a
+record by name. A state of your own may draw your clips and the catalogue's, and hand over to a
+state of either; a name you give takes the place of the catalogue's for that engine, an alias
+included. `engineStateOf(engine, name)` and `engineClipOf(engine, name)` read what an engine
+knows. The renderers do not pass them yet: this is for an engine you drive yourself.
+
+```ts
+const engine = createAvatarEngine({
+  clips: { Wave: waveClip },
+  states: { greeting: { clips: ['Wave', 'Done_B'], next: 'idle', holdSeconds: 4 } },
+})
+setEngineState(engine, 'greeting')
+```
 
 `engine.state` is the state that plays, or `null` while a clip plays alone; `engine.player.clip`
 is the clip. A state that hands over changes `engine.state` by itself: compare it after each step
