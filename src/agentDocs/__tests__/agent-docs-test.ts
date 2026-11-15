@@ -31,7 +31,8 @@ describe('the documentation for agents', () => {
     )
     expect(addresses.length).toBeGreaterThan(15)
     for (const address of addresses) {
-      if (address === '') continue
+      // The Studio itself, or a link that opens a clip in it.
+      if (address === '' || address.startsWith('#')) continue
       const served = files[address] !== undefined || existsSync(path.join(root, 'public', address))
       expect(served, address).toBe(true)
     }

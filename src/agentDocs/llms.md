@@ -51,6 +51,9 @@ characters, ready to use:
 - [Catalogue states]({{origin}}/catalogue/states.json): the states an app asks for (`idle`,
   `thinking`, `happy`…), the clips each one draws and how.
 
+A link `{{origin}}/#avatar=strobi&view=frames&clip={...}` opens a clip on the avatar named by its
+file above, with the frame sheet; the guide says how to capture the sheet and read it.
+
 A clip made this way plays in the Studio, on every avatar. The packages play the catalogue only:
 putting a new clip into an app is not possible yet.
 

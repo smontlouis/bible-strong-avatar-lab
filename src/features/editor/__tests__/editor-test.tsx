@@ -212,6 +212,20 @@ describe('the editor', () => {
     ).toBe('true')
   })
 
+  it('shows a clip from a link on the avatar the link names, and writes it back', async () => {
+    const nod = { name: 'Nod', duration: 1, tracks: { rotation: [{ t: 0, v: [0, 0, 0] }] } }
+    window.history.replaceState(null, '', `/#avatar=freddy&clip=${JSON.stringify(nod)}`)
+    const view = open()
+    expect(view.getByRole('textbox', { name: 'Nom du clip' })).toBeTruthy()
+    const { library } = JSON.parse(window.localStorage.getItem('bible-strong-avatar-studio-v2')!)
+    const active = library.avatars.find(
+      (avatar: { id: string }) => avatar.id === library.activeAvatarId
+    )
+    expect(active.name).toBe('Freddy')
+    await wait(LINK_WRITE_MS + 50)
+    expect(readClipLink(window.location.hash)?.avatar).toBe('freddy')
+  })
+
   it('says what is wrong with a link that holds no valid clip', () => {
     window.history.replaceState(
       null,

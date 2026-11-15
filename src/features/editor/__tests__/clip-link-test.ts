@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { clips, type ClipDefinition } from '@bible-strong/avatar-core'
+import { clips, faces, type ClipDefinition } from '@bible-strong/avatar-core'
 import Ajv2020 from 'ajv/dist/2020.js'
 
 import { clipSheet, MAX_SHEET_FRAMES, sheetTimes } from '@/features/editor/clipFrames'
@@ -31,6 +31,15 @@ describe('the link of a draft', () => {
     const link = readClipLink(hash)
     expect(link?.clip).toEqual(hop)
     expect(link?.view).toEqual({ view: 'frames', fps: 12 })
+  })
+
+  it('names the avatar to show the clip on, before the clip', () => {
+    const hash = clipLinkHash(hop, { view: 'timeline', fps: 30 }, 'grok-bot')
+    expect(hash.startsWith('#avatar=grok-bot&clip=')).toBe(true)
+    expect(readClipLink(hash)?.avatar).toBe('grok-bot')
+    expect(readClipLink(`#view=frames&avatar=Strobi&clip=${JSON.stringify(hop)}`)?.avatar).toBe(
+      'strobi'
+    )
   })
 
   it('leaves out the view the Studio opens on anyway', () => {
@@ -72,6 +81,17 @@ describe('the sheet of a clip', () => {
     expect(sheetTimes(1, 12).at(-1)).toBe(1)
     expect(sheetTimes(0.5, 12)).toHaveLength(7)
     expect(sheetTimes(1.05, 12).slice(-2)).toEqual([1, 1.05])
+  })
+
+  it('starts on the clip’s first face, as a loop does', () => {
+    const sad: ClipDefinition = {
+      name: 'Sad',
+      duration: 1,
+      tracks: { expression: [{ t: 0, v: 'sad' }] },
+    }
+    const [first] = clipSheet(sad, 12)
+    expect(first.frame.face).toBe('sad')
+    expect(first.frame.eyes).toEqual(faces.sad.eyes)
   })
 
   it('spreads its frames over a clip too long for the rate', () => {

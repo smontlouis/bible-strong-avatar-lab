@@ -24,15 +24,30 @@ https://avatars.bible-strong.app/#clip={"name":"Hop","duration":1.2,"tracks":{..
   clips).
 - The JSON may be written as it is or percent-encoded. `clip=` must come **last**: everything after
   it is the clip.
-- Two optional settings come before it: `view=frames` opens the frame sheet instead of the
-  timeline, and `fps=12|24|30|60` sets its rate (30 when left out):
-  `https://avatars.bible-strong.app/#view=frames&fps=12&clip={...}`
+- Optional settings come before it, in any order:
+  - `avatar=strobi` shows the clip on that avatar, by the name of its file in
+    https://avatars.bible-strong.app/llms.txt (`strobi`, `freddy`, `citrus`…). Without it the
+    Studio keeps the avatar the person last chose, Strobi in a browser that never chose one.
+  - `view=frames` opens the frame sheet instead of the timeline.
+  - `fps=12|24|30|60` sets the sheet's rate (30 when left out).
+
+  `https://avatars.bible-strong.app/#avatar=strobi&view=frames&fps=12&clip={...}`
+
 - While the draft is open, **every change made in the Studio rewrites the address** (about 0.3 s
-  after the last change). The address is always the current clip: read it back to see what the
-  person changed, and write a new one to change the clip. In the same tab, a new fragment is
-  taken up at once, without reloading.
-- A link whose clip is not valid shows the first problem found, as a path and a message, for
-  example `tracks.rotation[2].v: expected 3 numbers`.
+  after the last change), with the avatar shown and the view. The address is always the current
+  clip: read it back to see what the person changed, and write a new one to change the clip. In
+  the same tab, a new fragment is taken up at once, without reloading.
+- Right after opening, the Studio rewrites the address once even if nothing changed: it writes
+  the clip in its own key order and encoding, and adds `avatar=`. **Compare clips as parsed JSON,
+  never as text**, to tell an edit from this rewrite.
+
+### Checking a clip
+
+Opening the link checks it. A clip that is not valid does not open, and the Clips tab shows the
+first problem found, as a path and a message; the element `[data-link-problem]` holds it, for
+example `tracks.rotation[2].v: expected 3 numbers`. If you have a JSON Schema validator (draft
+2020-12) at hand, the schema above checks the same rules; nothing needs to be installed to use the
+Studio's check.
 
 The fragment never reaches a server. A clip of a few seconds is a few kilobytes: links fit.
 
@@ -48,15 +63,25 @@ the curve of every track. One screenshot shows the whole clip:
 - **Faces**: each frame is drawn with the face it shows at that time, blends included.
 
 12 frames per second is enough to judge timing and keeps the sheet small; use 24 or 30 to check a
-quick move. The sheet plays the clip from its start exactly as the stage does. Dashed lines in
-every cell mark where the middle of the body is at rest: a body that rises or slides shows against
-them.
+quick move. The sheet plays the clip from its start as the stage does when the clip goes round:
+the clip's first face is already on at frame 1. (Started fresh after another clip, the eyes blend
+into that first face over 0.28 s; a loop never shows it.) Dashed lines in every cell mark where
+the middle of the body is at rest: a body that rises or slides shows against them.
 
-**Take a screenshot you can read.** In a small window the cells are a few pixels wide and the
-sheet tells nothing. Use a window at least 1400 px wide, or capture the sheet element alone at a
-device scale factor of 2 (with Playwright: `page.locator('[data-sheet]').screenshot()`). The
-element `[data-sheet]` holds the cells and the curves; each cell's `aria-label` reads
-`Image 5 · 0.33 s · happy` in French, `Picture 5 · 0.33 s · happy` in English.
+**Take a screenshot you can read.** The sheet sits in the Studio's side panel, which scrolls, with
+a player bar over its bottom edge. A small window gives cells a few pixels wide, and a sheet
+taller than the window loses its last rows under the bar. What works, with Playwright:
+
+```python
+page = browser.new_page(viewport={"width": 1500, "height": 3200}, device_scale_factor=2)
+page.goto(link)  # a link with view=frames
+page.wait_for_selector("[data-sheet] [data-frame]")
+page.locator("[data-sheet]").screenshot(path="sheet.png")
+```
+
+Raise the height for a long clip at a high rate. The cells are `[data-sheet] [data-frame]`; each
+carries `data-frame` (its number from 1), `data-time` (seconds) and `data-face`, whatever the
+language of the page.
 
 ## The format
 
@@ -76,13 +101,15 @@ element `[data-sheet]` holds the cells and the curves; each cell's `aria-label` 
 }
 ```
 
-| Field          | Meaning                                                                                                                                        |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`         | Any text. It may not be the name of a catalogue clip (`Idle_A`, `Done_B`…); the Studio numbers it if it is taken.                              |
-| `duration`     | Length in seconds, above 0 (catalogue clips last 1.4 to 10 s).                                                                                 |
-| `squashAnchor` | Which point stays in place when the body is stretched: `0` its centre (default), `-1` its base. Use `-1` for anything that touches the ground. |
-| `workArea`     | `start` is the time of the clip's **rest pose** (see Joins and loops). `end` is the duration. Optional; `start` defaults to 0.                 |
-| `tracks`       | The tracks the clip moves. A track left out is not moved: the body stays at rest on it (and keeps its zoom).                                   |
+| Field          | Meaning                                                                                                                                                                                                                                                                                                                     |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`         | Any text. It may not be the name of a catalogue clip (`Idle_A`, `Done_B`…); the Studio numbers it if it is taken.                                                                                                                                                                                                           |
+| `duration`     | Length in seconds, above 0 (catalogue clips last 1.4 to 10 s).                                                                                                                                                                                                                                                              |
+| `squashAnchor` | Which point stays in place when the body is stretched: `0` its centre (default), `-1` its base. Use `-1` for anything that touches the ground.                                                                                                                                                                              |
+| `workArea`     | `start` is the time of the clip's **rest pose** (see Joins and loops); it defaults to 0. `end` is not used: a clip goes round at `duration`. Set `end` to the duration, or leave `workArea` out.                                                                                                                            |
+| `tracks`       | The tracks the clip moves. A track left out is not moved: the body stays at rest on it (and keeps its zoom).                                                                                                                                                                                                                |
+| `body`         | The body the clip was drawn for (`sphere`, `clover`…). Informative: every avatar plays every clip. Catalogue clips carry it; you may leave it out.                                                                                                                                                                          |
+| `inspect`      | `{ "bias": -1…1, "follow": true }`. Only matters while the face is `inspecting`, which draws one eye larger than the other: with `follow: true` the larger eye is the one the head turns toward, else `bias` sets it (−1 the eye on the left of the screen, 1 the one on the right). Leave it out unless you use that face. |
 
 ### Keys
 
@@ -116,13 +143,18 @@ them on purpose, not by accident.
 
 Faces: `neutral`, `happy`, `surprised`, `sad`, `sleepy`, `squinted`, `calm`, `inspecting`
 (also written `inspect`), `confused`. `blink` is not a face: it closes and opens the eyes once
-(0.26 s), on the faces that can blink. The engine also reads a few aliases the catalogue uses:
+(0.26 s). Only `neutral`, `surprised` and `inspecting` can blink or be closed by `lids`; on
+`happy`, `sad`, `sleepy`, `squinted`, `calm` and `confused` the eyes stay as the face draws them.
+The engine also reads a few aliases the catalogue uses:
 `strange` (inspecting), `thinking` (sad), `angry` and `idle` (neutral), `squint`, `smile`,
 `sleep`. Any other name falls back to `neutral`; the schema refuses it.
 
 How faces behave:
 
 - A change of face is a blend of **0.28 s**. Put the key a little before the move it goes with.
+- Faces are not part of the loop check: a clip that ends on another face than it starts goes
+  round at once, and the eyes blend back to the first face as the clip asks for it again. Put a
+  face key at 0 so that every round starts on the face you mean.
 - A face change asked during a blink waits for the eyes to open.
 - `cut` on a face key is accepted and kept, but the engine does not use it: every change blends.
 
@@ -219,17 +251,19 @@ The principles of animation, on these tracks:
 It crouches and looks down (0–0.22 s), launches fast and slows at the top (Cubic out), falls with
 gravity (Cubic in), stretches on the way down, squashes on landing and overshoots back to round
 (Back out), nods slightly forward on the impact, and ends at rest, so that it loops cleanly. Its
-link, with the sheet at 12 frames per second:
+link, on Strobi, with the sheet at 12 frames per second:
 
 ```
-https://avatars.bible-strong.app/#view=frames&fps=12&clip=<the JSON above>
+https://avatars.bible-strong.app/#avatar=strobi&view=frames&fps=12&clip=<the JSON above>
 ```
 
 ## A working loop with the person
 
 1. Read the clips of the catalogue closest to the request; reuse their amplitudes and timing.
-2. Write the clip, check it against the schema, and open its link with `view=frames`.
-3. Look at the sheet: poses, spacing, faces, and whether the end meets the start. Fix and reopen.
+2. Write the clip and open its link with `avatar=…&view=frames`. If it does not open, read
+   `[data-link-problem]`, fix and reopen.
+3. Capture the sheet (see above) and look: poses, spacing, faces, and whether the last frame
+   meets the first. Fix and reopen; two to four rounds are usual.
 4. Hand the link to the person. They edit in the Studio; the address follows their changes.
 5. To go on from their version, read the clip back from the address (or ask them to paste it),
    change it, and write the new link.

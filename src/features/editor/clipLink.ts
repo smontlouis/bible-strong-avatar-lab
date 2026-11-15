@@ -19,9 +19,15 @@ export const DEFAULT_FRAME_RATE: FrameRate = 30
 
 export type ClipLinkView = { view: ClipView; fps: FrameRate }
 
+type ClipLinkHead = {
+  view: Partial<ClipLinkView>
+  /** The avatar to show the clip on, by the name of its file (`strobi`). */
+  avatar?: string
+}
+
 export type ClipLink =
-  | { clip: ClipDefinition; problem?: undefined; view: Partial<ClipLinkView> }
-  | { clip?: undefined; problem: ClipProblem; view: Partial<ClipLinkView> }
+  | (ClipLinkHead & { clip: ClipDefinition; problem?: undefined })
+  | (ClipLinkHead & { clip?: undefined; problem: ClipProblem })
 
 const CLIP_PARAM = 'clip='
 
@@ -34,8 +40,10 @@ export const readClipLink = (hash: string): ClipLink | null => {
   const raw = fragment.slice(at === 0 ? CLIP_PARAM.length : at + 1 + CLIP_PARAM.length)
 
   const view: Partial<ClipLinkView> = {}
+  let avatar: string | undefined
   for (const pair of head.split('&')) {
     const [key, value] = pair.split('=')
+    if (key === 'avatar' && value) avatar = decodeURIComponent(value).toLowerCase()
     if (key === 'view' && (clipViews as readonly string[]).includes(value)) {
       view.view = value as ClipView
     }
@@ -57,10 +65,13 @@ export const readClipLink = (hash: string): ClipLink | null => {
     return {
       problem: { path: 'clip', message: `not JSON (${(error as Error).message})` },
       view,
+      avatar,
     }
   }
   const checked = checkClip(parsed)
-  return checked.clip ? { clip: checked.clip, view } : { problem: checked.problem!, view }
+  return checked.clip
+    ? { clip: checked.clip, view, avatar }
+    : { problem: checked.problem!, view, avatar }
 }
 
 /**
@@ -70,9 +81,14 @@ export const readClipLink = (hash: string): ClipLink | null => {
 const encodeJson = (json: string) =>
   json.replace(/[%#"\s<>`]/g, character => encodeURIComponent(character))
 
-/** The fragment of a draft: its view first, the clip last. */
-export const clipLinkHash = (clip: ClipDefinition, { view, fps }: ClipLinkView) => {
+/** The fragment of a draft: the avatar and the view first, the clip last. */
+export const clipLinkHash = (
+  clip: ClipDefinition,
+  { view, fps }: ClipLinkView,
+  avatar?: string
+) => {
   const head = [
+    avatar ? `avatar=${encodeURIComponent(avatar)}` : '',
     view === 'timeline' ? '' : `view=${view}`,
     fps === DEFAULT_FRAME_RATE ? '' : `fps=${fps}`,
   ]

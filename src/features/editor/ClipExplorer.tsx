@@ -813,7 +813,10 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
           <p className="px-3 pb-2 text-xs text-destructive">{t('Ce fichier n’est pas un clip.')}</p>
         )}
         {clipLibrary.linkProblem && (
-          <div className="mx-1.5 mb-1.5 flex items-start gap-2 rounded-lg bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
+          <div
+            className="mx-1.5 mb-1.5 flex items-start gap-2 rounded-lg bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
+            data-link-problem={`${clipLibrary.linkProblem.path}: ${clipLibrary.linkProblem.message}`}
+          >
             <p className="flex-1">
               {t('Le lien ne contient pas un clip valide.')}{' '}
               <code className="font-mono text-[0.7rem]">

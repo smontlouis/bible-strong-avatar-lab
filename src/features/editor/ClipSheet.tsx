@@ -90,6 +90,9 @@ export function ClipSheet({
             type="button"
             className="flex flex-col items-center rounded-md bg-muted px-0.5 pt-0.5 pb-1 hover:ring-1 hover:ring-ring"
             aria-label={`${t('Image')} ${index + 1} · ${seconds(time)} · ${frame.face}`}
+            data-frame={index + 1}
+            data-time={time.toFixed(3)}
+            data-face={frame.face}
             title={`${index + 1} · ${seconds(time)} · ${frame.face}`}
             key={index}
             onClick={() => onPick(time)}

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 import { clipLinkHash, DEFAULT_FRAME_RATE, readClipLink } from '@/features/editor/clipLink'
+import { slugOf } from '@/features/editor/PhotoPanel'
 import type { Editor } from '@/features/editor/useEditor'
 
 // The draft and the address, kept the same both ways. A link that holds a clip opens it as the
@@ -22,6 +23,10 @@ export const useClipLink = (editor: Editor) => {
     const link = readClipLink(hash)
     if (!link) return
     editor.setTab('clips')
+    if (link.avatar) {
+      const avatar = editor.avatars.find(item => slugOf(item.name) === link.avatar)
+      if (avatar && avatar.id !== editor.activeAvatar.id) editor.selectAvatar(avatar.id)
+    }
     clipLibrary.setView({
       view: link.view.view ?? 'timeline',
       fps: link.view.fps ?? DEFAULT_FRAME_RATE,
@@ -51,10 +56,11 @@ export const useClipLink = (editor: Editor) => {
   }, [])
 
   const { draft, view } = clipLibrary
+  const avatar = slugOf(editor.activeAvatar.name)
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (draft) {
-        const hash = clipLinkHash(draft.clip, view)
+        const hash = clipLinkHash(draft.clip, view, avatar)
         // Replaced, not pushed: the history of the page is not one step per change.
         if (window.location.hash !== hash)
           window.history.replaceState(window.history.state, '', hash)
@@ -70,5 +76,5 @@ export const useClipLink = (editor: Editor) => {
       }
     }, LINK_WRITE_MS)
     return () => window.clearTimeout(timer)
-  }, [draft, view])
+  }, [draft, view, avatar])
 }
