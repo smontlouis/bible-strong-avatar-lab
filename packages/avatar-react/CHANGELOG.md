@@ -1,5 +1,12 @@
 # @bible-strong/avatar-react
 
+## 1.1.0
+
+### Patch Changes
+
+- Updated dependencies [2457065]
+  - @bible-strong/avatar-core@1.1.0
+
 ## 1.0.1
 
 ### Patch Changes
