@@ -1,4 +1,10 @@
-import { clips, states, stateGroups, stateAliases } from '@bible-strong/avatar-core'
+import {
+  avatarCharacterSchema,
+  clips,
+  stateAliases,
+  stateGroups,
+  states,
+} from '@bible-strong/avatar-core'
 
 import { characterOfAvatar, parseAvatarLibrary, type AvatarLibrary } from '@/features/editor/avatar'
 import defaultLibrary from '@/features/editor/defaultLibrary.json'
@@ -19,6 +25,9 @@ export type AgentDocSources = {
   readmes: Record<string, string>
   clipGuide: string
   clipSchema: string
+  stateGuide: string
+  stateSchema: string
+  characterGuide: string
 }
 
 const PACKAGE_ORDER = ['avatar-react', 'avatar-react-native', 'avatar-web', 'avatar-core']
@@ -59,6 +68,8 @@ export const agentDocs = (sources: AgentDocSources): Record<string, string> => {
   for (const item of characters) files[`characters/${item.file}`] = json(item.character)
   files['catalogue/clips.json'] = json(clips)
   files['catalogue/states.json'] = json({ states, groups: stateGroups, aliases: stateAliases })
+  // The schema of a character, at the address its `$id` gives.
+  files['schema/avatar-character.json'] = json(avatarCharacterSchema)
 
   // Everything an agent reads, in one file: the index, then each guide in full.
   const section = (path: string, body: string) =>
@@ -69,9 +80,19 @@ export const agentDocs = (sources: AgentDocSources): Record<string, string> => {
       section(`docs/${name}.md`, sources.readmes[name])
     ),
     section('clip-authoring.md', localized(sources.clipGuide, origin)),
+    section('state-authoring.md', localized(sources.stateGuide, origin)),
+    section('character-authoring.md', localized(sources.characterGuide, origin)),
     section(
       'clip.schema.json',
       `# Clip schema\n\n\`\`\`json\n${localized(sources.clipSchema, origin).trim()}\n\`\`\``
+    ),
+    section(
+      'state.schema.json',
+      `# State schema\n\n\`\`\`json\n${localized(sources.stateSchema, origin).trim()}\n\`\`\``
+    ),
+    section(
+      'schema/avatar-character.json',
+      `# Character schema\n\n\`\`\`json\n${localized(JSON.stringify(avatarCharacterSchema, null, 2), origin)}\n\`\`\``
     ),
   ].join('')
   return files

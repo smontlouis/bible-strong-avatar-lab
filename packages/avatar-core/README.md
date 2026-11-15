@@ -43,8 +43,11 @@ type AvatarCharacter = {
 }
 ```
 
-A character carries no motion of its own: every character plays the same catalogue. Do not write
-one by hand. Author it in Avatar Lab and export it.
+A character carries no motion of its own: every character plays the same catalogue. Author it in
+Avatar Lab and export it, or write it by hand after
+https://avatars.bible-strong.app/character-authoring.md, which gives every rule of the file and
+how to look at a character from every side. `avatarCharacterSchema` is the JSON Schema a file is
+checked against.
 
 ## Read a file
 

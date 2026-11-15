@@ -5,13 +5,14 @@ import {
   setEnginePose,
   setEngineState,
   advanceEngine,
+  readCharacter,
   validateCharacter,
 } from '@bible-strong/avatar-core'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 
 import { avatarFromSource, characterOfAvatar } from '@/features/editor/avatar'
-import { readClipLink } from '@/features/editor/clipLink'
+import { readClipLink, readStudioLink } from '@/features/editor/clipLink'
 import { loadLibrary } from '@/features/editor/document'
 import { LINK_WRITE_MS } from '@/features/editor/useClipLink'
 import { Editor } from '@/features/editor/Editor'
@@ -234,6 +235,121 @@ describe('the editor', () => {
     )
     const view = open()
     expect(view.getByText(/tracks\.rotation\[0\]\.v: expected 3 numbers/)).toBeTruthy()
+  })
+
+  it('opens a state from a link as a draft, shows its run, and saves it with its clips', async () => {
+    const hop = {
+      name: 'Hop',
+      duration: 1,
+      tracks: {
+        position: [
+          { t: 0, v: [0, 0] },
+          { t: 0.5, v: [0, 0.2] },
+          { t: 1, v: [0, 0] },
+        ],
+      },
+    }
+    const cheering = {
+      name: 'cheering',
+      clips: ['Hop', 'Done_A'],
+      next: 'idle',
+      holdSeconds: 3,
+      newClips: [hop],
+    }
+    window.history.replaceState(null, '', `/#avatar=strobi&state=${JSON.stringify(cheering)}`)
+    const view = open()
+    expect(view.getByRole('heading', { level: 1 }).textContent).toBe('États')
+    expect((view.getByRole('textbox', { name: 'Nom de l’état' }) as HTMLInputElement).value).toBe(
+      'cheering'
+    )
+    const segments = [...view.container.querySelectorAll('[data-run-segment]')]
+    expect(segments.length).toBeGreaterThan(2)
+    // The state hands over to idle when its time is up.
+    const idle = segments.find(segment => segment.getAttribute('data-state') === 'idle')
+    expect(Number(idle?.getAttribute('data-from'))).toBeCloseTo(3, 1)
+
+    fireEvent.click(view.getByRole('button', { name: 'Une fois, puis…' }))
+    frames(2)
+    await wait(LINK_WRITE_MS + 50)
+    const linked = readStudioLink(window.location.hash)
+    expect(linked?.kind).toBe('state')
+    expect(linked?.value).toMatchObject({ name: 'cheering', next: 'idle' })
+    expect((linked?.value as { holdSeconds?: number }).holdSeconds).toBeUndefined()
+
+    fireEvent.click(view.getByRole('button', { name: 'Enregistrer dans mes états' }))
+    frames(2)
+    await wait(LINK_WRITE_MS + 50)
+    const stored = (key: string) => JSON.parse(window.localStorage.getItem(key) ?? 'null')
+    expect(stored('bible-strong-avatar-studio-states-v1').states).toEqual([
+      { name: 'cheering', clips: ['Hop', 'Done_A'], next: 'idle' },
+    ])
+    expect(
+      stored('bible-strong-avatar-studio-clips-v1').clips.map((clip: { name: string }) => clip.name)
+    ).toEqual(['Hop'])
+    expect(window.location.hash).toBe('')
+  })
+
+  it('says what is wrong with a state that names a clip nobody has', () => {
+    window.history.replaceState(
+      null,
+      '',
+      `/#state=${JSON.stringify({ name: 'x', clips: ['Nope'] })}`
+    )
+    const view = open()
+    expect(
+      view.container.querySelector('[data-link-problem]')?.getAttribute('data-link-problem')
+    ).toMatch(/^clips\[0\]: unknown clip "Nope"/)
+  })
+
+  it('opens a character from a link as a draft avatar with its sheet, and keeps it once saved', async () => {
+    const fox = {
+      name: 'Fox',
+      body: {
+        primary: { type: 'sphere', width: 220, height: 200, depth: 200, roundness: 1 },
+        nodes: [
+          {
+            surface: { type: 'cone', width: 70, height: 95, depth: 40, roundness: 0 },
+            position: [-62, -95, -20],
+            rotation: [0, 0, -18],
+          },
+        ],
+      },
+      colors: { body: '#e8742f', eyes: '#1b1410' },
+      face: { eyes: { width: 0.85, height: 0.85, gap: 1.15, shiftY: -0.1 }, perspective: 1 },
+    }
+    window.history.replaceState(null, '', `/#character=${JSON.stringify(fox)}`)
+    const view = open()
+    expect(view.getByRole('heading', { level: 1 }).textContent).toBe('Avatars')
+    expect(view.getByText('Fox · brouillon')).toBeTruthy()
+    const sheet = view.container.querySelector('[data-character-sheet]')!
+    expect(sheet.querySelectorAll('[data-view]')).toHaveLength(8)
+    expect(sheet.querySelectorAll('[data-face]')).toHaveLength(9)
+    await wait(LINK_WRITE_MS + 50)
+    const linked = readStudioLink(window.location.hash)
+    expect(linked?.kind).toBe('character')
+    expect(readCharacter(linked?.value).ok).toBe(true)
+    // Not kept until saved.
+    const names = () =>
+      JSON.parse(window.localStorage.getItem('bible-strong-avatar-studio-v2')!).library.avatars.map(
+        (avatar: { name: string }) => avatar.name
+      )
+    expect(names()).not.toContain('Fox')
+    fireEvent.click(view.getByRole('button', { name: 'Enregistrer dans mes avatars' }))
+    frames(2)
+    await wait(LINK_WRITE_MS + 50)
+    expect(names()).toContain('Fox')
+  })
+
+  it('says what is wrong with a character a package would refuse', () => {
+    window.history.replaceState(
+      null,
+      '',
+      `/#character=${JSON.stringify({ body: { primary: { type: 'sphere', width: 240, height: 240, depth: 240, roundness: 1 }, nodes: [] }, colors: { body: '#5B7FE5', eyes: '#111316' }, face: { eyes: { width: 1, height: 1, gap: 1, shiftY: 0 }, perspective: 1 } })}`
+    )
+    const view = open()
+    expect(
+      view.container.querySelector('[data-link-problem]')?.getAttribute('data-link-problem')
+    ).toMatch(/^\/colors\/body: /)
   })
 
   it('duplicates a catalogue clip into a draft, leaving the catalogue as it is', async () => {
