@@ -29,8 +29,16 @@ export const persistLibrary = (
   library: AvatarLibrary,
   storage: Pick<Storage, 'setItem'> = window.localStorage
 ) => {
+  // A draft avatar is not kept: it lives in the address.
+  const avatars = library.avatars.filter(avatar => !avatar.draft)
+  const active = avatars.some(avatar => avatar.id === library.activeAvatarId)
+    ? library.activeAvatarId
+    : (avatars[0]?.id ?? library.activeAvatarId)
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, library }))
+    storage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ version: 2, library: { avatars, activeAvatarId: active } })
+    )
     return true
   } catch {
     // The library in memory stays the one that counts when storage is unavailable.

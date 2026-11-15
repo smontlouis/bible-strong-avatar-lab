@@ -1,6 +1,7 @@
 import { clips, states } from '@bible-strong/avatar-core'
 import {
   Activity,
+  BookOpen,
   ArrowLeft,
   Camera,
   Copy,
@@ -42,6 +43,9 @@ import {
   PERSPECTIVE_MAX,
 } from '@/features/editor/avatar'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
+import { CharacterSheet } from '@/features/editor/CharacterSheet'
+import { LinkProblemNote } from '@/features/editor/ClipExplorer'
+import { DraftBanner } from '@/features/editor/DraftBanner'
 import { ExportPanel } from '@/features/editor/ExportPanel'
 import { ClipsPanel, StatesPanel } from '@/features/editor/ClipExplorer'
 import { PhotoPanel, PoseControls, takePicture } from '@/features/editor/PhotoPanel'
@@ -134,11 +138,48 @@ function SwitchRow({
 }
 
 function AvatarsPanel({ editor }: { editor: EditorState }) {
-  const { t, avatars, activeAvatar } = editor
+  const { t, avatars, activeAvatar, characterDraft } = editor
   const file = useRef<HTMLInputElement | null>(null)
   const [importError, setImportError] = useState(false)
+  const [discarding, setDiscarding] = useState(false)
+  const onDraft = activeAvatar.draft === true
   return (
     <div className="panel-stack avatar-page">
+      <LinkProblemNote editor={editor} kind="character" />
+      {onDraft && characterDraft && (
+        <div className="rounded-2xl border border-border bg-card p-3 shadow-[0_4px_14px_rgb(24_28_35/5%)]">
+          <DraftBanner
+            note={t(
+              'Ce personnage vit dans l’adresse de la page. Enregistré, il rejoint tes avatars.'
+            )}
+            saveLabel="Enregistrer dans mes avatars"
+            onSave={editor.saveCharacterDraft}
+          />
+          <div className="mt-2 flex justify-end">
+            <Button variant="outline" size="sm" type="button" onClick={() => setDiscarding(true)}>
+              <Trash2 /> {t('Abandonner le brouillon')}
+            </Button>
+          </div>
+          <AlertDialog open={discarding} onOpenChange={setDiscarding}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t('Abandonner le brouillon ?')}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t(
+                    'Le personnage disparaît de la page. Exporte-le d’abord pour en garder une copie.'
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t('Garder')}</AlertDialogCancel>
+                <AlertDialogAction onClick={editor.discardCharacterDraft}>
+                  {t('Abandonner')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
       <section className="avatar-shelf" aria-label={t('Choisir un avatar')}>
         <div className="avatar-shelf-heading">
           <strong>{t('Double-clic pour modifier')}</strong>
@@ -161,7 +202,10 @@ function AvatarsPanel({ editor }: { editor: EditorState }) {
                   }}
                 >
                   {character && <CharacterPreview character={character} />}
-                  <span>{avatar.name}</span>
+                  <span>
+                    {avatar.name}
+                    {avatar.draft ? ` · ${t('brouillon')}` : ''}
+                  </span>
                 </Button>
               </div>
             )
@@ -187,6 +231,26 @@ function AvatarsPanel({ editor }: { editor: EditorState }) {
           <Button variant="outline" size="sm" type="button" onClick={() => file.current?.click()}>
             <Upload /> {t('Importer un .avatar.json')}
           </Button>
+          {!onDraft && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              title={t('Ouvrir une copie de travail dans l’adresse, pour la donner à un agent')}
+              onClick={() => editor.draftFromAvatar()}
+            >
+              <Copy /> {t('Brouillon')}
+            </Button>
+          )}
+          <a
+            className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            href="./character-authoring.md"
+            target="_blank"
+            rel="noreferrer"
+            title={t('Le format des personnages et leur lien, pour les agents qui en créent')}
+          >
+            <BookOpen className="size-3.5" /> {t('Guide')}
+          </a>
           <input
             ref={file}
             className="project-import-input"
@@ -217,6 +281,10 @@ function AvatarsPanel({ editor }: { editor: EditorState }) {
             )}
           </p>
         )}
+      </section>
+      <section className="rounded-2xl border border-border bg-card p-3 shadow-[0_4px_14px_rgb(24_28_35/5%)]">
+        <p className="eyebrow mb-2">{t('Planche du personnage')}</p>
+        <CharacterSheet character={characterOfAvatar(activeAvatar)} />
       </section>
     </div>
   )

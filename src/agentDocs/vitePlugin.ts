@@ -35,6 +35,9 @@ export const agentDocsPlugin = (root: string, alias: Record<string, string>): Pl
       ),
       clipGuide: read('public/clip-authoring.md'),
       clipSchema: read('public/clip.schema.json'),
+      stateGuide: read('public/state-authoring.md'),
+      stateSchema: read('public/state.schema.json'),
+      characterGuide: read('public/character-authoring.md'),
     }
     return module.agentDocs(sources)
   }
@@ -46,12 +49,13 @@ export const agentDocsPlugin = (root: string, alias: Record<string, string>): Pl
         const file = (request.url ?? '').split(/[?#]/)[0].replace(/^\/+/, '')
         const origin = `http://${request.headers.host ?? 'localhost'}`
         // The guide and the schema are public files; here they name the local Studio.
-        if (file === 'clip-authoring.md' || file === 'clip.schema.json') {
+        if (/^(clip|state|character)-authoring\.md$|^(clip|state)\.schema\.json$/.test(file)) {
           response.setHeader('Content-Type', contentTypes[path.extname(file)])
           response.end(localized(read(`public/${file}`), origin))
           return
         }
-        if (!/^(llms(-full)?\.txt|docs\/|characters\/|catalogue\/)/.test(file)) return next()
+        if (!/^(llms(-full)?\.txt|docs\/|characters\/|catalogue\/|schema\/)/.test(file))
+          return next()
         try {
           // Built on each request: in development the sources change under the server.
           const files = await build(origin)

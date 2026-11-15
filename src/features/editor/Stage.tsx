@@ -14,6 +14,7 @@ import {
   setEngineGaze,
   setEngineGazeAlways,
   setEnginePose,
+  setEngineLibrary,
   setEngineState,
   seekEngine,
   stopEngine,
@@ -129,6 +130,26 @@ export function Stage({
   useEffect(() => paintRenderedRotationGizmo(rotationGizmo, turned), [rotationGizmo, turned])
   const setHead = (next: Expression) =>
     setPose({ ...pose, head: [next.headX, next.headY, next.headZ] })
+
+  // The engine knows every custom clip and state, and the drafts, besides the catalogue's.
+  const { clips: customClips, states: customStates, draft: clipDraft, stateDraft } = clipLibrary
+  useEffect(() => {
+    setEngineLibrary(engine.current, clipLibrary.engineLibrary())
+  }, [customClips, customStates, clipDraft, stateDraft, engine])
+
+  // A state draft that changes is taken up again on the stage, from its start.
+  const stateDraftDefinition = stateDraft?.document.state
+  const shownStateDraft = 'state' in doing && doing.draft ? doing.state : null
+  const firstDraftRun = useRef(true)
+  useEffect(() => {
+    if (firstDraftRun.current) {
+      firstDraftRun.current = false
+      return
+    }
+    if (shownStateDraft && stateDraftDefinition?.name === shownStateDraft) {
+      setEngineState(engine.current, shownStateDraft)
+    }
+  }, [stateDraftDefinition, shownStateDraft, engine])
 
   const startedRun = useRef(run)
   useEffect(() => {

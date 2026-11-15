@@ -52,6 +52,25 @@ describe('the link of a draft', () => {
     expect(readClipLink(`#clip=${encodeURIComponent(json)}`)?.clip).toEqual(hop)
   })
 
+  it('reads a link that an app encoded again, or whose quotes it curled', () => {
+    const hash = clipLinkHash(hop, { view: 'frames', fps: 12 })
+    expect(readClipLink(hash.replace(/%/g, '%25'))?.clip).toEqual(hop)
+    expect(readClipLink(hash.replace(/%/g, '%25').replace(/%/g, '%25'))?.clip).toEqual(hop)
+    const curled = `#clip=${JSON.stringify(hop)}`.replace(/"([^"]*)"/g, '“$1”')
+    expect(readClipLink(curled)?.clip).toEqual(hop)
+    // Quotes of a name that are meant are kept.
+    const quoted = { ...hop, name: 'Le « saut »' }
+    expect(readClipLink(clipLinkHash(quoted, { view: 'timeline', fps: 30 }))?.clip?.name).toBe(
+      'Le « saut »'
+    )
+  })
+
+  it('shows the start of a link it cannot read', () => {
+    expect(readClipLink('#clip={%22name%22:%22Ho')?.problem?.message).toMatch(
+      /the link starts "\{\\"name\\":\\"Ho"/
+    )
+  })
+
   it('ignores an address that holds no clip, and a view it does not know', () => {
     expect(readClipLink('')).toBeNull()
     expect(readClipLink('#view=frames')).toBeNull()
