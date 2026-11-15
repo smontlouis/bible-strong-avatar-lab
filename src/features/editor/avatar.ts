@@ -48,6 +48,11 @@ export type AvatarFeatures = {
 export type StudioAvatar = {
   id: string
   name: string
+  /**
+   * A draft is an avatar being made from a link or for an agent: it lives in the address, never
+   * in the browser's storage, until it is saved.
+   */
+  draft?: boolean
   body: AvatarBody
   colors: AvatarColors
   // Named `eyes` in the stored document since the first version of the Studio.
@@ -187,6 +192,11 @@ const faceRadius = (body: Pick<AvatarBody, 'primary'>) =>
   Math.min(body.primary.width, body.primary.height) / 2
 
 /** The character of an avatar: what the renderers draw and what an export holds. */
+// A character file takes lowercase colours and turns within a whole turn either way: the
+// Studio's fields and gizmo allow more, and what it writes must read back.
+const fileColor = (color: string) => color.toLowerCase()
+const fileTurn = (angle: number) => (Math.abs(angle) > 360 ? angle % 360 : angle)
+
 export const characterOfAvatar = (avatar: StudioAvatar): AvatarCharacter => {
   const features = avatar.eyes
   const outline = avatar.renderStyle.outline
@@ -195,15 +205,15 @@ export const characterOfAvatar = (avatar: StudioAvatar): AvatarCharacter => {
     body: {
       primary: avatar.body.primary,
       nodes: avatar.body.nodes.map(node => ({
-        ...(node.color ? { color: node.color } : {}),
+        ...(node.color ? { color: fileColor(node.color) } : {}),
         ...(node.followsHead === false ? { followsHead: false } : {}),
         surface: node.surface,
         position: node.position,
-        rotation: node.rotation,
+        rotation: node.rotation.map(fileTurn) as unknown as typeof node.rotation,
       })),
     },
-    colors: avatar.colors,
-    ...(outline ? { style: { outline } } : {}),
+    colors: { body: fileColor(avatar.colors.body), eyes: fileColor(avatar.colors.eyes) },
+    ...(outline ? { style: { outline: { ...outline, color: fileColor(outline.color) } } } : {}),
     face: {
       eyes: {
         width: features.eyeScale,

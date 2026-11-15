@@ -14,7 +14,8 @@ import { characterFromLegacyDefinition, type AvatarCharacter } from './character
 
 const LEGACY_SCHEMA = 'bible-strong/avatar-definition'
 
-const characterSchema = {
+/** The JSON Schema (draft 2020-12) a character file is checked against. */
+export const avatarCharacterSchema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   $id: 'https://avatars.bible-strong.app/schema/avatar-character.json',
   title: 'Bible Strong avatar character',
@@ -55,7 +56,7 @@ const characterSchema = {
 let compiled: ValidateFunction<AvatarCharacter> | undefined
 const validateSchema = () =>
   (compiled ??= new Ajv2020({ allErrors: true, strict: true }).compile<AvatarCharacter>(
-    characterSchema
+    avatarCharacterSchema
   ))
 
 const pointer = (path: string, segment: unknown) =>

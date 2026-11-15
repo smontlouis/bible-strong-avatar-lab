@@ -4,6 +4,7 @@ import {
   duplicateBodyNode,
   MAX_BODY_NODES,
   seedOfName,
+  type AvatarCharacter,
   type AvatarEngine,
   type bodyPrimitiveTypes,
   type BodyNode,
@@ -35,7 +36,7 @@ export const editorTabs = ['avatars', 'pose', 'states', 'clips', 'export'] as co
 export type EditorTab = (typeof editorTabs)[number]
 
 /** What the avatar on the stage does: a state, or one clip, which may be the draft. */
-export type Doing = { state: string } | { clip: string; draft?: boolean }
+export type Doing = { state: string; draft?: boolean } | { clip: string; draft?: boolean }
 
 /**
  * The pose set by hand. The head's turn is kept as the three angles the rotation gizmo works
@@ -145,6 +146,33 @@ export const useEditor = () => {
     setSelectedBodyNodeId('primary')
   }
   const renameAvatar = (name: string) => updateActiveAvatar(avatar => ({ ...avatar, name }))
+
+  // The character draft: one avatar at a time that lives in the address, not in storage.
+  const characterDraft = avatars.find(avatar => avatar.draft) ?? null
+  /** Open a character as the draft, in place of the one there was, and show it. */
+  const openCharacterDraft = (character: AvatarCharacter) => {
+    const avatar: StudioAvatar = {
+      ...avatarFromSource(JSON.stringify(character)),
+      draft: true,
+    }
+    updateLibrary([...avatars.filter(item => !item.draft), avatar], avatar.id)
+    setSelectedBodyNodeId('primary')
+    return avatar
+  }
+  /** The draft taken in place by a new version of itself, keeping its place and its id. */
+  const replaceCharacterDraft = (character: AvatarCharacter) => {
+    if (!characterDraft) return openCharacterDraft(character)
+    const next: StudioAvatar = {
+      ...avatarFromSource(JSON.stringify(character)),
+      id: characterDraft.id,
+      draft: true,
+    }
+    updateLibrary(
+      avatars.map(item => (item.id === characterDraft.id ? next : item)),
+      library.activeAvatarId
+    )
+    return next
+  }
   /** Bring in an avatar from a file: its character is kept, its animations are not. */
   const importAvatar = (source: string) => {
     const avatar = avatarFromSource(source)
@@ -236,6 +264,24 @@ export const useEditor = () => {
     deleteAvatar,
     renameAvatar,
     importAvatar,
+    characterDraft,
+    openCharacterDraft,
+    replaceCharacterDraft,
+    /** A copy of the avatar shown, as the character draft: to hand to an agent. */
+    draftFromAvatar: () => openCharacterDraft(characterOfAvatar(activeAvatar)),
+    /** Keep the character draft among the avatars. */
+    saveCharacterDraft: () => {
+      if (!characterDraft) return
+      updateLibrary(
+        avatars.map(item => (item.id === characterDraft.id ? { ...item, draft: false } : item))
+      )
+    },
+    discardCharacterDraft: () => {
+      if (!characterDraft) return
+      const rest = avatars.filter(item => !item.draft)
+      updateLibrary(rest, characterDraft.id === activeAvatar.id ? rest[0].id : activeAvatar.id)
+      setSelectedBodyNodeId('primary')
+    },
     doing,
     setDoing: (next: Doing) => {
       setStopped(false)

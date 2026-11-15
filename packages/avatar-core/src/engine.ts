@@ -127,8 +127,19 @@ export type FreePose = {
   zoom?: number
 }
 
+/**
+ * Clips and states an engine knows besides the catalogue's, by name. A name given here takes
+ * the place of the catalogue's for this engine.
+ */
+export type EngineLibrary = {
+  clips: Readonly<Record<string, ClipDefinition>>
+  states: Readonly<Record<string, StateDefinition>>
+}
+
 export type AvatarEngine = {
   player: AvatarPlayer
+  /** Clips and states of its own, besides the catalogue's. */
+  library: EngineLibrary
   random: Random
   /** The state that draws the clips, or `null` when a clip was asked for by name. */
   state: string | null
@@ -166,9 +177,17 @@ export type AvatarEngine = {
 }
 
 export const createAvatarEngine = (
-  options: { seed?: number; compact?: boolean } = {}
+  options: {
+    seed?: number
+    compact?: boolean
+    /** Clips of its own, by name, besides the catalogue's. */
+    clips?: Readonly<Record<string, ClipDefinition>>
+    /** States of its own, by name, besides the catalogue's. Their clips may be its own too. */
+    states?: Readonly<Record<string, StateDefinition>>
+  } = {}
 ): AvatarEngine => ({
   player: createAvatarPlayer(),
+  library: { clips: options.clips ?? {}, states: options.states ?? {} },
   random: { seed: options.seed ?? 1 },
   state: null,
   bags: {},
@@ -198,6 +217,37 @@ export const createAvatarEngine = (
   handover: true,
   release: null,
 })
+
+// The same engine runs on a UI thread in React Native, where newer built-ins may be missing.
+const owns = (record: object, name: string) => Object.prototype.hasOwnProperty.call(record, name)
+
+/** A state the engine knows: its own, else the catalogue's. */
+export const engineStateOf = (
+  engine: Readonly<AvatarEngine>,
+  name: string
+): StateDefinition | undefined =>
+  owns(engine.library.states, name) ? engine.library.states[name] : states[name]
+
+/** A clip the engine knows: its own, else the catalogue's. */
+export const engineClipOf = (
+  engine: Readonly<AvatarEngine>,
+  name: string
+): ClipDefinition | undefined =>
+  owns(engine.library.clips, name) ? engine.library.clips[name] : clips[name]
+
+/**
+ * Give the engine other clips and states of its own, in place of those it had. What plays goes
+ * on, and is drawn from the new ones from its next clip.
+ */
+export const setEngineLibrary = (
+  engine: AvatarEngine,
+  library: {
+    clips?: Readonly<Record<string, ClipDefinition>>
+    states?: Readonly<Record<string, StateDefinition>>
+  }
+) => {
+  engine.library = { clips: library.clips ?? {}, states: library.states ?? {} }
+}
 
 const listOf = (engine: Readonly<AvatarEngine>, state: Readonly<StateDefinition>) =>
   engine.compact && state.compactClips ? state.compactClips : state.clips
@@ -235,7 +285,7 @@ const draw = (engine: AvatarEngine, list: readonly string[]) => {
 }
 
 const pick = (engine: AvatarEngine) => {
-  const state = engine.state === null ? undefined : states[engine.state]
+  const state = engine.state === null ? undefined : engineStateOf(engine, engine.state)
   if (!state) return
   const list = listOf(engine, state)
   const ordered = inOrder(state)
@@ -248,7 +298,7 @@ const pick = (engine: AvatarEngine) => {
   engine.loopsSeen = engine.player.loopCount
   // The clip that already plays goes on: it is not started again.
   if (engine.player.clip?.name === name && engine.player.playing) return
-  const clip = clips[name]
+  const clip = engineClipOf(engine, name)
   if (clip) playClip(engine.player, clip, { phase })
   engine.loopsSeen = engine.player.loopCount
 }
@@ -273,10 +323,10 @@ export const setEngineMorph = (engine: AvatarEngine, mode: string | null) => {
   morphing.current = { pattern, time: 0, shot: 0 }
 }
 
-/** Put the avatar in a state of the catalogue. An unknown name changes nothing. */
+/** Put the avatar in a state it knows: its own, else the catalogue's. An unknown name changes nothing. */
 export const setEngineState = (engine: AvatarEngine, asked: string) => {
-  const name = resolveStateName(asked)
-  const state = states[name]
+  const name = owns(engine.library.states, asked) ? asked : resolveStateName(asked)
+  const state = engineStateOf(engine, name)
   if (!state) return
   engine.state = name
   setEngineMorph(engine, state.morph ?? null)
@@ -338,7 +388,7 @@ export const setEngineCompact = (engine: AvatarEngine, compact: boolean) => {
 
 export const setEngineEmphasis = (engine: AvatarEngine, emphasis: boolean) => {
   engine.emphasis = emphasis
-  const state = engine.state === null ? undefined : states[engine.state]
+  const state = engine.state === null ? undefined : engineStateOf(engine, engine.state)
   if (state && !state.face) holdPlayerFace(engine.player, emphasis ? 'surprised' : null)
 }
 
@@ -437,7 +487,7 @@ const GAZE_OVER_CLIP = 0.55
 export const LOOK_OVER_CLIP = 0.85
 
 const advanceDirector = (engine: AvatarEngine, seconds: number) => {
-  const state = engine.state === null ? undefined : states[engine.state]
+  const state = engine.state === null ? undefined : engineStateOf(engine, engine.state)
   if (!state) return
   engine.stateTime += seconds
   if (state.next !== undefined && state.holdSeconds !== undefined) {

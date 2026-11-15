@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://avatars.bible-strong.app/state.schema.json",
+  "title": "Bible Strong avatar state",
+  "description": "What an avatar is in, as an app declares it. Guide: https://avatars.bible-strong.app/state-authoring.md. Clip names are checked against the catalogue, the person's saved clips and newClips when the Studio opens the state.",
+  "type": "object",
+  "required": ["name", "clips"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "enum": ["dots", "radar", "orbit", "loading"]
+      },
+      "description": "Not a catalogue state's name nor an alias."
+    },
+    "clips": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "compactClips": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "face": {
+      "enum": [
+        "neutral",
+        "happy",
+        "surprised",
+        "sad",
+        "sleepy",
+        "squinted",
+        "calm",
+        "inspecting",
+        "confused"
+      ]
+    },
+    "morph": {
+      "enum": [
+        "thinking",
+        "orbit",
+        "radar",
+        "progress",
+        "spawning",
+        "dictating",
+        "sending",
+        "receiving",
+        "uploading",
+        "bouncing",
+        "writing",
+        "alerting",
+        "powering-down"
+      ]
+    },
+    "next": {
+      "type": "string",
+      "minLength": 1
+    },
+    "holdSeconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "newClips": {
+      "type": "array",
+      "items": {
+        "$ref": "https://avatars.bible-strong.app/clip.schema.json"
+      }
+    }
+  },
+  "dependentRequired": {
+    "holdSeconds": ["next"]
+  }
+}

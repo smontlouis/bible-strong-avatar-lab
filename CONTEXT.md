@@ -38,17 +38,32 @@ was. It has the shape of a catalogue Clip and a name no catalogue Clip has. Cust
 by the Studio beside the Avatars, not inside one: every Avatar plays them. The runtime packages
 do not know them yet, and no State draws them. Shown as “My clips”.
 
+### Custom State
+
+A State a creator keeps in the Studio, saved from a Draft, beside the catalogue's States, which
+stay read-only. It draws catalogue Clips and Custom Clips by one of the three Rules, may hold a
+Face and turn the body into a Spinner, and hands over to any State. Its name is not a catalogue
+State's nor an Alias. Shown as "My states".
+
 ### Draft
 
-The Clip being made, before it is saved as a Custom Clip: a new Clip, a copy, a saved Custom Clip
-opened again, or a Clip opened from a link. A Draft lives in the address of the page, not in the
-browser's storage: every change rewrites the address, and a new address changes the Draft. It is
-how a person and an agent work on the same Clip. There is one Draft at a time.
+The Clip, State or Character being made, before it is saved: a new one, a copy, a saved one opened
+again, or one opened from a link. A Draft lives in the address of the page, not in the browser's
+storage: every change rewrites the address, and a new address changes the Draft. It is how a
+person and an agent work on the same thing. There is one Draft of each kind at a time; the address
+holds the Draft of the tab shown. A State Draft may bring new Clips of its own, saved with it. A
+Character Draft is an Avatar marked as a draft until it is saved among the Avatars.
+
+### Run
+
+What a State does over time from the moment the avatar enters it, as an engine with a fixed seed
+plays it: each play of a Clip, each Join, the hand-over and what follows. Shown with each State.
 
 ### Sheet
 
-A Clip drawn at every frame of a rate, side by side, with the curves of its tracks: the whole Clip
-in one picture, read the way an animator checks spacing. Avoid “filmstrip” and “storyboard”.
+A Clip, or a State's Run, drawn at every frame of a rate, side by side, with the curves of its
+tracks: the whole motion in one picture, read the way an animator checks spacing. A Character's
+sheet shows it from every side and with every Face. Avoid “filmstrip” and “storyboard”.
 
 ### Key
 

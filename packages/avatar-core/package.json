@@ -1,6 +1,6 @@
 {
   "name": "@bible-strong/avatar-core",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Framework-independent runtime for Bible Strong procedural avatars.",
   "keywords": [
     "avatar",

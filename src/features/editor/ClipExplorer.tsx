@@ -1,6 +1,7 @@
 import {
   clipNames,
   clips,
+  engineClipOf,
   pauseEngine,
   playEngineClip,
   resolveFaceName,
@@ -39,6 +40,8 @@ import { Button } from '@/components/ui/button'
 import { SectionCombobox } from '@/components/ui/section-combobox'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
 import { ClipEditor } from '@/features/editor/ClipEditor'
+import type { LinkKind } from '@/features/editor/clipLink'
+import { StateEditor } from '@/features/editor/StateEditor'
 import { trackOrder, type TrackName } from '@/features/editor/clipLibrary'
 import type { StageStatus } from '@/features/editor/Stage'
 import type { Editor } from '@/features/editor/useEditor'
@@ -665,6 +668,33 @@ export function ClipTimeline({
   )
 }
 
+/** What was wrong with the last link of a kind that could not be opened. */
+export function LinkProblemNote({ editor, kind }: { editor: Editor; kind: LinkKind }) {
+  const { t, clipLibrary } = editor
+  const problem = clipLibrary.linkProblem
+  if (!problem || problem.kind !== kind) return null
+  return (
+    <div
+      className="mx-1.5 mb-1.5 flex items-start gap-2 rounded-lg bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
+      data-link-problem={`${problem.path}: ${problem.message}`}
+    >
+      <p className="flex-1">
+        {t('Le lien ne contient pas un document valide.')}{' '}
+        <code className="font-mono text-[0.7rem]">
+          {problem.path}: {problem.message}
+        </code>
+      </p>
+      <button
+        type="button"
+        aria-label={t('Fermer')}
+        onClick={() => clipLibrary.setLinkProblem(null)}
+      >
+        <X className="size-3.5" />
+      </button>
+    </div>
+  )
+}
+
 // A surface of the inspector, as the Studio's cards draw them, with room of its own.
 const surface = 'rounded-2xl border border-border bg-card shadow-[0_4px_14px_rgb(24_28_35/5%)]'
 
@@ -812,26 +842,7 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
         {importError && (
           <p className="px-3 pb-2 text-xs text-destructive">{t('Ce fichier n’est pas un clip.')}</p>
         )}
-        {clipLibrary.linkProblem && (
-          <div
-            className="mx-1.5 mb-1.5 flex items-start gap-2 rounded-lg bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
-            data-link-problem={`${clipLibrary.linkProblem.path}: ${clipLibrary.linkProblem.message}`}
-          >
-            <p className="flex-1">
-              {t('Le lien ne contient pas un clip valide.')}{' '}
-              <code className="font-mono text-[0.7rem]">
-                {clipLibrary.linkProblem.path}: {clipLibrary.linkProblem.message}
-              </code>
-            </p>
-            <button
-              type="button"
-              aria-label={t('Fermer')}
-              onClick={() => clipLibrary.setLinkProblem(null)}
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
-        )}
+        <LinkProblemNote editor={editor} kind="clip" />
         {clip && !custom && (
           <div className="flex items-baseline gap-3 px-3 py-2">
             <span className="shrink-0 text-sm font-medium text-muted-foreground">
@@ -879,20 +890,47 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
 }
 
 export function StatesPanel({ editor, status }: { editor: Editor; status: StageStatus }) {
-  const { t, doing, setDoing, setPlaying, engine } = editor
+  const { t, doing, setDoing, setPlaying, engine, clipLibrary } = editor
+  const file = useRef<HTMLInputElement>(null)
+  const [importError, setImportError] = useState(false)
   // The state left for one of its clips: it stays shown until it is taken up again.
   const [left, setLeft] = useState<string | null>(null)
   const inspecting = left !== null && 'clip' in doing
-  const name = inspecting ? left : (status.state ?? ('state' in doing ? doing.state : null))
-  const state = name ? states[name] : undefined
-  const clip = clips[status.clip]
+  const onDraft = 'state' in doing && doing.draft === true
+  // A draft asked for comes first: the stage reports what plays a few frames late. Otherwise
+  // the state shown is the one that plays, which may have been handed over to.
+  const name = inspecting
+    ? left
+    : onDraft && 'state' in doing
+      ? doing.state
+      : (status.state ?? ('state' in doing ? doing.state : null))
+  const draftState = onDraft ? clipLibrary.stateDraft?.document.state : undefined
+  const customState =
+    draftState ??
+    (name && clipLibrary.isCustomState(name)
+      ? clipLibrary.states.find(item => item.name === name)
+      : undefined)
+  const state = name && !customState ? states[name] : undefined
+  const clip = engineClipOf(engine.current, status.clip)
+  const draftItem = clipLibrary.stateDraft
+    ? `${clipLibrary.stateDraft.document.state.name} (${t('brouillon')})`
+    : null
+  /** Open the state draft just made, playing. */
+  const open = (made: string | null) => {
+    if (!made) return
+    setLeft(null)
+    setPlaying(true)
+    setDoing({ state: made, draft: true })
+  }
 
   /** Leave the state for one of its clips, which then plays alone, round and round. */
   const inspect = (item: string, from?: number) => {
     if (!name) return
     setLeft(name)
-    playEngineClip(engine.current, clips[item], {
-      phase: from === undefined ? 0 : from / clips[item].duration,
+    const chosen = engineClipOf(engine.current, item)
+    if (!chosen) return
+    playEngineClip(engine.current, chosen, {
+      phase: from === undefined ? 0 : from / chosen.duration,
       transition: 'cut',
     })
     setDoing({ clip: item })
@@ -1030,20 +1068,93 @@ export function StatesPanel({ editor, status }: { editor: Editor; status: StageS
       <div className={`${surface} flex flex-col gap-0.5 p-1.5`}>
         <SectionCombobox
           label={t('État')}
-          value={inspecting ? null : name}
-          sections={stateSections}
-          detail={item =>
-            states[item].morph
-              ? (spinnerOfMode[states[item].morph!] ?? states[item].morph)
-              : clipsOfState(item).length > 1
-                ? `${clipsOfState(item).length} clips`
-                : undefined
-          }
+          value={inspecting ? null : onDraft ? draftItem : name}
+          sections={[
+            ...(draftItem ? [{ value: t('Brouillon'), items: [draftItem] }] : []),
+            ...(clipLibrary.states.length
+              ? [{ value: t('Mes états'), items: clipLibrary.states.map(item => item.name) }]
+              : []),
+            ...stateSections,
+          ]}
+          detail={item => {
+            const found =
+              item === draftItem
+                ? clipLibrary.stateDraft?.document.state
+                : clipLibrary.findState(item)
+            if (!found) return undefined
+            if (found.morph) return spinnerOfMode[found.morph] ?? found.morph
+            const distinct = new Set(found.clips).size
+            return distinct > 1 ? `${distinct} clips` : undefined
+          }}
           placeholder={t('Rechercher un état…')}
           empty={t('Aucun état')}
-          onPick={takeUp}
+          onPick={item => {
+            if (item === draftItem && clipLibrary.stateDraft) {
+              open(clipLibrary.stateDraft.document.state.name)
+            } else takeUp(item)
+          }}
         />
+        <div className="flex flex-wrap items-center gap-1.5 px-1.5 pt-1 pb-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            onClick={() => open(clipLibrary.createState(t('nouvel-etat')))}
+          >
+            <Plus /> {t('Nouvel état')}
+          </Button>
+          {state && name && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              title={t('L’état du catalogue reste tel quel : la copie s’ouvre en brouillon.')}
+              onClick={() => open(clipLibrary.duplicateState(name, `${name}-${t('copie')}`))}
+            >
+              <Copy /> {t('Dupliquer pour modifier')}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" type="button" onClick={() => file.current?.click()}>
+            <Upload /> {t('Importer un .state.json')}
+          </Button>
+          <input
+            ref={file}
+            className="hidden"
+            type="file"
+            accept="application/json,.json"
+            aria-label={t('Importer un .state.json')}
+            onChange={async event => {
+              const chosen = event.currentTarget.files?.[0]
+              event.currentTarget.value = ''
+              if (!chosen) return
+              const made = clipLibrary.importStateText(await chosen.text())
+              setImportError(made === null)
+              open(made)
+            }}
+          />
+          <a
+            className="ml-auto inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            href="./state-authoring.md"
+            target="_blank"
+            rel="noreferrer"
+            title={t('Le format des états et leur lien, pour les agents qui en écrivent')}
+          >
+            <BookOpen className="size-3.5" /> {t('Guide')}
+          </a>
+        </div>
+        {importError && (
+          <p className="px-3 pb-2 text-xs text-destructive">{t('Ce fichier n’est pas un état.')}</p>
+        )}
+        <LinkProblemNote editor={editor} kind="state" />
       </div>
+      {customState && !inspecting && (
+        <StateEditor
+          editor={editor}
+          state={customState}
+          stateRef={draftState ? { draft: true } : { name: customState.name }}
+          key={draftState ? 'draft' : customState.name}
+        />
+      )}
       {tiles && (
         <div className={`${surface} p-3`}>
           {clip ? (

@@ -10,11 +10,9 @@ import {
   ArrowRight,
   Copy,
   Download,
-  Link2,
   Pencil,
   Plus,
   Redo2,
-  Save,
   Trash2,
   Undo2,
 } from 'lucide-react'
@@ -67,6 +65,7 @@ import {
 } from '@/features/editor/clipLibrary'
 import { NumericField } from '@/features/editor/controls'
 import { ClipSheet } from '@/features/editor/ClipSheet'
+import { DraftBanner } from '@/features/editor/DraftBanner'
 import { EaseEditor } from '@/features/editor/EaseEditor'
 import type { ClipRef } from '@/features/editor/useClipLibrary'
 import type { Editor } from '@/features/editor/useEditor'
@@ -120,7 +119,6 @@ function ClipSettings({
   const isDraft = 'draft' in clipRef
   const [name, setName] = useState(clip.name)
   const [leaving, setLeaving] = useState<'delete' | 'discard' | null>(null)
-  const [copied, setCopied] = useState(false)
   useEffect(() => setName(clip.name), [clip.name])
   // A draft opened from a saved clip may keep that clip's name: saving puts it in its place.
   const source = isDraft ? clipLibrary.draft?.source : undefined
@@ -155,36 +153,11 @@ function ClipSettings({
   return (
     <div className={`${surface} @container flex flex-col gap-3 p-3`}>
       {isDraft && (
-        <div className="-mx-3 -mt-3 flex flex-wrap items-center gap-2 rounded-t-2xl border-b border-border bg-secondary/60 px-3 py-2">
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold text-secondary-foreground ring-1 ring-ring/40">
-            {t('Brouillon')}
-          </span>
-          <span className="min-w-0 flex-1 text-[0.7rem] text-muted-foreground">
-            {source
-              ? `${t('Enregistrer remplace')} ${source}.`
-              : t('Il vit dans l’adresse de la page tant qu’il n’est pas enregistré.')}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            type="button"
-            title={t('Copier l’adresse du brouillon, à donner à un agent')}
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(window.location.href)
-                setCopied(true)
-                window.setTimeout(() => setCopied(false), 1500)
-              } catch {
-                setCopied(false)
-              }
-            }}
-          >
-            <Link2 /> {t(copied ? 'Lien copié' : 'Copier le lien')}
-          </Button>
-          <Button size="sm" type="button" onClick={() => openSaved(clipLibrary.saveDraft())}>
-            <Save /> {t('Enregistrer dans mes clips')}
-          </Button>
-        </div>
+        <DraftBanner
+          note={source ? `${t('Enregistrer remplace')} ${source}.` : undefined}
+          saveLabel="Enregistrer dans mes clips"
+          onSave={() => openSaved(clipLibrary.saveDraft())}
+        />
       )}
       <div className="flex items-center gap-2">
         <Input
