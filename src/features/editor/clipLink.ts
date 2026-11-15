@@ -73,21 +73,60 @@ export const readStudioLink = (hash: string): StudioLink | null => {
     }
   }
 
+  const parsed = parseLinkJson(raw)
+  return parsed.ok
+    ? { kind: found.kind, value: parsed.value, view, avatar }
+    : {
+        kind: found.kind,
+        problem: { path: found.kind, message: parsed.message },
+        view,
+        avatar,
+      }
+}
+
+// Typographic quotes that an app or the system's typing puts in place of straight ones.
+const curlyQuotes = /[\u201C\u201D\u201E\u201F\u2033\u00AB\u00BB]/g
+
+/**
+ * The JSON a link carries, read as kindly as can be: a link may reach the Studio encoded once
+ * more by an app that passed it on (`%2522` for `"`), or with its quotes turned typographic by
+ * a chat or a notes app. Each reading is tried in turn; the first that parses is the JSON.
+ */
+export const parseLinkJson = (
+  raw: string
+): { ok: true; value: unknown } | { ok: false; message: string } => {
+  const readings: string[] = []
   let text = raw
-  try {
-    text = decodeURIComponent(raw)
-  } catch {
-    // A `%` the writer left as it is: the text is read as it stands.
-  }
-  try {
-    return { kind: found.kind, value: JSON.parse(text), view, avatar }
-  } catch (error) {
-    return {
-      kind: found.kind,
-      problem: { path: found.kind, message: `not JSON (${(error as Error).message})` },
-      view,
-      avatar,
+  readings.push(text)
+  for (let level = 0; level < 3; level += 1) {
+    let next: string
+    try {
+      next = decodeURIComponent(text)
+    } catch {
+      // A `%` the writer left as it is: the text is read as it stands.
+      break
     }
+    if (next === text) break
+    readings.push(next)
+    text = next
+  }
+  // The most decoded reading first: the usual link is encoded once.
+  const tries = [...readings.slice(1).reverse(), readings[0]].flatMap(reading => {
+    const straight = reading.replace(curlyQuotes, '"')
+    return straight === reading ? [reading] : [reading, straight]
+  })
+  let firstError = ''
+  for (const attempt of tries) {
+    try {
+      return { ok: true, value: JSON.parse(attempt) }
+    } catch (error) {
+      firstError ||= (error as Error).message
+    }
+  }
+  const shown = readings.at(-1)!.slice(0, 32)
+  return {
+    ok: false,
+    message: `not JSON (${firstError}); the link starts ${JSON.stringify(shown)}. Was it cut, or changed on the way?`,
   }
 }
 
