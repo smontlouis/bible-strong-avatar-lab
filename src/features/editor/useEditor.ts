@@ -27,14 +27,15 @@ import {
   defaultSnapshotComposition,
   type SnapshotComposition,
 } from '@/features/editor/snapshotComposition'
+import { useClipLibrary } from '@/features/editor/useClipLibrary'
 import { restExpression, type PhotoTool, type SnapshotBackground } from '@/features/editor/utils'
 import { useStudioLanguage } from '@/i18n'
 
 export const editorTabs = ['avatars', 'pose', 'states', 'clips', 'export'] as const
 export type EditorTab = (typeof editorTabs)[number]
 
-/** What the avatar on the stage does: a state, or one clip. */
-export type Doing = { state: string } | { clip: string }
+/** What the avatar on the stage does: a state, or one clip, which may be the draft. */
+export type Doing = { state: string } | { clip: string; draft?: boolean }
 
 /**
  * The pose set by hand. The head's turn is kept as the three angles the rotation gizmo works
@@ -58,6 +59,8 @@ const DEPTH_LINGER_MS = 2500
 export const useEditor = () => {
   const { t, language } = useStudioLanguage()
   const [library, setLibrary] = useState<AvatarLibrary>(() => loadLibrary())
+  // The clips made in the Studio, kept apart from the avatars: every avatar plays them.
+  const clipLibrary = useClipLibrary()
   const [tab, setTab] = useState<EditorTab>('avatars')
   // Whether the avatar on the stage is being built: its body, colours and features.
   const [building, setBuilding] = useState(false)
@@ -224,6 +227,7 @@ export const useEditor = () => {
     setBuilding,
     engine,
     character,
+    clipLibrary,
     avatars,
     activeAvatar,
     selectAvatar,

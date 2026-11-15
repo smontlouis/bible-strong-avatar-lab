@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+  clips,
   createAvatarEngine,
   setEnginePose,
   setEngineState,
@@ -10,7 +11,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 
 import { avatarFromSource, characterOfAvatar } from '@/features/editor/avatar'
+import { readClipLink } from '@/features/editor/clipLink'
 import { loadLibrary } from '@/features/editor/document'
+import { LINK_WRITE_MS } from '@/features/editor/useClipLink'
 import { Editor } from '@/features/editor/Editor'
 import { pictureSvg } from '@/features/editor/picture'
 import { StudioLanguageProvider } from '@/i18n'
@@ -34,6 +37,7 @@ beforeEach(() => {
   pending = new Map()
   clock = 0
   window.localStorage.clear()
+  window.history.replaceState(null, '', '/')
   window.localStorage.setItem('avatar-studio-language', 'fr')
   window.matchMedia = ((query: string) => ({
     matches: false,
@@ -60,6 +64,7 @@ const press = (element: Element) => {
 }
 // The popup opens and closes on frames and timers of its own: both are given time to run.
 const settle = () => act(() => new Promise<void>(resolve => setTimeout(resolve, 30)))
+const wait = (ms: number) => act(() => new Promise<void>(resolve => setTimeout(resolve, ms)))
 const pick = async (label: string, option: string) => {
   press(screen.getByRole('combobox', { name: label }))
   frames(2)
@@ -123,6 +128,128 @@ describe('the editor', () => {
     )
     expect(points).toHaveLength(18)
     expect(getByRole('button', { name: 'État reading' })).toBeTruthy()
+  })
+
+  it('makes a clip as a draft in the address, and keeps it once saved', async () => {
+    const stored = () =>
+      (JSON.parse(window.localStorage.getItem('bible-strong-avatar-studio-clips-v1') ?? 'null')
+        ?.clips ?? []) as { name: string; tracks: Record<string, { t: number; v: number[] }[]> }[]
+    const view = open()
+    fireEvent.click(view.getByRole('button', { name: 'Clips' }))
+    fireEvent.click(view.getByRole('button', { name: 'Nouveau clip' }))
+    frames(4)
+    expect((view.getByRole('textbox', { name: 'Nom du clip' }) as HTMLInputElement).value).toBe(
+      'Nouveau clip'
+    )
+    expect(view.getByText('Brouillon', { selector: 'span' })).toBeTruthy()
+    fireEvent.click(view.getByRole('button', { name: 'Ajouter une image clé · Rotation' }))
+    frames(2)
+    // The key just added is picked: its numbers can be typed.
+    const y = view.getByRole('spinbutton', { name: 'Y' })
+    fireEvent.focus(y)
+    fireEvent.change(y, { target: { value: '90' } })
+    fireEvent.blur(y)
+    frames(2)
+    await wait(LINK_WRITE_MS + 50)
+    // A draft is not kept in the browser: the address holds it.
+    expect(stored()).toEqual([])
+    const linked = readClipLink(window.location.hash)
+    expect(linked?.clip?.tracks.rotation?.[0].v).toEqual([0, 90, 0])
+
+    fireEvent.click(view.getByRole('button', { name: 'Annuler' }))
+    frames(2)
+    await wait(LINK_WRITE_MS + 50)
+    expect(readClipLink(window.location.hash)?.clip?.tracks.rotation?.[0].v).toEqual([0, 0, 0])
+
+    fireEvent.click(view.getByRole('button', { name: 'Enregistrer dans mes clips' }))
+    frames(2)
+    await wait(LINK_WRITE_MS + 50)
+    expect(stored().map(clip => clip.name)).toEqual(['Nouveau clip'])
+    expect(window.location.hash).toBe('')
+  })
+
+  it('opens a clip from the address as a draft, and takes up a new address at once', async () => {
+    const hop = {
+      name: 'Hop',
+      duration: 1,
+      tracks: {
+        position: [
+          { t: 0, v: [0, 0] },
+          { t: 0.5, v: [0, 0.2] },
+          { t: 1, v: [0, 0] },
+        ],
+      },
+    }
+    window.history.replaceState(null, '', `/#clip=${JSON.stringify(hop)}`)
+    const view = open()
+    expect(view.getByRole('heading', { level: 1 }).textContent).toBe('Clips')
+    expect((view.getByRole('textbox', { name: 'Nom du clip' }) as HTMLInputElement).value).toBe(
+      'Hop'
+    )
+    expect(
+      view
+        .getAllByRole('button')
+        .filter(button => button.getAttribute('aria-label')?.startsWith('Position · '))
+    ).toHaveLength(3)
+
+    // An agent sharing the tab writes another version of the clip into the address.
+    act(() => {
+      window.history.replaceState(
+        null,
+        '',
+        `/#view=frames&fps=12&clip=${encodeURIComponent(JSON.stringify({ ...hop, duration: 0.5 }))}`
+      )
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+    frames(4)
+    // The sheet shows every twelfth of a second, and the last moment of the clip.
+    const cells = view
+      .getAllByRole('button')
+      .filter(button => /^Image \d+ · /.test(button.getAttribute('aria-label') ?? ''))
+    expect(cells).toHaveLength(7)
+    expect(
+      view.getByRole('button', { name: '12 images par seconde' }).getAttribute('aria-pressed')
+    ).toBe('true')
+  })
+
+  it('shows a clip from a link on the avatar the link names, and writes it back', async () => {
+    const nod = { name: 'Nod', duration: 1, tracks: { rotation: [{ t: 0, v: [0, 0, 0] }] } }
+    window.history.replaceState(null, '', `/#avatar=freddy&clip=${JSON.stringify(nod)}`)
+    const view = open()
+    expect(view.getByRole('textbox', { name: 'Nom du clip' })).toBeTruthy()
+    const { library } = JSON.parse(window.localStorage.getItem('bible-strong-avatar-studio-v2')!)
+    const active = library.avatars.find(
+      (avatar: { id: string }) => avatar.id === library.activeAvatarId
+    )
+    expect(active.name).toBe('Freddy')
+    await wait(LINK_WRITE_MS + 50)
+    expect(readClipLink(window.location.hash)?.avatar).toBe('freddy')
+  })
+
+  it('says what is wrong with a link that holds no valid clip', () => {
+    window.history.replaceState(
+      null,
+      '',
+      `/#clip=${JSON.stringify({ name: 'Bad', duration: 1, tracks: { rotation: [{ t: 0, v: [1] }] } })}`
+    )
+    const view = open()
+    expect(view.getByText(/tracks\.rotation\[0\]\.v: expected 3 numbers/)).toBeTruthy()
+  })
+
+  it('duplicates a catalogue clip into a draft, leaving the catalogue as it is', async () => {
+    const view = open()
+    fireEvent.click(view.getByRole('button', { name: 'Clips' }))
+    await pick('Clip', 'Done_A')
+    fireEvent.click(view.getByRole('button', { name: /Dupliquer pour modifier/ }))
+    frames(4)
+    expect((view.getByRole('textbox', { name: 'Nom du clip' }) as HTMLInputElement).value).toBe(
+      'Done_A copie'
+    )
+    expect(clips.Done_A.name).toBe('Done_A')
+    const keys = view
+      .getAllByRole('button')
+      .filter(button => button.getAttribute('aria-label')?.startsWith('Rotation · '))
+    expect(keys).toHaveLength(clips.Done_A.tracks.rotation!.length)
   })
 
   it('leaves a state for its clip when a keyframe is picked, until the state is resumed', async () => {

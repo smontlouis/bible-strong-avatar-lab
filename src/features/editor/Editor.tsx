@@ -54,6 +54,7 @@ import {
   type EditorTab,
 } from '@/features/editor/useEditor'
 import { BodyConstructionAccordion } from '@/features/editor/BodyConstruction'
+import { useClipLink } from '@/features/editor/useClipLink'
 import { PhotoStageFrame } from '@/features/editor/PhotoStageFrame'
 import { StudioIdentity } from '@/features/editor/StudioIdentity'
 import { useStudioLanguage } from '@/i18n'
@@ -439,6 +440,7 @@ function PosePanel({ editor }: { editor: EditorState }) {
 
 export function Editor() {
   const editor = useEditor()
+  useClipLink(editor)
   const { t, tab, setTab, activeAvatar, character, building, engine, doing, playing } = editor
   const { language, setLanguage } = useStudioLanguage()
   const [status, setStatus] = useState<StageStatus>(emptyStatus)

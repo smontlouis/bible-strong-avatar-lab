@@ -1,6 +1,5 @@
 import {
   advanceEngine,
-  clips,
   engineFrame,
   pauseEngine,
   playEngineClip,
@@ -16,8 +15,11 @@ import {
   setEngineGazeAlways,
   setEnginePose,
   setEngineState,
+  seekEngine,
   stopEngine,
+  type AvatarEngine,
   type CharacterScene,
+  type ClipDefinition,
   type Expression,
 } from '@bible-strong/avatar-core'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -58,6 +60,22 @@ const BUILD_POSE = { rotation: [0, 0, 0], position: [0, 0], zoom: 0.6 } as const
 const DEPTH_TURN = [-12, 38, 0] as const
 const STATUS_EVERY_FRAMES = 6
 
+/**
+ * Put the new version of the clip that plays in its place, at the time it was at: a clip being
+ * edited is seen as it changes, without starting again or joining to itself.
+ */
+const swapEngineClip = (engine: AvatarEngine, clip: ClipDefinition) => {
+  const player = engine.player
+  if (engine.state !== null || player.clip?.name !== clip.name || player.clip === clip) return
+  if (player.join) {
+    player.join.target = clip
+    player.clip = clip
+    return
+  }
+  player.clip = clip
+  seekEngine(engine, Math.min(player.time, clip.duration))
+}
+
 export function Stage({
   editor,
   onStatus,
@@ -90,7 +108,9 @@ export function Stage({
     tab,
     showsDepth,
     handover,
+    clipLibrary,
   } = editor
+  const doingClip = 'clip' in doing ? clipLibrary.find(doing.clip, doing.draft) : undefined
   const svg = useRef<SVGSVGElement>(null)
   const [scene, setScene] = useState<CharacterScene | null>(null)
   const speedRef = useRef(speed)
@@ -115,14 +135,22 @@ export function Stage({
     const anew = startedRun.current !== run
     startedRun.current = run
     if ('state' in doing) setEngineState(engine.current, doing.state)
-    else if (clips[doing.clip]) {
+    else if (doingClip) {
       // A clip the engine already plays alone is left where it is: it was started by hand, at
       // a time of its own.
       const alone = engine.current.state === null && engine.current.player.clip?.name === doing.clip
+      // Paused, a join would never end: the clip is shown at once.
       if (!alone || anew)
-        playEngineClip(engine.current, clips[doing.clip], { transition: anew ? 'cut' : 'join' })
+        playEngineClip(engine.current, doingClip, {
+          transition: anew || !playing ? 'cut' : 'join',
+        })
     }
+    // Only a change of what is done starts it: a clip that is edited is swapped below.
   }, [doing, run, engine, activeAvatar.id])
+
+  useEffect(() => {
+    if (doingClip) swapEngineClip(engine.current, doingClip)
+  }, [doingClip, engine])
 
   // Stopped, the avatar comes to rest and stays there.
   useEffect(() => {

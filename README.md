@@ -80,6 +80,17 @@ integration. It ships in the npm tarball, so it is readable in `node_modules`. T
 instructions for AI** copies that package's README, with the avatar's file and names in its
 examples.
 
+### For agents
+
+The Studio serves its documentation as plain text for coding agents, built from the sources it
+describes: [`/llms.txt`](https://avatars.bible-strong.app/llms.txt) (the index),
+`/llms-full.txt` (every guide in one file), `/docs/avatar-*.md` (the package READMEs),
+`/characters/*.avatar.json` (the Studio's own characters), `/catalogue/clips.json` and
+`/catalogue/states.json`. [`/clip-authoring.md`](./public/clip-authoring.md) teaches how to write
+a clip and hand it to the Studio as a link (`#clip=…`), which opens it as a draft; the draft lives
+in the address, so a person and an agent sharing a tab work on the same clip.
+`src/agentDocs/` makes these pages.
+
 ### Photo Mode
 
 Photo Mode exports the avatar on the stage as SVG or PNG. You can choose the resolution and use a

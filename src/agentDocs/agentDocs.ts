@@ -1,0 +1,78 @@
+import { clips, states, stateGroups, stateAliases } from '@bible-strong/avatar-core'
+
+import { characterOfAvatar, parseAvatarLibrary, type AvatarLibrary } from '@/features/editor/avatar'
+import defaultLibrary from '@/features/editor/defaultLibrary.json'
+
+import { localized } from './origin'
+
+// The documentation the Studio serves to agents, made from the sources it describes: the package
+// READMEs, the clip guide and schema, the catalogue and the Studio's own characters. Nothing is
+// copied by hand, so nothing drifts. The Vite plugin reads the files and serves or writes what
+// this returns, path by path.
+
+export type AgentDocSources = {
+  /** Where the Studio is served, without a trailing slash. */
+  origin: string
+  /** The index, with `{{origin}}` and `{{characters}}` to fill. */
+  index: string
+  /** The README of each package, by its short name (`avatar-react`…). */
+  readmes: Record<string, string>
+  clipGuide: string
+  clipSchema: string
+}
+
+const PACKAGE_ORDER = ['avatar-react', 'avatar-react-native', 'avatar-web', 'avatar-core']
+
+const slugOf = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'avatar'
+
+/** The characters the Studio comes with, each as the file its Export tab downloads. */
+export const bundledCharacters = () => {
+  const library = structuredClone(defaultLibrary) as unknown as AvatarLibrary
+  return parseAvatarLibrary(library, library).avatars.map(avatar => ({
+    name: avatar.name,
+    file: `${slugOf(avatar.name)}.avatar.json`,
+    character: characterOfAvatar(avatar),
+  }))
+}
+
+const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`
+
+export const agentDocs = (sources: AgentDocSources): Record<string, string> => {
+  const { origin } = sources
+  const characters = bundledCharacters()
+  const characterList = characters
+    .map(item => `- [${item.name}](${origin}/characters/${item.file})`)
+    .join('\n')
+  const index = sources.index
+    .replaceAll('{{origin}}', origin)
+    .replace('{{characters}}', characterList)
+    .trimEnd()
+
+  const files: Record<string, string> = { 'llms.txt': `${index}\n` }
+  for (const name of PACKAGE_ORDER) {
+    if (sources.readmes[name]) files[`docs/${name}.md`] = sources.readmes[name]
+  }
+  for (const item of characters) files[`characters/${item.file}`] = json(item.character)
+  files['catalogue/clips.json'] = json(clips)
+  files['catalogue/states.json'] = json({ states, groups: stateGroups, aliases: stateAliases })
+
+  // Everything an agent reads, in one file: the index, then each guide in full.
+  const section = (path: string, body: string) =>
+    `\n\n---\n\n<!-- ${origin}/${path} -->\n\n${body.trim()}\n`
+  files['llms-full.txt'] = [
+    `${index}\n`,
+    ...PACKAGE_ORDER.filter(name => sources.readmes[name]).map(name =>
+      section(`docs/${name}.md`, sources.readmes[name])
+    ),
+    section('clip-authoring.md', localized(sources.clipGuide, origin)),
+    section(
+      'clip.schema.json',
+      `# Clip schema\n\n\`\`\`json\n${localized(sources.clipSchema, origin).trim()}\n\`\`\``
+    ),
+  ].join('')
+  return files
+}

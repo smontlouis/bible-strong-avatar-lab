@@ -16,8 +16,12 @@ import {
   type ClipKey,
 } from '@bible-strong/avatar-core'
 import {
+  BookOpen,
   ChevronRight,
   Clock,
+  Copy,
+  Plus,
+  Upload,
   Link2,
   LoaderCircle,
   Shuffle,
@@ -34,18 +38,17 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { SectionCombobox } from '@/components/ui/section-combobox'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
+import { ClipEditor } from '@/features/editor/ClipEditor'
+import { trackOrder, type TrackName } from '@/features/editor/clipLibrary'
 import type { StageStatus } from '@/features/editor/Stage'
 import type { Editor } from '@/features/editor/useEditor'
 
 // A clip is read here, not written: its tracks, their keys, the curve each number follows and
 // the easing that leads from a key to the next.
 
-type TrackName = 'position' | 'rotation' | 'squash' | 'scale' | 'lids' | 'expression'
 type NumericKey = ClipKey<readonly number[]>
 
-const trackOrder: TrackName[] = ['position', 'rotation', 'squash', 'scale', 'lids', 'expression']
-
-const trackMeta: Record<
+export const trackMeta: Record<
   TrackName,
   { label: string; color: string; parts: string[]; unit: string; hint: string }
 > = {
@@ -75,14 +78,14 @@ const trackMeta: Record<
   expression: { label: 'Visage', color: '#4a5568', parts: [], unit: '', hint: '' },
 }
 
-const partColors = ['#c53030', '#2f855a', '#2b6cb0']
+export const partColors = ['#c53030', '#2f855a', '#2b6cb0']
 const LINEAR: ClipEase = [0, 0, 1, 1]
 const CURVE_SAMPLES = 96
 const speeds = [0.25, 0.5, 1, 2]
 
 const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(high, value))
-const seconds = (value: number) => `${value.toFixed(2)} s`
-const short = (value: number) => {
+export const seconds = (value: number) => `${value.toFixed(2)} s`
+export const short = (value: number) => {
   const text = value.toFixed(Math.abs(value) >= 100 ? 1 : 3)
   return text.replace(/\.?0+$/, '') || '0'
 }
@@ -91,7 +94,7 @@ const eyebrow = 'eyebrow'
 const quiet = 'text-xs text-muted-foreground'
 
 /** One number of a track over the whole clip, with its keys as points that can be picked. */
-function Curve({
+export function Curve({
   keys,
   part,
   label,
@@ -129,7 +132,7 @@ function Curve({
   // The plot sits on the same columns as the lanes of the timeline, so that a time is at the
   // same place across in both and the playhead runs through them as one line.
   return (
-    <div className="grid grid-cols-[5.5rem_1fr] items-stretch">
+    <div className="grid grid-cols-[var(--label,5.5rem)_1fr] items-stretch">
       <div className="flex flex-col justify-between py-1 pr-2 pl-2.5 text-[0.6rem] leading-none text-muted-foreground tabular-nums">
         <span className="flex items-baseline justify-between gap-1">
           <strong className="text-sm" style={{ color }}>
@@ -210,33 +213,18 @@ function Easing({ ease }: { ease: ClipEase }) {
 }
 
 /**
- * The timeline of a clip: where the engine is in it, its tracks and their keys. Dragging on it,
- * or picking a key, stops the clip and shows it at that time. `live` is the timeline of a clip
- * a state is playing: the state goes on from wherever the clip is left.
+ * Where the engine is in a clip, kept on the timeline as it plays: `--at` on `root`, the time in
+ * `clock`. `seek` stops the clip and shows it at a time; `toggle` plays or pauses it. A clip that
+ * does not loop stays on its last picture.
  */
-export function ClipTimeline({
-  editor,
-  clip,
-  live = false,
-  onTouch,
-  header,
-}: {
-  editor: Editor
-  clip: ClipDefinition
-  live?: boolean
-  /** Drawn above the timeline, inside it: it can follow the playhead through `--at`. */
-  header?: ReactNode
-  /** Called before the timeline of a state's clip is moved by hand. */
-  onTouch?: () => void
-}) {
-  const { t, engine, playing, setPlaying, speed, setSpeed, character } = editor
+export const useClipPlayback = (
+  editor: Editor,
+  clip: ClipDefinition,
+  { live = false, loops = true, onTouch }: { live?: boolean; loops?: boolean; onTouch?: () => void }
+) => {
+  const { engine, playing, setPlaying } = editor
   const root = useRef<HTMLDivElement>(null)
   const clock = useRef<HTMLSpanElement>(null)
-  const lane = useRef<HTMLDivElement>(null)
-  const dragging = useRef(false)
-  const [open, setOpen] = useState<TrackName[]>([])
-  const [selected, setSelected] = useState<{ track: TrackName; index: number } | null>(null)
-  const [loops, setLoops] = useState(true)
   const once = useRef(false)
   once.current = !live && !loops
   const stop = useRef(() => {})
@@ -276,15 +264,124 @@ export function ClipTimeline({
     pauseEngine(engine.current)
     seekEngine(engine.current, clamp(time, 0, clip.duration))
   }
-  const timeAt = (clientX: number) => {
-    const box = lane.current!.getBoundingClientRect()
-    return clamp((clientX - box.left) / (box.width || 1), 0, 1) * clip.duration
-  }
   const toggle = () => {
     if (!playing && once.current && engine.current.player.time >= clip.duration - 0.01) {
       seekEngine(engine.current, 0)
     }
     setPlaying(!playing)
+  }
+  return { root, clock, seek, toggle }
+}
+
+/** Play and pause, back to the start, the time, the speed and, for a clip alone, the loop. */
+export function ClipTransport({
+  editor,
+  clock,
+  toggle,
+  seek,
+  loops,
+  setLoops,
+  children,
+}: {
+  editor: Editor
+  clock: React.RefObject<HTMLSpanElement | null>
+  toggle: () => void
+  seek: (time: number) => void
+  /** Whether the clip loops; `undefined` hides the choice. */
+  loops?: boolean
+  setLoops?: (loops: boolean) => void
+  /** More buttons, at the end of the bar. */
+  children?: ReactNode
+}) {
+  const { t, playing, speed, setSpeed } = editor
+  return (
+    <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
+      <Button
+        size="icon-sm"
+        type="button"
+        aria-label={t(playing ? 'Pause' : 'Lecture')}
+        onClick={toggle}
+      >
+        {playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        type="button"
+        aria-label={t('Début')}
+        onClick={() => seek(0)}
+      >
+        <SkipBack />
+      </Button>
+      <span className="px-1.5 font-mono text-[0.7rem] tabular-nums" ref={clock} />
+      <span className="hidden rounded-full bg-secondary px-2 py-0.5 text-[0.6rem] font-semibold text-secondary-foreground group-data-[joining=true]:inline">
+        {t('raccord')}
+      </span>
+      <div className="ml-auto flex items-center rounded-lg bg-background p-0.5 ring-1 ring-border">
+        {speeds.map(value => (
+          <button
+            type="button"
+            className={`h-6 rounded-md px-1.5 text-[0.65rem] font-semibold tabular-nums ${
+              speed === value
+                ? 'bg-secondary text-secondary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            aria-pressed={speed === value}
+            aria-label={`${t('Vitesse')} ×${value}`}
+            key={value}
+            onClick={() => setSpeed(value)}
+          >
+            {value}×
+          </button>
+        ))}
+      </div>
+      {loops !== undefined && (
+        <Button
+          variant={loops ? 'secondary' : 'ghost'}
+          size="icon-sm"
+          type="button"
+          aria-pressed={loops}
+          aria-label={t('Boucle')}
+          onClick={() => setLoops?.(!loops)}
+        >
+          <Repeat />
+        </Button>
+      )}
+      {children}
+    </div>
+  )
+}
+
+/**
+ * The timeline of a clip: where the engine is in it, its tracks and their keys. Dragging on it,
+ * or picking a key, stops the clip and shows it at that time. `live` is the timeline of a clip
+ * a state is playing: the state goes on from wherever the clip is left.
+ */
+export function ClipTimeline({
+  editor,
+  clip,
+  live = false,
+  onTouch,
+  header,
+}: {
+  editor: Editor
+  clip: ClipDefinition
+  live?: boolean
+  /** Drawn above the timeline, inside it: it can follow the playhead through `--at`. */
+  header?: ReactNode
+  /** Called before the timeline of a state's clip is moved by hand. */
+  onTouch?: () => void
+}) {
+  const { t, character } = editor
+  const lane = useRef<HTMLDivElement>(null)
+  const dragging = useRef(false)
+  const [open, setOpen] = useState<TrackName[]>([])
+  const [selected, setSelected] = useState<{ track: TrackName; index: number } | null>(null)
+  const [loops, setLoops] = useState(true)
+  const { root, clock, seek, toggle } = useClipPlayback(editor, clip, { live, loops, onTouch })
+  const timeAt = (clientX: number) => {
+    const box = lane.current!.getBoundingClientRect()
+    return clamp((clientX - box.left) / (box.width || 1), 0, 1) * clip.duration
   }
   const pick = (track: TrackName, index: number) => {
     const keys = clip.tracks[track]
@@ -312,59 +409,14 @@ export function ClipTimeline({
   return (
     <div className="group flex flex-col gap-3" ref={root} data-joining="false">
       {header}
-      <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
-        <Button
-          size="icon-sm"
-          type="button"
-          aria-label={t(playing ? 'Pause' : 'Lecture')}
-          onClick={toggle}
-        >
-          {playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          type="button"
-          aria-label={t('Début')}
-          onClick={() => seek(0)}
-        >
-          <SkipBack />
-        </Button>
-        <span className="px-1.5 font-mono text-[0.7rem] tabular-nums" ref={clock} />
-        <span className="hidden rounded-full bg-secondary px-2 py-0.5 text-[0.6rem] font-semibold text-secondary-foreground group-data-[joining=true]:inline">
-          {t('raccord')}
-        </span>
-        <div className="ml-auto flex items-center rounded-lg bg-background p-0.5 ring-1 ring-border">
-          {speeds.map(value => (
-            <button
-              type="button"
-              className={`h-6 rounded-md px-1.5 text-[0.65rem] font-semibold tabular-nums ${
-                speed === value
-                  ? 'bg-secondary text-secondary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              aria-pressed={speed === value}
-              aria-label={`${t('Vitesse')} ×${value}`}
-              key={value}
-              onClick={() => setSpeed(value)}
-            >
-              {value}×
-            </button>
-          ))}
-        </div>
-        {!live && (
-          <Button
-            variant={loops ? 'secondary' : 'ghost'}
-            size="icon-sm"
-            type="button"
-            aria-pressed={loops}
-            aria-label={t('Boucle')}
-            onClick={() => setLoops(!loops)}
-          >
-            <Repeat />
-          </Button>
-        )}
-      </div>
+      <ClipTransport
+        editor={editor}
+        clock={clock}
+        toggle={toggle}
+        seek={seek}
+        loops={live ? undefined : loops}
+        setLoops={setLoops}
+      />
 
       <div
         className="flex touch-none flex-col gap-1 select-none"
@@ -662,26 +714,125 @@ const clipSections = Object.entries(
 const stateSections = stateGroups.map(group => ({ value: group.label, items: [...group.states] }))
 
 export function ClipsPanel({ editor, status }: { editor: Editor; status: StageStatus }) {
-  const { t, doing, setDoing, setPlaying, setTab } = editor
-  // Stopped, nothing plays: the clip asked for is still the one shown.
-  const clip = clips[status.clip] ?? ('clip' in doing ? clips[doing.clip] : undefined)
-  const users = clip ? stateNames.filter(state => usesClip(state, clip.name)) : []
+  const { t, doing, setDoing, setPlaying, setTab, clipLibrary } = editor
+  const file = useRef<HTMLInputElement>(null)
+  const [importError, setImportError] = useState(false)
+  // A clip asked for comes first: the stage reports what plays a few frames late. Stopped,
+  // nothing plays, and the clip asked for is still the one shown.
+  const onDraft = 'clip' in doing && doing.draft === true
+  const clip = onDraft
+    ? clipLibrary.draft?.clip
+    : (('clip' in doing ? clipLibrary.find(doing.clip) : undefined) ??
+      clipLibrary.find(status.clip))
+  const custom = clip ? onDraft || clipLibrary.isCustom(clip.name) : false
+  const users = clip && !custom ? stateNames.filter(state => usesClip(state, clip.name)) : []
+  // The draft is listed apart, under a name that cannot be taken for a saved clip's.
+  const draftItem = clipLibrary.draft ? `${clipLibrary.draft.clip.name} (${t('brouillon')})` : null
+  const sections = [
+    ...(draftItem ? [{ value: t('Brouillon'), items: [draftItem] }] : []),
+    ...(clipLibrary.clips.length
+      ? [{ value: t('Mes clips'), items: clipLibrary.clips.map(item => item.name) }]
+      : []),
+    ...clipSections,
+  ]
+  /** Open the draft just made, still, at its start, to be edited. */
+  const edit = (name: string | null) => {
+    if (!name) return
+    setPlaying(false)
+    setDoing({ clip: name, draft: true })
+  }
   return (
     <div className="panel-stack">
       <div className={`${surface} flex flex-col gap-0.5 p-1.5`}>
         <SectionCombobox
           label={t('Clip')}
-          value={clip?.name ?? null}
-          sections={clipSections}
-          detail={name => (clips[name] ? seconds(clips[name].duration) : undefined)}
+          value={onDraft ? draftItem : (clip?.name ?? null)}
+          sections={sections}
+          detail={name => {
+            const found = name === draftItem ? clipLibrary.draft?.clip : clipLibrary.find(name)
+            return found ? seconds(found.duration) : undefined
+          }}
           placeholder={t('Rechercher un clip…')}
           empty={t('Aucun clip')}
           onPick={name => {
             setPlaying(true)
-            setDoing({ clip: name })
+            if (name === draftItem && clipLibrary.draft) {
+              setDoing({ clip: clipLibrary.draft.clip.name, draft: true })
+            } else setDoing({ clip: name })
           }}
         />
-        {clip && (
+        <div className="flex flex-wrap items-center gap-1.5 px-1.5 pt-1 pb-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            onClick={() => edit(clipLibrary.create(t('Nouveau clip')))}
+          >
+            <Plus /> {t('Nouveau clip')}
+          </Button>
+          {clip && !custom && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              title={t('Le clip du catalogue reste tel quel : la copie s’ouvre en brouillon.')}
+              onClick={() => edit(clipLibrary.duplicate(clip.name, `${clip.name} ${t('copie')}`))}
+            >
+              <Copy /> {t('Dupliquer pour modifier')}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" type="button" onClick={() => file.current?.click()}>
+            <Upload /> {t('Importer un .clip.json')}
+          </Button>
+          <a
+            className="ml-auto inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            href="./clip-authoring.md"
+            target="_blank"
+            rel="noreferrer"
+            title={t('Le format des clips et leur lien, pour les agents qui en écrivent')}
+          >
+            <BookOpen className="size-3.5" /> {t('Guide')}
+          </a>
+          <input
+            ref={file}
+            className="hidden"
+            type="file"
+            accept="application/json,.json"
+            aria-label={t('Importer un .clip.json')}
+            onChange={async event => {
+              const chosen = event.currentTarget.files?.[0]
+              event.currentTarget.value = ''
+              if (!chosen) return
+              const name = clipLibrary.importText(await chosen.text())
+              setImportError(name === null)
+              edit(name)
+            }}
+          />
+        </div>
+        {importError && (
+          <p className="px-3 pb-2 text-xs text-destructive">{t('Ce fichier n’est pas un clip.')}</p>
+        )}
+        {clipLibrary.linkProblem && (
+          <div
+            className="mx-1.5 mb-1.5 flex items-start gap-2 rounded-lg bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
+            data-link-problem={`${clipLibrary.linkProblem.path}: ${clipLibrary.linkProblem.message}`}
+          >
+            <p className="flex-1">
+              {t('Le lien ne contient pas un clip valide.')}{' '}
+              <code className="font-mono text-[0.7rem]">
+                {clipLibrary.linkProblem.path}: {clipLibrary.linkProblem.message}
+              </code>
+            </p>
+            <button
+              type="button"
+              aria-label={t('Fermer')}
+              onClick={() => clipLibrary.setLinkProblem(null)}
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
+        {clip && !custom && (
           <div className="flex items-baseline gap-3 px-3 py-2">
             <span className="shrink-0 text-sm font-medium text-muted-foreground">
               {t('Utilisé par')}
@@ -710,7 +861,15 @@ export function ClipsPanel({ editor, status }: { editor: Editor; status: StageSt
           </div>
         )}
       </div>
-      {clip && (
+      {clip && custom && (
+        <ClipEditor
+          editor={editor}
+          clip={clip}
+          clipRef={onDraft ? { draft: true } : { name: clip.name }}
+          key={onDraft ? 'draft' : clip.name}
+        />
+      )}
+      {clip && !custom && (
         <div className={`${surface} p-3`}>
           <ClipTimeline editor={editor} clip={clip} key={clip.name} />
         </div>
