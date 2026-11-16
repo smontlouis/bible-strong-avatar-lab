@@ -23,7 +23,8 @@ A clip travels in the fragment of the Studio's address, after `clip=`:
 https://avatars.bible-strong.app/#clip={"name":"Hop","duration":1.2,"tracks":{...}}
 ```
 
-- Opening the link opens the Clips tab with the clip as a **draft**, ready to be edited. Nothing
+- Opening the link opens the Clips tab with the clip as a **draft**, playing in a loop, ready to
+  be edited. Nothing
   is saved in the person's browser until they press "Enregistrer dans mes clips" (Save to my
   clips).
 - The JSON may be written as it is or percent-encoded. `clip=` must come **last**: everything after

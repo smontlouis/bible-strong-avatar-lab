@@ -104,7 +104,8 @@ export const useClipLink = (editor: Editor) => {
       clipLibrary.openDraft(clip, sameClip ? current.source : undefined)
     }
     const shown = 'clip' in editor.doing && editor.doing.draft && editor.doing.clip === clip.name
-    if (opening) editor.setPlaying(false)
+    // A clip opened from a link plays at once, round and round, as a state does.
+    if (opening) editor.setPlaying(true)
     if (!shown) editor.setDoing({ clip: clip.name, draft: true })
   }
 
