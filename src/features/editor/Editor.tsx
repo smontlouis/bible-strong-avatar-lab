@@ -63,6 +63,7 @@ import { BodyConstructionAccordion } from '@/features/editor/BodyConstruction'
 import { useClipLink } from '@/features/editor/useClipLink'
 import { PhotoStageFrame } from '@/features/editor/PhotoStageFrame'
 import { StudioIdentity } from '@/features/editor/StudioIdentity'
+import { TabHelp } from '@/features/editor/TabHelp'
 import { useStudioLanguage } from '@/i18n'
 
 const STACKED_LAYOUT_QUERY = '(max-width: 980px)'
@@ -662,7 +663,10 @@ export function Editor() {
         <header className="mode-page-header">
           <div>
             <p className="eyebrow">{activeAvatar.name}</p>
-            <h1>{t(photoMode ? 'Mode photo' : tabLabels[tab])}</h1>
+            <div className="mode-page-title">
+              <h1>{t(photoMode ? 'Mode photo' : tabLabels[tab])}</h1>
+              {!photoMode && <TabHelp tab={tab} t={t} onOpenTab={setTab} />}
+            </div>
           </div>
           {photoMode && (
             <Button variant="outline" type="button" onClick={editor.closePhotoMode}>

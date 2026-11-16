@@ -368,6 +368,57 @@ export const chinese: Record<string, string> = {
   'Aperçu du clip': '片段概览',
   'La timeline est en bas, sous la scène.': '时间轴在下方，舞台之下。',
   'La remettre ici': '放回这里',
+  'C’est quoi ?': '这是什么？',
+  'Comment un avatar est fait': '头像由什么组成',
+  'Ce que tu peux faire ici': '在这里可以做什么',
+  'Comment ça s’emboîte': '它们如何衔接',
+  'Aller à cet onglet': '前往此标签页',
+  'Le personnage': '角色',
+  'La pose': '姿势',
+  'Les états': '状态',
+  'Les clips': '片段',
+  'Les visages': '表情',
+  'L’export': '导出',
+  'Guide des personnages': '角色指南',
+  'Guide des états': '状态指南',
+  'Guide des clips': '片段指南',
+  'Guide des visages': '表情指南',
+  'Tous les guides': '全部指南',
+  'Un personnage, c’est un corps : ses formes, leurs couleurs, la place et la taille des yeux. Il ne contient aucun mouvement.':
+    '角色就是一个身体：它的形状、颜色，以及眼睛的位置和大小。它不包含任何动作。',
+  'Choisir l’avatar qui joue sur la scène, en créer un, le dupliquer, l’importer ou l’exporter en .json. Double-clique une carte pour construire son corps.':
+    '选择在舞台上表演的头像，新建、复制、导入或导出为 .json。双击卡片即可构建它的身体。',
+  'Tous les personnages jouent les mêmes états, clips et visages : ce que tu animes dans les autres onglets marche sur chacun d’eux.':
+    '所有角色都使用相同的状态、片段和表情：你在其他标签页里做的动画适用于每一个角色。',
+  'Une pose, c’est le personnage orienté et placé à la main, pour une photo ou une image fixe.':
+    '姿势就是手动调整角色的朝向和位置，用于拍照或静态图片。',
+  'Glisse l’avatar sur la scène ou règle sa rotation et sa position : ce qu’il joue se met en pause et il suit ta main. Le mode photo en tire une image.':
+    '在舞台上拖动头像，或调整它的旋转和位置：正在播放的内容会暂停，它会跟随你的手。拍照模式可以生成图片。',
+  'La pose ne change ni le personnage ni ses animations : Lecture le fait reprendre là où il en était.':
+    '姿势不会改变角色或它的动画：点击播放即可从原处继续。',
+  'Un état, c’est ce que fait l’avatar pendant qu’une app est dans une situation : idle quand il attend, thinking quand il réfléchit, listening quand il écoute.':
+    '状态就是应用处于某种情境时头像的表现：等待时是 idle，思考时是 thinking，聆听时是 listening。',
+  'Choisir un état pour le voir jouer, en créer un, choisir ses clips et la règle qui les enchaîne : au hasard, l’un après l’autre, une fois puis un autre état, pendant un temps. Un état peut aussi tenir un visage ou devenir un spinner.':
+    '选择一个状态查看播放效果，新建状态，选择它的片段以及串联规则：随机、依次、播放一次后转到另一个状态、持续一段时间。状态也可以保持一个表情，或变成加载动画。',
+  'Une app ne demande qu’un état. L’état choisit les clips, les clips choisissent les visages.':
+    '应用只需要请求一个状态。状态挑选片段，片段挑选表情。',
+  'Un clip, c’est un morceau de mouvement d’une durée fixe : des pistes (tête, corps, yeux, visage…) et des clés posées dans le temps.':
+    '片段是一段固定时长的动作：由轨道（头部、身体、眼睛、表情……）和时间上的关键帧组成。',
+  'Jouer les clips intégrés, en créer un, poser des clés sur la frise ou dans la feuille, régler la courbe entre deux clés.':
+    '播放内置片段，新建片段，在时间轴或表格中设置关键帧，调整两个关键帧之间的曲线。',
+  'Les états jouent les clips. Une clé de visage nomme un visage, intégré ou dessiné, et un clip se raccorde à ses voisins sans à-coup.':
+    '状态播放片段。表情关键帧指定一个表情（内置或手绘），片段与相邻片段平滑衔接。',
+  'Un visage, c’est la forme des yeux. Neuf sont intégrés ; un visage dessiné est fait de tracés, comme dans un outil vectoriel.':
+    '表情就是眼睛的形状。内置九种；手绘表情由路径组成，就像在矢量工具里一样。',
+  'Choisir un visage pour le voir sur l’avatar, en dessiner un sur la planche, importer un .svg ou un .face.json, le vérifier sous tous les angles.':
+    '选择一个表情在头像上查看，在画板上绘制一个，导入 .svg 或 .face.json，从各个角度检查它。',
+  'Les clips et les états nomment un visage par son nom. Les visages intégrés se transforment les uns en les autres ; un visage dessiné arrive et repart par un clignement.':
+    '片段和状态通过名称指定表情。内置表情之间相互变形；手绘表情通过一次眨眼出现和消失。',
+  'Exporter, c’est emporter ton travail dans une app.': '导出就是把你的作品带进应用。',
+  'Télécharger le fichier du personnage, la bibliothèque (tes clips, états et visages), puis copier le code d’intégration pour React, React Native ou le web.':
+    '下载角色文件和资源库（你的片段、状态和表情），然后复制适用于 React、React Native 或网页的集成代码。',
+  'Le personnage dit à quoi ressemble l’avatar ; la bibliothèque dit ce qu’il sait faire en plus de ce qui est intégré. Les deux vont ensemble dans l’app.':
+    '角色决定头像的外观；资源库决定它在内置内容之外还能做什么。两者一起放进应用。',
   'Choisir un visage': '选择表情',
   'Double-clic pour dessiner une copie': '双击以绘制副本',
   'Maj + clic sur un tracé, ou cadre sur le vide': 'Shift + 点击路径，或在空白处框选',

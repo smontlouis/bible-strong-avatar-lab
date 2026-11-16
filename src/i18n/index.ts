@@ -398,6 +398,57 @@ const english: Record<string, string> = {
   'Aperçu du clip': 'Clip overview',
   'La timeline est en bas, sous la scène.': 'The timeline is at the bottom, under the stage.',
   'La remettre ici': 'Bring it back here',
+  'C’est quoi ?': 'What is this?',
+  'Comment un avatar est fait': 'How an avatar is made',
+  'Ce que tu peux faire ici': 'What you can do here',
+  'Comment ça s’emboîte': 'How it fits together',
+  'Aller à cet onglet': 'Go to this tab',
+  'Le personnage': 'The character',
+  'La pose': 'The pose',
+  'Les états': 'States',
+  'Les clips': 'Clips',
+  'Les visages': 'Faces',
+  'L’export': 'Export',
+  'Guide des personnages': 'Character guide',
+  'Guide des états': 'State guide',
+  'Guide des clips': 'Clip guide',
+  'Guide des visages': 'Face guide',
+  'Tous les guides': 'All the guides',
+  'Un personnage, c’est un corps : ses formes, leurs couleurs, la place et la taille des yeux. Il ne contient aucun mouvement.':
+    'A character is a body: its shapes, their colours, where the eyes sit and how big they are. It holds no motion.',
+  'Choisir l’avatar qui joue sur la scène, en créer un, le dupliquer, l’importer ou l’exporter en .json. Double-clique une carte pour construire son corps.':
+    'Pick the avatar that plays on the stage, create one, duplicate it, import it or export it as .json. Double-click a card to build its body.',
+  'Tous les personnages jouent les mêmes états, clips et visages : ce que tu animes dans les autres onglets marche sur chacun d’eux.':
+    'Every character plays the same states, clips and faces: what you animate in the other tabs works on each of them.',
+  'Une pose, c’est le personnage orienté et placé à la main, pour une photo ou une image fixe.':
+    'A pose is the character turned and placed by hand, for a photo or a still image.',
+  'Glisse l’avatar sur la scène ou règle sa rotation et sa position : ce qu’il joue se met en pause et il suit ta main. Le mode photo en tire une image.':
+    'Drag the avatar on the stage or set its rotation and position: what it plays pauses and it follows your hand. Photo mode takes a picture of it.',
+  'La pose ne change ni le personnage ni ses animations : Lecture le fait reprendre là où il en était.':
+    'A pose changes neither the character nor its animations: Play resumes where it was.',
+  'Un état, c’est ce que fait l’avatar pendant qu’une app est dans une situation : idle quand il attend, thinking quand il réfléchit, listening quand il écoute.':
+    'A state is what the avatar does while an app is in a situation: idle while it waits, thinking while it thinks, listening while it listens.',
+  'Choisir un état pour le voir jouer, en créer un, choisir ses clips et la règle qui les enchaîne : au hasard, l’un après l’autre, une fois puis un autre état, pendant un temps. Un état peut aussi tenir un visage ou devenir un spinner.':
+    'Pick a state to watch it play, create one, choose its clips and the rule that chains them: shuffled, one after the other, once then another state, for a while. A state can also hold a face or turn into a spinner.',
+  'Une app ne demande qu’un état. L’état choisit les clips, les clips choisissent les visages.':
+    'An app only asks for a state. The state picks the clips, the clips pick the faces.',
+  'Un clip, c’est un morceau de mouvement d’une durée fixe : des pistes (tête, corps, yeux, visage…) et des clés posées dans le temps.':
+    'A clip is a piece of motion of a fixed length: tracks (head, body, eyes, face…) and keys set in time.',
+  'Jouer les clips intégrés, en créer un, poser des clés sur la frise ou dans la feuille, régler la courbe entre deux clés.':
+    'Play the built-in clips, create one, set keys on the timeline or in the sheet, shape the curve between two keys.',
+  'Les états jouent les clips. Une clé de visage nomme un visage, intégré ou dessiné, et un clip se raccorde à ses voisins sans à-coup.':
+    'States play the clips. A face key names a face, built-in or drawn, and a clip joins its neighbours without a jolt.',
+  'Un visage, c’est la forme des yeux. Neuf sont intégrés ; un visage dessiné est fait de tracés, comme dans un outil vectoriel.':
+    'A face is the shape of the eyes. Nine are built in; a drawn face is made of paths, as in a vector tool.',
+  'Choisir un visage pour le voir sur l’avatar, en dessiner un sur la planche, importer un .svg ou un .face.json, le vérifier sous tous les angles.':
+    'Pick a face to see it on the avatar, draw one on the artboard, import an .svg or a .face.json, check it from every side.',
+  'Les clips et les états nomment un visage par son nom. Les visages intégrés se transforment les uns en les autres ; un visage dessiné arrive et repart par un clignement.':
+    'Clips and states name a face by its name. Built-in faces morph into each other; a drawn face comes and goes with a blink.',
+  'Exporter, c’est emporter ton travail dans une app.': 'Exporting takes your work into an app.',
+  'Télécharger le fichier du personnage, la bibliothèque (tes clips, états et visages), puis copier le code d’intégration pour React, React Native ou le web.':
+    'Download the character file and the library (your clips, states and faces), then copy the integration code for React, React Native or the web.',
+  'Le personnage dit à quoi ressemble l’avatar ; la bibliothèque dit ce qu’il sait faire en plus de ce qui est intégré. Les deux vont ensemble dans l’app.':
+    'The character says what the avatar looks like; the library says what it can do beyond what is built in. Both go into the app together.',
   'Choisir un visage': 'Pick a face',
   'Double-clic pour dessiner une copie': 'Double-click to draw a copy',
   'Maj + clic sur un tracé, ou cadre sur le vide': 'Shift + click a mark, or a box on nothing',
