@@ -2,12 +2,10 @@ import {
   advanceEngine,
   createAvatarEngine,
   engineFrame,
-  faces,
-  faceSmiles,
-  FACE_SECONDS,
   playEngineClip,
   type ClipDefinition,
   type EngineFrame,
+  settlePlayerFace,
 } from '@bible-strong/avatar-core'
 
 // The frames of a sheet: the clip played from its start by an engine of its own, and read at
@@ -38,13 +36,7 @@ export const clipSheet = (clip: ClipDefinition, fps: number): SheetFrame[] => {
   playEngineClip(engine, clip, { transition: 'cut' })
   // The clip's first face is on from the start, as when the clip goes round: played fresh, the
   // eyes would first turn from \`neutral\`, which a loop never shows.
-  const player = engine.player
-  const face = player.clipFace
-  player.face = face
-  player.faceFrom = [faces[face].eyes[0], faces[face].eyes[1]]
-  player.inspectFrom = face === 'inspecting' ? 1 : 0
-  player.smileFrom = faceSmiles[face]
-  player.faceTime = FACE_SECONDS
+  settlePlayerFace(engine.player)
   let now = 0
   return sheetTimes(clip.duration, fps).map((time, index) => {
     const target = Math.min(time, clip.duration - END_MARGIN)

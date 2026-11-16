@@ -2,6 +2,7 @@ import { clips, resolveStateName, states, type StateDefinition } from './catalog
 import { slerpQuaternion, type Quaternion } from './geometry.js'
 import { clipEaseAt, type ClipDefinition } from './clips.js'
 import { frameOrientation } from './turn.js'
+import type { CompiledFace } from './drawnFaces.js'
 import { inspectEyeScales, inspectLeanOfTurn } from './faces.js'
 import {
   drawSpinner,
@@ -25,6 +26,7 @@ import {
   playerFrame,
   resumePlayer,
   setPlayerFace,
+  setPlayerFaces,
   type AvatarPlayer,
   type PlayerFrame,
 } from './player.js'
@@ -134,6 +136,8 @@ export type FreePose = {
 export type EngineLibrary = {
   clips: Readonly<Record<string, ClipDefinition>>
   states: Readonly<Record<string, StateDefinition>>
+  /** Drawn faces, read with `compileFace`, which clips and states name besides the built-in ones. */
+  faces: Readonly<Record<string, CompiledFace>>
 }
 
 export type AvatarEngine = {
@@ -184,10 +188,12 @@ export const createAvatarEngine = (
     clips?: Readonly<Record<string, ClipDefinition>>
     /** States of its own, by name, besides the catalogue's. Their clips may be its own too. */
     states?: Readonly<Record<string, StateDefinition>>
+    /** Drawn faces, by name, besides the built-in ones. */
+    faces?: Readonly<Record<string, CompiledFace>>
   } = {}
 ): AvatarEngine => ({
-  player: createAvatarPlayer(),
-  library: { clips: options.clips ?? {}, states: options.states ?? {} },
+  player: { ...createAvatarPlayer(), faces: options.faces ?? {} },
+  library: { clips: options.clips ?? {}, states: options.states ?? {}, faces: options.faces ?? {} },
   random: { seed: options.seed ?? 1 },
   state: null,
   bags: {},
@@ -244,9 +250,15 @@ export const setEngineLibrary = (
   library: {
     clips?: Readonly<Record<string, ClipDefinition>>
     states?: Readonly<Record<string, StateDefinition>>
+    faces?: Readonly<Record<string, CompiledFace>>
   }
 ) => {
-  engine.library = { clips: library.clips ?? {}, states: library.states ?? {} }
+  engine.library = {
+    clips: library.clips ?? {},
+    states: library.states ?? {},
+    faces: library.faces ?? {},
+  }
+  setPlayerFaces(engine.player, engine.library.faces)
 }
 
 const listOf = (engine: Readonly<AvatarEngine>, state: Readonly<StateDefinition>) =>

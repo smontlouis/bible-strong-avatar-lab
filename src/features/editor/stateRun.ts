@@ -4,15 +4,13 @@ import {
   engineClipOf,
   engineFrame,
   engineStateOf,
-  faces,
-  faceSmiles,
-  FACE_SECONDS,
   setEngineHandover,
   setEngineState,
   type AvatarEngine,
   type ClipDefinition,
   type EngineFrame,
   type StateDefinition,
+  settlePlayerFace,
 } from '@bible-strong/avatar-core'
 
 import { MAX_SHEET_FRAMES } from '@/features/editor/clipFrames'
@@ -67,13 +65,7 @@ export const runSeconds = (library: EngineLibraryInput, name: string) => {
 
 /** The clip's face, or the state's, on from the start, as on an avatar that has been in it. */
 const settleFace = (engine: AvatarEngine) => {
-  const player = engine.player
-  const face = player.faceOverride ?? player.heldFace ?? player.clipFace
-  player.face = face
-  player.faceFrom = [faces[face].eyes[0], faces[face].eyes[1]]
-  player.inspectFrom = face === 'inspecting' ? 1 : 0
-  player.smileFrom = faceSmiles[face]
-  player.faceTime = FACE_SECONDS
+  settlePlayerFace(engine.player)
 }
 
 const start = (library: EngineLibraryInput, name: string, handover: boolean) => {

@@ -5,13 +5,16 @@ import {
   type ClipEase,
   type ClipKey,
 } from './clips.js'
+import type { CompiledFace, DrawnEye } from './drawnFaces.js'
 import {
+  eyeOutline,
   faces,
   faceSmiles,
   inspectEyeScales,
   inspectLeanOfTurn,
   morphEyeShapes,
   resolveFaceName,
+  type PlayerEye,
   type FaceEye,
   type FaceName,
 } from './faces.js'
@@ -47,6 +50,11 @@ export const JOIN_EASE: ClipEase = [0.4, 0, 0.2, 1]
 /** How long one face takes to turn into another, in seconds. */
 export const FACE_SECONDS = 0.28
 const FACE_EASE: ClipEase = [0.4, 0.06, 0.18, 1]
+/** How long a face takes to give way to a drawn one, or a drawn one to another: a blink. */
+export const FACE_SWAP_SECONDS = 0.3
+// When, within that blink, the eyes are shut and the face changes.
+const SWAP_SHUT_AT = 0.45
+const SWAP_EASE: ClipEase = [0.42, 0, 0.58, 1]
 const BLINK_SECONDS = 0.26
 // When, within a blink, the eyes are shut.
 const BLINK_SHUT_AT = 0.45
@@ -55,7 +63,7 @@ const BLINK_EASE: ClipEase = [0.42, 0, 0.58, 1]
 const MAX_STEP_SECONDS = 0.1
 const OPEN_LIDS = 1e-4
 
-type FaceEvent = { t: number; face: FaceName }
+type FaceEvent = { t: number; face: string }
 
 /** A clip made ready to play: its blinks turned into eyelid keys, its faces named. */
 type PreparedClip = {
@@ -79,7 +87,7 @@ const prepare = (clip: Readonly<ClipDefinition>): PreparedClip => {
         { t: key.t + BLINK_SECONDS, v: [0], ease: BLINK_EASE }
       )
     } else {
-      events.push({ t: key.t, face: resolveFaceName(key.v) })
+      events.push({ t: key.t, face: key.v })
     }
   }
   lids.sort((left, right) => left.t - right.t)
@@ -115,8 +123,8 @@ export const clipRestPose = (clip: Readonly<ClipDefinition>): PlayerPose =>
   poseAt(clip, prepare(clip).restTime, REST_ZOOM)
 
 /** The face a clip shows at a time: the last it asked for, `neutral` before the first. */
-const faceAt = (clip: Readonly<ClipDefinition>, time: number): FaceName => {
-  let face: FaceName = 'neutral'
+const faceAt = (clip: Readonly<ClipDefinition>, time: number): string => {
+  let face = 'neutral'
   for (const event of prepare(clip).events) {
     if (event.t > time) break
     face = event.face
@@ -125,7 +133,7 @@ const faceAt = (clip: Readonly<ClipDefinition>, time: number): FaceName => {
 }
 
 /** The face a join to a clip aims at: the one of its pose of rest, else the first it asks for. */
-const restFace = (clip: Readonly<ClipDefinition>): FaceName => {
+const restFace = (clip: Readonly<ClipDefinition>): string => {
   const { events, restTime } = prepare(clip)
   if (!events.length) return 'neutral'
   return events[0].t > restTime ? events[0].face : faceAt(clip, restTime)
@@ -150,15 +158,22 @@ export type AvatarPlayer = {
   pose: PlayerPose
   squashAnchor: number
   join: Join | null
-  /** The face the clip asks for now. */
-  clipFace: FaceName
+  /** The drawn faces the player knows besides the built-in ones, by name. */
+  faces: Readonly<Record<string, CompiledFace>>
+  /** The face the clip asks for now, by the name it gives. */
+  clipFace: string
   /** A face asked for from outside: it comes before everything. */
-  faceOverride: FaceName | null
+  faceOverride: string | null
   /** A face held by the state that plays: it comes before the clip's. */
-  heldFace: FaceName | null
-  /** The face shown, or the one the eyes are turning into. */
-  face: FaceName
-  faceFrom: [FaceEye, FaceEye]
+  heldFace: string | null
+  /** The face shown, or the one the eyes are turning into: a built-in face, or a drawn one. */
+  face: string
+  faceFrom: [PlayerEye, PlayerEye]
+  /**
+   * How the eyes turn into `face`: built-in eyes morph, and a drawn face comes and goes with a
+   * blink, the eyes shutting on one face and opening on the other.
+   */
+  faceWay: 'morph' | 'blink'
   inspectFrom: number
   smileFrom: number
   /** Seconds since the eyes started turning into `face`. */
@@ -185,37 +200,164 @@ export const createAvatarPlayer = (): AvatarPlayer => ({
   pose: restingPose(),
   squashAnchor: 0,
   join: null,
+  faces: {},
   clipFace: 'neutral',
   faceOverride: null,
   heldFace: null,
   face: 'neutral',
   faceFrom: [faces.neutral.eyes[0], faces.neutral.eyes[1]],
+  faceWay: 'morph',
   inspectFrom: 0,
   smileFrom: 0,
   faceTime: FACE_SECONDS,
   lidsBlocked: false,
 })
 
+const owns = (record: object, name: string) => Object.prototype.hasOwnProperty.call(record, name)
+
+/**
+ * The face a name stands for on this player: a drawn face it knows by that very name, else a
+ * built-in face or one of their other names, else `neutral`.
+ */
+export const playerFaceOf = (player: Readonly<AvatarPlayer>, name: string) =>
+  owns(player.faces, name) ? name : resolveFaceName(name)
+
+const drawnFaceOf = (player: Readonly<AvatarPlayer>, face: string) =>
+  owns(player.faces, face) ? player.faces[face] : null
+
+/** The eyes of a face the player knows, at rest. */
+export const playerFaceEyes = (
+  player: Readonly<AvatarPlayer>,
+  face: string
+): [PlayerEye, PlayerEye] => {
+  const drawn = drawnFaceOf(player, face)
+  if (drawn) return [drawn.eyes[0], drawn.eyes[1]]
+  const eyes = (faces[face as FaceName] ?? faces.neutral).eyes
+  return [eyes[0], eyes[1]]
+}
+
+const faceBlinks = (player: Readonly<AvatarPlayer>, face: string) =>
+  drawnFaceOf(player, face)?.blinks ?? (faces[face as FaceName] ?? faces.neutral).blinks
+
+const faceSmileOf = (player: Readonly<AvatarPlayer>, face: string) =>
+  drawnFaceOf(player, face)?.smile ?? faceSmiles[face as FaceName] ?? 0
+
+const isDrawn = (eye: Readonly<PlayerEye>): eye is DrawnEye => 'kind' in eye && eye.kind === 'drawn'
+
+/** How long the change of face under way takes. */
+const faceSeconds = (player: Readonly<AvatarPlayer>) =>
+  player.faceWay === 'blink' ? FACE_SWAP_SECONDS : FACE_SECONDS
+
 const faceProgress = (player: Readonly<AvatarPlayer>) =>
-  clipEaseAt(FACE_EASE, Math.min(1, player.faceTime / FACE_SECONDS))
+  clipEaseAt(FACE_EASE, Math.min(1, player.faceTime / faceSeconds(player)))
+
+/** A built-in eye as shapes, to shut it as a drawn eye shuts. */
+const asDrawn = (eye: Readonly<PlayerEye>): DrawnEye =>
+  isDrawn(eye) ? eye : { kind: 'drawn', shapes: [eyeOutline(eye as FaceEye)], smooth: true }
+
+type Bounds = { center: [number, number]; width: number }
+
+const boundsOf = (eye: Readonly<DrawnEye>): Bounds => {
+  let [minX, maxX, minY, maxY] = [Infinity, -Infinity, Infinity, -Infinity]
+  for (const shape of eye.shapes) {
+    for (const [x, y] of shape) {
+      minX = Math.min(minX, x)
+      maxX = Math.max(maxX, x)
+      minY = Math.min(minY, y)
+      maxY = Math.max(maxY, y)
+    }
+  }
+  if (!Number.isFinite(minX)) return { center: [0, 0], width: 0 }
+  return { center: [(minX + maxX) / 2, (minY + maxY) / 2], width: maxX - minX }
+}
+
+/**
+ * An eye moved and stretched across from where it is towards a box between two: the eye that
+ * shuts and the one that opens meet there, shut, so that the face changes without a jump.
+ */
+const towards = (eye: DrawnEye, from: Bounds, to: Bounds, amount: number): DrawnEye => {
+  if (amount <= 0 || !(from.width > 1e-6)) return eye
+  const stretch = 1 + (to.width / from.width - 1) * amount
+  const x = from.center[0] + (to.center[0] - from.center[0]) * amount
+  const y = from.center[1] + (to.center[1] - from.center[1]) * amount
+  return {
+    ...eye,
+    shapes: eye.shapes.map(shape =>
+      shape.map(([px, py]) => [x + (px - from.center[0]) * stretch, py - from.center[1] + y])
+    ),
+  }
+}
+
+/** The eyes halfway through a blink from one face to another: shutting, then opening. */
+const swapEyes = (
+  player: Readonly<AvatarPlayer>,
+  target: [PlayerEye, PlayerEye]
+): [PlayerEye, PlayerEye] => {
+  const progress = Math.min(1, player.faceTime / FACE_SWAP_SECONDS)
+  const one = (index: 0 | 1): DrawnEye => {
+    const leaving = asDrawn(player.faceFrom[index])
+    const coming = asDrawn(target[index])
+    const a = boundsOf(leaving)
+    const b = boundsOf(coming)
+    const middle: Bounds = {
+      center: [(a.center[0] + b.center[0]) / 2, (a.center[1] + b.center[1]) / 2],
+      width: (a.width + b.width) / 2,
+    }
+    if (progress < SWAP_SHUT_AT) {
+      const closing = clipEaseAt(SWAP_EASE, progress / SWAP_SHUT_AT)
+      const from = leaving.shut ?? 0
+      return { ...towards(leaving, a, middle, closing), shut: from + (1 - from) * closing }
+    }
+    const opening = clipEaseAt(SWAP_EASE, (progress - SWAP_SHUT_AT) / (1 - SWAP_SHUT_AT))
+    return { ...towards(coming, b, middle, 1 - opening), shut: 1 - opening }
+  }
+  return [one(0), one(1)]
+}
 
 /** The eyes as they are now, between the face they leave and the one they reach. */
-export const playerEyes = (player: Readonly<AvatarPlayer>): [FaceEye, FaceEye] => {
-  const target = faces[player.face].eyes
-  if (player.faceTime >= FACE_SECONDS) return [target[0], target[1]]
-  return morphEyeShapes(player.faceFrom, target, faceProgress(player))
+export const playerEyes = (player: Readonly<AvatarPlayer>): [PlayerEye, PlayerEye] => {
+  const target = playerFaceEyes(player, player.face)
+  if (player.faceTime >= faceSeconds(player)) return target
+  if (player.faceWay === 'blink') return swapEyes(player, target)
+  return morphEyeShapes(
+    player.faceFrom as [FaceEye, FaceEye],
+    target as [FaceEye, FaceEye],
+    faceProgress(player)
+  )
 }
 
 const inspectWeight = (player: Readonly<AvatarPlayer>) => {
   const target = player.face === 'inspecting' ? 1 : 0
-  if (player.faceTime >= FACE_SECONDS) return target
+  if (player.faceTime >= faceSeconds(player)) return target
   return player.inspectFrom + (target - player.inspectFrom) * faceProgress(player)
 }
 
 const smile = (player: Readonly<AvatarPlayer>) => {
-  const target = faceSmiles[player.face]
-  if (player.faceTime >= FACE_SECONDS) return target
+  const target = faceSmileOf(player, player.face)
+  if (player.faceTime >= faceSeconds(player)) return target
   return player.smileFrom + (target - player.smileFrom) * faceProgress(player)
+}
+
+/** Give the player the drawn faces it knows besides the built-in ones. */
+export const setPlayerFaces = (
+  player: AvatarPlayer,
+  drawn: Readonly<Record<string, CompiledFace>>
+) => {
+  player.faces = drawn
+}
+
+/**
+ * Show at once the face asked for, from outside, by the state or by the clip, with nothing left
+ * to turn into: as on an avatar that has been showing it.
+ */
+export const settlePlayerFace = (player: AvatarPlayer) => {
+  const face = playerFaceOf(player, player.faceOverride ?? player.heldFace ?? player.clipFace)
+  player.face = face
+  player.faceFrom = playerFaceEyes(player, face)
+  player.faceWay = 'morph'
+  player.inspectFrom = face === 'inspecting' ? 1 : 0
+  player.smileFrom = faceSmileOf(player, face)
+  player.faceTime = FACE_SECONDS
 }
 
 /** How far the eyelids are closed now, once the faces that do not blink are left alone. */
@@ -295,12 +437,7 @@ export const stopPlayer = (player: AvatarPlayer) => {
   player.clipFace = 'neutral'
   player.heldFace = null
   // The face is there at once, and the eyes with it: nothing is left to turn into.
-  const face = player.faceOverride ?? 'neutral'
-  player.face = face
-  player.faceFrom = [faces[face].eyes[0], faces[face].eyes[1]]
-  player.inspectFrom = face === 'inspecting' ? 1 : 0
-  player.smileFrom = faceSmiles[face]
-  player.faceTime = FACE_SECONDS
+  settlePlayerFace(player)
   player.lidsBlocked = false
 }
 
@@ -328,12 +465,12 @@ export const resumePlayer = (player: AvatarPlayer) => {
 
 /** Hold a face from outside the clip, or pass `null` to let the clip decide again. */
 export const setPlayerFace = (player: AvatarPlayer, face: string | null) => {
-  player.faceOverride = face === null ? null : resolveFaceName(face)
+  player.faceOverride = face
 }
 
 /** Hold a face for as long as a state lasts, or pass `null` to release it. */
 export const holdPlayerFace = (player: AvatarPlayer, face: string | null) => {
-  player.heldFace = face === null ? null : resolveFaceName(face)
+  player.heldFace = face
 }
 
 const angleApart = (left: number, right: number) => {
@@ -425,19 +562,22 @@ const advanceClip = (player: AvatarPlayer, seconds: number) => {
 export const advancePlayer = (player: AvatarPlayer, seconds: number, clipRate = 1) => {
   const step = clamp(seconds, 0, MAX_STEP_SECONDS)
   if (player.playing) advanceClip(player, step * clipRate)
-  player.faceTime = Math.min(FACE_SECONDS, player.faceTime + step)
+  player.faceTime = Math.min(faceSeconds(player), player.faceTime + step)
 
   // A face that cannot blink leaves the clip's eyelids open, and so does a face that is
   // changing. They close again only once the clip has opened them: a blink is never taken up
   // halfway.
-  const changing = player.faceTime < FACE_SECONDS
-  if (!faces[player.face].blinks || changing) player.lidsBlocked = true
+  const changing = player.faceTime < faceSeconds(player)
+  if (!faceBlinks(player, player.face) || changing) player.lidsBlocked = true
   else if (player.pose.lids <= OPEN_LIDS) player.lidsBlocked = false
 
   // The face changes with open eyes: a change asked for during a blink waits for its end.
-  const wanted = player.faceOverride ?? player.heldFace ?? player.clipFace
+  const wanted = playerFaceOf(player, player.faceOverride ?? player.heldFace ?? player.clipFace)
   if (wanted !== player.face && shownLids(player) <= OPEN_LIDS) {
-    player.faceFrom = playerEyes(player)
+    const from = playerEyes(player)
+    const to = playerFaceEyes(player, wanted)
+    player.faceFrom = from
+    player.faceWay = isDrawn(from[0]) || isDrawn(to[0]) ? 'blink' : 'morph'
     player.inspectFrom = inspectWeight(player)
     player.smileFrom = smile(player)
     player.face = wanted
@@ -449,8 +589,9 @@ export const advancePlayer = (player: AvatarPlayer, seconds: number, clipRate = 
 /** Everything a renderer needs to draw the avatar now. */
 export type PlayerFrame = PlayerPose & {
   squashAnchor: number
-  face: FaceName
-  eyes: [FaceEye, FaceEye]
+  /** A built-in face, or a drawn face by its name. */
+  face: string
+  eyes: [PlayerEye, PlayerEye]
   /** The size of each eye about its middle: `inspecting` makes one large and one small. */
   eyeScales: [number, number]
   /** How much of the face is `inspecting`, from 0 to 1. */

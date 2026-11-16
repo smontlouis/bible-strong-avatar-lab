@@ -5,8 +5,9 @@ import type {
   AvatarExpressionDefinition,
   AvatarStyleDefinition,
 } from './avatarDefinition.js'
-import { eyeOutline, eyePointOnFace, eyeReach } from './faces.js'
-import { renderAvatar, type AvatarPose, type EyeOutline } from './geometry.js'
+import { drawnEyeShapes } from './drawnFaces.js'
+import { eyeOutline, eyePointOnFace, eyeReach, type FaceEye } from './faces.js'
+import { renderAvatar, type AvatarPose, type EyeOutline, type EyeShapes } from './geometry.js'
 import type { EngineFrame, SpinnerFrame } from './engine.js'
 import { REST_ZOOM, type PlayerFrame } from './player.js'
 import { frameOrientation } from './turn.js'
@@ -247,21 +248,36 @@ const eyeOutlineOnFace = (
   character: Readonly<AvatarCharacter>,
   frame: Readonly<PlayerFrame>,
   index: 0 | 1
-): EyeOutline => {
+): EyeOutline | EyeShapes => {
   const build = character.face.eyes
   const radius = faceRadius(character)
   const side = index === 0 ? -1 : 1
-  const outline = eyeOutline(frame.eyes[index], frame.eyeScales[index] * frame.eyeSize, frame.lids)
+  const eye = frame.eyes[index]
+  const size = frame.eyeScales[index] * frame.eyeSize
+  const drawn = 'kind' in eye && eye.kind === 'drawn'
+  const shapes: (readonly (readonly [number, number])[])[] = drawn
+    ? drawnEyeShapes(eye, size, frame.lids)
+    : [eyeOutline(eye as FaceEye, size, frame.lids)]
   // The two eyes never touch. A face that leans its eyes inward, or a character whose eyes are
   // set close, would bring them together: an eye that comes too near the middle of the face is
   // moved outward, whole, by what it lacks.
   let innermost = Infinity
-  for (const point of outline) innermost = Math.min(innermost, point[0] * build.width)
+  for (const shape of shapes) {
+    for (const point of shape) innermost = Math.min(innermost, point[0] * build.width)
+  }
   const clear = Math.max(0, EYE_CLEARANCE - (eyeReach(build.gap) + innermost))
-  return outline.map(([outward, up]) => {
-    const [x, y] = eyePointOnFace(side, outward * build.width + clear, up * build.height, build.gap)
-    return [x * radius, (y + build.shiftY) * radius] as const
-  })
+  const onFace = (shape: readonly (readonly [number, number])[]) =>
+    shape.map(([outward, up]) => {
+      const [x, y] = eyePointOnFace(
+        side,
+        outward * build.width + clear,
+        up * build.height,
+        build.gap
+      )
+      return [x * radius, (y + build.shiftY) * radius] as const
+    })
+  if (!drawn) return onFace(shapes[0])
+  return { shapes: shapes.map(onFace), smooth: eye.smooth ?? false }
 }
 
 // How far the corners of a mouth go up for a face that smiles, and down for one that does not.
