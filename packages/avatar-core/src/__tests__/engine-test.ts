@@ -1,5 +1,5 @@
-import { clips, stateAliases, stateGroups, stateNames, states } from '../catalogue'
-import { frameOrientation } from '../turn'
+import { clips, stateAliases, stateGroups, stateNames, states } from '../catalogue/index.js'
+import { frameOrientation } from '../turn.js'
 import {
   advanceEngine,
   createAvatarEngine,
@@ -25,7 +25,7 @@ import {
   setEngineState,
   stopEngine,
   type AvatarEngine,
-} from '../engine'
+} from '../engine.js'
 
 const STEP = 1 / 60
 

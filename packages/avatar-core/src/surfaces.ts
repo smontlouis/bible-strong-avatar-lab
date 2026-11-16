@@ -1,4 +1,4 @@
-import type { Point3 } from './geometry'
+import type { Point3 } from './geometry.js'
 
 export type SurfaceType =
   | 'sphere'

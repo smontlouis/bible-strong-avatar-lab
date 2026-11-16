@@ -15,7 +15,7 @@ import {
   type AvatarDefinition,
   type BodyNode,
   type Quaternion,
-} from '../index'
+} from '../index.js'
 
 const expression = {
   head: { x: 0, y: 0, z: 0 },

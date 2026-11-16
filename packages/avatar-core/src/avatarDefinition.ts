@@ -1,6 +1,6 @@
-import Ajv2020, { type ErrorObject, type ValidateFunction } from 'ajv/dist/2020.js'
-import avatarDefinitionSchema from './avatarDefinition.schema.json'
-import type { SurfaceType } from './surfaces'
+import { Ajv2020, type ErrorObject, type ValidateFunction } from 'ajv/dist/2020.js'
+import avatarDefinitionSchema from './avatarDefinition.schema.json' with { type: 'json' }
+import type { SurfaceType } from './surfaces.js'
 
 export type SemanticKey = string
 export type ExpressionKey = SemanticKey

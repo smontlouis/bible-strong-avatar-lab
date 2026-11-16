@@ -1,4 +1,4 @@
-import { surfaceLabels, surfacePresets, type SurfaceConfig, type SurfaceType } from './surfaces'
+import { surfaceLabels, surfacePresets, type SurfaceConfig, type SurfaceType } from './surfaces.js'
 
 export type BodyVector = readonly [number, number, number]
 

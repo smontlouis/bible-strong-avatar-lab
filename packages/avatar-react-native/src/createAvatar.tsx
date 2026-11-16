@@ -1,7 +1,7 @@
 import { characterOf } from '@bible-strong/avatar-core'
 import type { ReactElement } from 'react'
 
-import { Avatar, type AvatarProps } from './Avatar'
+import { Avatar, type AvatarProps } from './Avatar.js'
 
 export type CreatedAvatarProps = Omit<AvatarProps, 'character'>
 export type CreatedAvatarComponent = (props: CreatedAvatarProps) => ReactElement

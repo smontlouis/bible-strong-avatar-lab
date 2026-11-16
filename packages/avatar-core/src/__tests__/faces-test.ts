@@ -8,7 +8,7 @@ import {
   morphEyeShapes,
   resolveFaceName,
   type FaceEye,
-} from '../faces'
+} from '../faces.js'
 
 const box = (points: [number, number][]) => ({
   width: Math.max(...points.map(point => point[0])) - Math.min(...points.map(point => point[0])),

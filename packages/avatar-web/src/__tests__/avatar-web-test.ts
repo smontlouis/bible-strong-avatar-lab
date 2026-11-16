@@ -3,7 +3,7 @@
 import { characterFromLegacyDefinition, validateAvatarDefinition } from '@bible-strong/avatar-core'
 
 import legacyJson from '../../../../examples/react-vite-consumer/src/strobi.avatar.json'
-import { createAvatar } from '../index'
+import { createAvatar } from '../index.js'
 
 let frames = new Map<number, FrameRequestCallback>()
 let nextFrame = 1

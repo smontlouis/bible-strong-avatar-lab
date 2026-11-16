@@ -1,5 +1,5 @@
-import { clips, states } from '../catalogue'
-import { characterFromLegacyDefinition, renderCharacterFrame } from '../character'
+import { clips, states } from '../catalogue/index.js'
+import { characterFromLegacyDefinition, renderCharacterFrame } from '../character.js'
 import {
   advanceEngine,
   createAvatarEngine,
@@ -7,9 +7,9 @@ import {
   playEngineClip,
   setEngineState,
   type AvatarEngine,
-} from '../engine'
-import { drawSpinner, spinnerOfMode, spinnerPatterns } from '../spinners'
-import type { AvatarDefinition } from '../avatarDefinition'
+} from '../engine.js'
+import { drawSpinner, spinnerOfMode, spinnerPatterns } from '../spinners.js'
+import type { AvatarDefinition } from '../avatarDefinition.js'
 
 const STEP = 1 / 60
 const run = (engine: AvatarEngine, seconds: number) => {

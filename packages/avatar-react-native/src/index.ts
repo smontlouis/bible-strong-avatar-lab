@@ -1,4 +1,4 @@
-export { Avatar } from './Avatar'
-export { createAvatar } from './createAvatar'
-export type { AvatarHandle, AvatarProps } from './Avatar'
-export type { CreatedAvatarComponent, CreatedAvatarProps } from './createAvatar'
+export { Avatar } from './Avatar.js'
+export { createAvatar } from './createAvatar.js'
+export type { AvatarHandle, AvatarProps } from './Avatar.js'
+export type { CreatedAvatarComponent, CreatedAvatarProps } from './createAvatar.js'

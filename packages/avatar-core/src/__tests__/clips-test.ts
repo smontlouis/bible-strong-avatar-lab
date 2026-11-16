@@ -4,7 +4,7 @@ import {
   sampleClipTrack,
   type ClipDefinition,
   type ClipKey,
-} from '../clips'
+} from '../clips.js'
 
 describe('clip easing', () => {
   it('starts at 0, ends at 1 and is a straight line for a linear curve', () => {

@@ -1,8 +1,8 @@
-import { clips, resolveStateName, states, type StateDefinition } from './catalogue'
-import { slerpQuaternion, type Quaternion } from './geometry'
-import { clipEaseAt, type ClipDefinition } from './clips'
-import { frameOrientation } from './turn'
-import { inspectEyeScales, inspectLeanOfTurn } from './faces'
+import { clips, resolveStateName, states, type StateDefinition } from './catalogue/index.js'
+import { slerpQuaternion, type Quaternion } from './geometry.js'
+import { clipEaseAt, type ClipDefinition } from './clips.js'
+import { frameOrientation } from './turn.js'
+import { inspectEyeScales, inspectLeanOfTurn } from './faces.js'
 import {
   drawSpinner,
   SPINNER_PAUSE_SECONDS,
@@ -11,7 +11,7 @@ import {
   type SpinnerDrawing,
   type SpinnerMark,
   type SpinnerPattern,
-} from './spinners'
+} from './spinners.js'
 import {
   advancePlayer,
   createAvatarPlayer,
@@ -27,7 +27,7 @@ import {
   setPlayerFace,
   type AvatarPlayer,
   type PlayerFrame,
-} from './player'
+} from './player.js'
 
 // The engine. Around the player, which plays one clip, it keeps what makes an avatar alive: a
 // state that draws clips without repeating itself, gestures laid over the clip that plays, and

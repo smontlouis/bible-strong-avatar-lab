@@ -29,10 +29,11 @@
     "format:check": "prettier --check .",
     "packages:build": "pnpm --filter './packages/*' build",
     "packages:smoke": "node scripts/smoke-packages.mjs",
+    "packages:types": "node scripts/check-node-types.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm packages:build && changeset publish",
-    "check": "pnpm format:check && pnpm packages:build && pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm format:check && pnpm packages:build && pnpm packages:types && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

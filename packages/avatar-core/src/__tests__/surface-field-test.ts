@@ -4,7 +4,7 @@ import {
   surfacePresets,
   surfaceTracePointAt,
   type SurfaceConfig,
-} from '../index'
+} from '../index.js'
 
 const variants: SurfaceConfig[] = [
   ...Object.values(surfacePresets),

@@ -1,12 +1,12 @@
-import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020.js'
+import { Ajv2020, type ValidateFunction } from 'ajv/dist/2020.js'
 
 import {
   validateAvatarDefinition,
   type AvatarDefinitionError,
   type ValidationResult,
-} from './avatarDefinition'
-import avatarDefinitionSchema from './avatarDefinition.schema.json'
-import { characterFromLegacyDefinition, type AvatarCharacter } from './character'
+} from './avatarDefinition.js'
+import avatarDefinitionSchema from './avatarDefinition.schema.json' with { type: 'json' }
+import { characterFromLegacyDefinition, type AvatarCharacter } from './character.js'
 
 // A character as a file holds it: what the Studio exports, and what an app gives a renderer.
 // The parts of the body, the colours, the outline, the nose and the mouth are those of the first

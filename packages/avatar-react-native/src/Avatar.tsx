@@ -37,7 +37,7 @@ import {
   type AvatarRun,
   type PaintedFrame,
   type RunSettings,
-} from './engine'
+} from './engine.js'
 
 const MUTE_TRANSITION_MS = 300
 // Under this size an avatar is shown compact: a state with a shorter list of clips uses it.
