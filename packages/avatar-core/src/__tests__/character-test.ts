@@ -203,3 +203,21 @@ describe('characters', () => {
     }
   })
 })
+
+describe('opacity and eye size', () => {
+  const character: AvatarCharacter = characterFromLegacyDefinition(legacy)
+
+  it('fades the whole avatar, and scales the eyes about their place', () => {
+    const rest = renderCharacterFrame(character, resting())
+    expect(rest.opacity).toBe(1)
+    const faded = renderCharacterFrame(character, { ...resting(), opacity: 0.3 })
+    expect(faded.opacity).toBeCloseTo(0.3)
+    const big = renderCharacterFrame(character, { ...resting(), eyeSize: 1.5 })
+    const height = (scene: typeof rest) => {
+      const eye = box(scene.geometry.leftPath)
+      return eye.maxY - eye.minY
+    }
+    expect(height(big) / height(rest)).toBeGreaterThan(1.35)
+    expect(height(big) / height(rest)).toBeLessThan(1.6)
+  })
+})

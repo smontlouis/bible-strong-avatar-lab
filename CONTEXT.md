@@ -26,7 +26,7 @@ head's turn or stay still while the head turns.
 
 ### Clip
 
-A piece of motion of a set length, made of tracks (position, rotation, stretch, zoom, eyelids,
+A piece of motion of a set length, made of tracks (position, rotation, stretch, zoom, eyelids, eye size, opacity,
 face), each with its own keys and the easing between them. The catalogue's Clips are read-only
 data. Avoid “animation” and “sequence”: everything the avatar does is animated, and a Clip's
 tracks run side by side, not one after the other.

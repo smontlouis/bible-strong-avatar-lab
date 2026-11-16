@@ -101,6 +101,12 @@ export type CharacterScene = AvatarScene & {
   transform: SceneTransform
   /** What the body has turned into, when it has. */
   spinner: SpinnerScene | null
+  /**
+   * The opacity of the whole avatar, the spinner's included: what the clip asks times what the
+   * spinner leaves of the body. A renderer gives it to the moved group; the spinner's marks
+   * already carry it.
+   */
+  opacity: number
 }
 
 const number = (value: number) => value.toFixed(2)
@@ -187,11 +193,15 @@ const markPath = (mark: Readonly<SpinnerMark>, unit: number): SpinnerPath | null
 
 const spinnerScene = (
   character: Readonly<AvatarCharacter>,
-  spinner: Readonly<SpinnerFrame>
+  spinner: Readonly<SpinnerFrame>,
+  opacity: number
 ): SpinnerScene => {
   const radius = bodyRadius(character)
   return {
-    marks: spinner.marks.flatMap(mark => markPath(mark, radius) ?? []),
+    marks: spinner.marks.flatMap(mark => {
+      const path = markPath(mark, radius)
+      return path ? [{ ...path, opacity: path.opacity * opacity }] : []
+    }),
     round: spinner.round,
     disc: spinner.core.drop ? dropPath(radius) : circlePath(0, 0, radius),
     opacity: spinner.core.opacity,
@@ -241,7 +251,7 @@ const eyeOutlineOnFace = (
   const build = character.face.eyes
   const radius = faceRadius(character)
   const side = index === 0 ? -1 : 1
-  const outline = eyeOutline(frame.eyes[index], frame.eyeScales[index], frame.lids)
+  const outline = eyeOutline(frame.eyes[index], frame.eyeScales[index] * frame.eyeSize, frame.lids)
   // The two eyes never touch. A face that leans its eyes inward, or a character whose eyes are
   // set close, would bring them together: an eye that comes too near the middle of the face is
   // moved outward, whole, by what it lacks.
@@ -322,6 +332,7 @@ export const renderCharacterFrame = (
       front: geometry.frontNodeIds.map(id => (id ? (nodeColors.get(id) ?? bodyColor) : bodyColor)),
     },
     transform: sceneTransform(character, frame),
-    spinner: spinner ? spinnerScene(character, spinner) : null,
+    spinner: spinner ? spinnerScene(character, spinner, frame.opacity) : null,
+    opacity: frame.opacity * (spinner?.core.opacity ?? 1),
   }
 }

@@ -4,6 +4,8 @@ import {
   type ClipEase,
   type ClipFaceKey,
   type ClipKey,
+  MAX_EYE_SIZE,
+  MIN_EYE_SIZE,
 } from '@bible-strong/avatar-core'
 import {
   ArrowLeft,
@@ -90,6 +92,8 @@ const steps: Record<NumericTrackName, { step: number; min?: number; max?: number
   squash: { step: 0.01, min: 0.05 },
   scale: { step: 0.01, min: 0.25, max: 2.5 },
   lids: { step: 0.01, min: 0, max: 1 },
+  eyeSize: { step: 0.01, min: MIN_EYE_SIZE, max: MAX_EYE_SIZE },
+  opacity: { step: 0.01, min: 0, max: 1 },
 }
 
 const surface = 'rounded-2xl border border-border bg-card shadow-[0_4px_14px_rgb(24_28_35/5%)]'

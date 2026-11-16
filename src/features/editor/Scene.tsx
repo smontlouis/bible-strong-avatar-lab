@@ -54,7 +54,7 @@ export function Scene({
           />
         )
       )}
-      <g transform={`matrix(${transform.join(' ')})`} opacity={spinner?.opacity ?? 1}>
+      <g transform={`matrix(${transform.join(' ')})`} opacity={scene.opacity}>
         <defs>
           <clipPath id={`${id}-head`}>
             <path d={geometry.headPath} />
