@@ -5149,6 +5149,11 @@ p {
   border-radius: 14px;
   padding: 5px;
 }
+.face-grid .face-card.creation-card {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
 .face-grid .face-card .avatar-preview {
   height: auto;
   min-height: 0;
