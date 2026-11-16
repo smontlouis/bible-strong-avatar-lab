@@ -3,15 +3,28 @@ import {
   eyePointOnFace,
   faceNames,
   faces,
+  eyeMorphOf,
   inspectEyeScales,
-  mixEyeShapes,
+  morphEyeShapes,
   resolveFaceName,
+  type FaceEye,
 } from '../faces'
 
 const box = (points: [number, number][]) => ({
   width: Math.max(...points.map(point => point[0])) - Math.min(...points.map(point => point[0])),
   height: Math.max(...points.map(point => point[1])) - Math.min(...points.map(point => point[1])),
+  x: Math.min(...points.map(point => point[0])),
+  y: Math.min(...points.map(point => point[1])),
 })
+/** How far one box is from another: the largest move of an edge. */
+const moved = (a: ReturnType<typeof box>, b: ReturnType<typeof box>) =>
+  Math.max(
+    Math.abs(a.x - b.x),
+    Math.abs(a.y - b.y),
+    Math.abs(a.x + a.width - (b.x + b.width)),
+    Math.abs(a.y + a.height - (b.y + b.height))
+  )
+const pair = (name: (typeof faceNames)[number]) => faces[name].eyes
 
 describe('faces', () => {
   it('has the nine faces, each with two eyes', () => {
@@ -63,19 +76,59 @@ describe('faces', () => {
     expect(half.height).toBeLessThan(0.57)
   })
 
-  it('passes from one face to another without a jump', () => {
+  it('passes from one face to another without a jump, both eyes', () => {
     for (const from of faceNames) {
       for (const to of faceNames) {
-        let previous = box(eyeOutline(faces[from].eyes[0]))
-        for (let step = 1; step <= 100; step += 1) {
-          const eye = mixEyeShapes(faces[from].eyes[0], faces[to].eyes[0], step / 100)
-          const current = box(eyeOutline(eye))
-          // A hundredth of the way moves an edge by a few hundredths at most. Between `sad`
-          // and `confused` the line folds on itself halfway, and an edge moves a tenth.
-          expect(Math.abs(current.width - previous.width)).toBeLessThan(0.1)
-          expect(Math.abs(current.height - previous.height)).toBeLessThan(0.1)
-          previous = current
+        for (const index of [0, 1] as const) {
+          let previous = box(eyeOutline(pair(from)[index]))
+          for (let step = 1; step <= 100; step += 1) {
+            const eye = morphEyeShapes(pair(from), pair(to), step / 100)[index]
+            const current = box(eyeOutline(eye))
+            // A hundredth of the way moves an edge by a few hundredths at most. Between `sad`
+            // and `confused` the line folds on itself halfway, and an edge moves a tenth.
+            expect(
+              moved(current, previous),
+              `${from} → ${to}, eye ${index}, ${step}%`
+            ).toBeLessThan(0.1)
+            previous = current
+          }
+          expect(moved(previous, box(eyeOutline(pair(to)[index])))).toBeLessThan(1e-9)
         }
+      }
+    }
+  })
+
+  it('ends a morph on the face itself', () => {
+    const [left, right] = morphEyeShapes(pair('neutral'), pair('calm'), 1)
+    expect(left).toBe(faces.calm.eyes[0])
+    expect(right).toBe(faces.calm.eyes[1])
+  })
+
+  it('mixes the numbers of bent eyes, and passes through a capsule towards an oval', () => {
+    expect(eyeMorphOf(pair('neutral'), pair('calm'))).toBe('oval')
+    expect(eyeMorphOf(pair('calm'), pair('surprised'))).toBe('oval')
+    // A smile is bent: its numbers are mixed, oval or not.
+    expect(eyeMorphOf(pair('happy'), pair('calm'))).toBe('numbers')
+    expect(eyeMorphOf(pair('sleepy'), pair('neutral'))).toBe('numbers')
+
+    // Halfway from neutral to calm, the eye swells out of a capsule as wide as both.
+    const [half] = morphEyeShapes(pair('neutral'), pair('calm'), 0.5)
+    expect(half.ovalMix).toBeGreaterThan(0.5)
+    expect(half.ovalMix).toBeLessThan(1)
+    const start = box(eyeOutline(faces.neutral.eyes[0]))
+    const end = box(eyeOutline(faces.calm.eyes[0]))
+    const middle = box(eyeOutline(half))
+    expect(middle.width).toBeGreaterThan(start.width)
+    expect(middle.width).toBeLessThan(end.width)
+  })
+
+  it('goes on from an eye left halfway to an oval without a jump', () => {
+    const halfway: [FaceEye, FaceEye] = morphEyeShapes(pair('neutral'), pair('calm'), 0.5)
+    for (const to of faceNames) {
+      for (const index of [0, 1] as const) {
+        const before = box(eyeOutline(halfway[index]))
+        const after = box(eyeOutline(morphEyeShapes(halfway, pair(to), 0.01)[index]))
+        expect(moved(before, after), `→ ${to}, eye ${index}`).toBeLessThan(0.05)
       }
     }
   })
