@@ -78,6 +78,20 @@ export const trackMeta: Record<
     unit: '',
     hint: '0 ouvert · 1 fermé',
   },
+  eyeSize: {
+    label: 'Taille des yeux',
+    color: '#2c7a7b',
+    parts: ['Taille'],
+    unit: '×',
+    hint: '1 laisse les yeux du visage',
+  },
+  opacity: {
+    label: 'Opacité',
+    color: '#718096',
+    parts: ['Opacité'],
+    unit: '',
+    hint: '0 invisible · 1 entier',
+  },
   expression: { label: 'Visage', color: '#4a5568', parts: [], unit: '', hint: '' },
 }
 

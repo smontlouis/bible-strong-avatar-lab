@@ -143,6 +143,8 @@ them on purpose, not by accident.
 | `squash`     | `[sx, sy]`            | `[1, 1]`    | Stretch across and up. Keep `sx·sy` near 1 so the body keeps its volume.                                                                                       | 0.88…1.12                                        |
 | `scale`      | `[zoom]`              | `[0.6]`     | Drawn size. Clamped to 0.25…2.5. Without a `scale` track the zoom stays as it was.                                                                             | 0.42…0.64                                        |
 | `lids`       | `[closed]`            | `[0]`       | 0 open, 1 closed. Only shows on the faces that can blink: `neutral`, `surprised`, `inspecting`.                                                                | 0…1                                              |
+| `eyeSize`    | `[size]`              | `[1]`       | The size of both eyes against what the face and the character make them, about their own place. Clamped to 0.2…3. Works on every face.                         | not used (new); 1.3–1.6 pops, 0.7–0.8 shrinks    |
+| `opacity`    | `[shown]`             | `[1]`       | 0 gone, 1 whole: the avatar fades as one, parts and spinner included.                                                                                          | not used (new)                                   |
 | `expression` | a face name (no list) | `neutral`   | The face from that time on. Keys have no `ease`.                                                                                                               | —                                                |
 
 Faces: `neutral`, `happy`, `surprised`, `sad`, `sleepy`, `squinted`, `calm`, `inspecting`
@@ -166,7 +168,7 @@ How faces behave:
 
 - **Loops.** A clip plays round and round. At its end, if the body is not back near the pose at
   `workArea.start` (within 4° on each axis, counting whole turns as nothing, 0.015 in position,
-  0.02 in squash and zoom, 0.05 in lids), the engine first leads it back there in 0.35 s, which
+  0.02 in squash, zoom, opacity and eye size, 0.05 in lids), the engine first leads it back there in 0.35 s, which
   shows as a slide. **End where you started** for a seamless loop; a rotation that ends at 360
   ends where 0 started.
 - **Joins.** From another clip, the engine leads the body in 0.35 s to the pose the clip has at
@@ -209,6 +211,12 @@ The principles of animation, on these tracks:
   Holds give a move room to read: 0.2 to 0.5 s of stillness between beats.
 - **Restraint.** The catalogue's amplitudes are small. A roll of 10 to 20°, a hop of 0.2 radii
   and a squash of 12 % already read strongly.
+- **Eyes react before the body.** Pop them (`eyeSize` 1.4 for 0.1 s, then back with Back out) for
+  a surprise, squeeze them (0.75) the instant before an impact. A short change reads; a held one
+  looks like another character.
+- **Fade instead of teleporting.** To leave or come back, ramp `opacity` over 0.15–0.3 s rather
+  than jumping the body from one place to another in a single frame. A loop must end at the
+  opacity it starts with.
 - **Faces carry intent.** Change the face just before the body acts on it: `happy` as the hop
   starts, `surprised` on the impact.
 

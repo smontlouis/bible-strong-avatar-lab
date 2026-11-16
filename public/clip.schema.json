@@ -132,6 +132,20 @@
               }
             }
           }
+        },
+        "eyeSize": {
+          "description": "[size]: both eyes against the face's own size, about their place; clamped to 0.2-3. Rest [1].",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key1"
+          }
+        },
+        "opacity": {
+          "description": "[shown]: 0 gone to 1 whole, the avatar fades as one, spinner included. Rest [1].",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key1"
+          }
         }
       }
     }

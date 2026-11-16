@@ -25,6 +25,8 @@ export const trackOrder: TrackName[] = [
   'squash',
   'scale',
   'lids',
+  'eyeSize',
+  'opacity',
   'expression',
 ]
 
@@ -35,6 +37,8 @@ export const trackRest: Record<NumericTrackName, readonly number[]> = {
   squash: [1, 1],
   scale: [REST_ZOOM],
   lids: [0],
+  eyeSize: [1],
+  opacity: [1],
 }
 
 /** The faces a key of the face track may ask for, `blink` included. */
@@ -289,6 +293,8 @@ const numericSizes: Record<NumericTrackName, number> = {
   squash: 2,
   scale: 1,
   lids: 1,
+  eyeSize: 1,
+  opacity: 1,
 }
 
 /** Where a clip read from outside goes wrong: the path of the field, and what is wrong there. */

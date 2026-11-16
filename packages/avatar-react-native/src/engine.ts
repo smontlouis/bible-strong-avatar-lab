@@ -149,7 +149,7 @@ export const paintCharacterScene = (scene: CharacterScene): PaintedFrame => {
     body: colors.body,
     eyes: colors.eyes,
     matrix: [...transform],
-    bodyOpacity: spinner?.opacity ?? 1,
+    bodyOpacity: scene.opacity,
     fading: 1 - round,
     disc: spinner && round > 0 ? spinner.disc : '',
     discOpacity: round,

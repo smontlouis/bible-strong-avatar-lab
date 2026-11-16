@@ -34,6 +34,10 @@ export type ClipTracks = {
   scale?: ClipKey<readonly [number]>[]
   /** How far the eyelids are closed: 0 open, 1 closed. */
   lids?: ClipKey<readonly [number]>[]
+  /** How much of the avatar shows: 0 gone, 1 whole. Spinner marks included. */
+  opacity?: ClipKey<readonly [number]>[]
+  /** The size of the eyes against what the face and the character make them: 1 leaves them. */
+  eyeSize?: ClipKey<readonly [number]>[]
   expression?: ClipFaceKey[]
 }
 
@@ -133,10 +137,12 @@ export type ClipPose = {
   squash?: [number, number]
   scale?: number
   lids?: number
+  opacity?: number
+  eyeSize?: number
 }
 
 export const sampleClipPose = (clip: Readonly<ClipDefinition>, time: number): ClipPose => {
-  const { position, rotation, squash, scale, lids } = clip.tracks
+  const { position, rotation, squash, scale, lids, opacity, eyeSize } = clip.tracks
   const pose: ClipPose = {}
   if (position?.length) pose.position = sampleClipTrack(position, time) as [number, number]
   if (rotation?.length) {
@@ -145,5 +151,7 @@ export const sampleClipPose = (clip: Readonly<ClipDefinition>, time: number): Cl
   if (squash?.length) pose.squash = sampleClipTrack(squash, time) as [number, number]
   if (scale?.length) pose.scale = sampleClipTrack(scale, time)[0]
   if (lids?.length) pose.lids = sampleClipTrack(lids, time)[0]
+  if (opacity?.length) pose.opacity = sampleClipTrack(opacity, time)[0]
+  if (eyeSize?.length) pose.eyeSize = sampleClipTrack(eyeSize, time)[0]
   return pose
 }

@@ -142,3 +142,60 @@ describe('the player', () => {
     expect(playerFrame(player).eyes[0].wid).toBeCloseTo(0.21, 6)
   })
 })
+
+describe('opacity and eye size', () => {
+  const fade = {
+    name: 'Fade',
+    duration: 1,
+    tracks: {
+      opacity: [
+        { t: 0, v: [1] as const },
+        { t: 0.5, v: [0] as const },
+        { t: 1, v: [1] as const },
+      ],
+      eyeSize: [
+        { t: 0, v: [1] as const },
+        { t: 0.5, v: [9] as const },
+        { t: 1, v: [1] as const },
+      ],
+    },
+  }
+
+  it('reads both tracks, the eyes within their bounds', () => {
+    const player = createAvatarPlayer()
+    playClip(player, fade)
+    run(player, 0.5)
+    expect(playerFrame(player).opacity).toBeCloseTo(0, 1)
+    expect(playerFrame(player).eyeSize).toBe(3)
+  })
+
+  it('leaves both at 1 for a clip without them, and joins them back', () => {
+    const player = createAvatarPlayer()
+    playClip(player, fade)
+    run(player, 0.5)
+    playClip(player, clips.Idle_B)
+    run(player, JOIN_SECONDS / 2)
+    const halfway = playerFrame(player)
+    expect(halfway.opacity).toBeGreaterThan(0)
+    expect(halfway.opacity).toBeLessThan(1)
+    run(player, JOIN_SECONDS)
+    expect(playerFrame(player).opacity).toBe(1)
+    expect(playerFrame(player).eyeSize).toBe(1)
+  })
+
+  it('counts them in the rest pose a loop comes back to', () => {
+    const player = createAvatarPlayer()
+    playClip(player, {
+      ...fade,
+      tracks: {
+        opacity: [
+          { t: 0, v: [1] },
+          { t: 1, v: [0] },
+        ],
+      },
+    })
+    run(player, 1.02)
+    expect(player.join).not.toBeNull()
+    expect(clipRestPose(fade).opacity).toBe(1)
+  })
+})

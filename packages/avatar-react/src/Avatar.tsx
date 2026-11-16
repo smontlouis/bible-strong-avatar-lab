@@ -179,7 +179,7 @@ export function Avatar({
     const round = spinner?.round ?? 0
     const fading = String(1 - round)
     set('body', 'transform', `matrix(${transform.join(' ')})`)
-    set('body', 'opacity', String(spinner?.opacity ?? 1))
+    set('body', 'opacity', String(scene.opacity))
     set('head', 'd', geometry.headPath)
     set('head', 'fill', colors.body)
     set('head', 'visibility', round >= 0.999 ? 'hidden' : 'visible')
@@ -391,11 +391,7 @@ export function Avatar({
           />
         )
       })}
-      <g
-        data-part="body"
-        transform={`matrix(${transform.join(' ')})`}
-        opacity={spinner?.opacity ?? 1}
-      >
+      <g data-part="body" transform={`matrix(${transform.join(' ')})`} opacity={first.opacity}>
         <g data-part="back" opacity={1 - round}>
           {slots.map(index => (
             <path

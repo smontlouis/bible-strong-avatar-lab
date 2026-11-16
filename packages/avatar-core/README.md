@@ -183,12 +183,13 @@ type CharacterScene = {
     marks: { d: string; opacity: number; strokeWidth?: number }[] // under the body, not moved
     round: number // 0 to 1: fade the parts and the face by it, draw `disc` with it as opacity
     disc: string
-    opacity: number // of the body as a whole
+    opacity: number // of the body as a whole, as the spinner leaves it
   }
+  opacity: number // of the whole avatar: the clip's opacity times the spinner's; marks carry it
 }
 ```
 
-Draw the spinner's marks first, then, inside a group moved by `transform`: `backPaths`,
+Draw the spinner's marks first, then, inside a group moved by `transform` and given `opacity`: `backPaths`,
 `headPath`, the eyes, nose and mouth clipped to `headPath`, `frontPaths`, and the disc. When
 `frontClipPaths[i]` is not empty, clip `frontPaths[i]` by it: that path is the part of a coloured
 node that is nearer than the head's surface (see below). A body node moves between `backPaths` and

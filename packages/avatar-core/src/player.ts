@@ -30,11 +30,17 @@ export type PlayerPose = {
   squash: [number, number]
   zoom: number
   lids: number
+  /** How much of the avatar shows, from 0 to 1. */
+  opacity: number
+  /** The size of the eyes against the face's own. */
+  eyeSize: number
 }
 
 export const REST_ZOOM = 0.6
 const MIN_ZOOM = 0.25
 const MAX_ZOOM = 2.5
+export const MIN_EYE_SIZE = 0.2
+export const MAX_EYE_SIZE = 3
 /** How long a join between two clips takes, in seconds. */
 export const JOIN_SECONDS = 0.35
 export const JOIN_EASE: ClipEase = [0.4, 0, 0.2, 1]
@@ -87,7 +93,7 @@ const clamp = (value: number, low: number, high: number) => Math.max(low, Math.m
 
 /** What a clip asks of the body at a time. Without a zoom track, the zoom stays as it was. */
 const poseAt = (clip: Readonly<ClipDefinition>, time: number, zoom: number): PlayerPose => {
-  const { position, rotation, squash, scale } = clip.tracks
+  const { position, rotation, squash, scale, opacity, eyeSize } = clip.tracks
   const { lids } = prepare(clip)
   return {
     position: position?.length ? (sampleClipTrack(position, time) as [number, number]) : [0, 0],
@@ -97,6 +103,10 @@ const poseAt = (clip: Readonly<ClipDefinition>, time: number, zoom: number): Pla
     squash: squash?.length ? (sampleClipTrack(squash, time) as [number, number]) : [1, 1],
     zoom: scale?.length ? clamp(sampleClipTrack(scale, time)[0], MIN_ZOOM, MAX_ZOOM) : zoom,
     lids: lids.length ? clamp(sampleClipTrack(lids, time)[0], 0, 1) : 0,
+    opacity: opacity?.length ? clamp(sampleClipTrack(opacity, time)[0], 0, 1) : 1,
+    eyeSize: eyeSize?.length
+      ? clamp(sampleClipTrack(eyeSize, time)[0], MIN_EYE_SIZE, MAX_EYE_SIZE)
+      : 1,
   }
 }
 
@@ -163,6 +173,8 @@ const restingPose = (): PlayerPose => ({
   squash: [1, 1],
   zoom: REST_ZOOM,
   lids: 0,
+  opacity: 1,
+  eyeSize: 1,
 })
 
 export const createAvatarPlayer = (): AvatarPlayer => ({
@@ -225,6 +237,8 @@ const startJoin = (player: AvatarPlayer, target: ClipDefinition, phase: number) 
       squash: [...player.pose.squash],
       zoom: player.pose.zoom,
       lids: player.pose.lids,
+      opacity: player.pose.opacity,
+      eyeSize: player.pose.eyeSize,
     },
     to: {
       ...rest,
@@ -341,7 +355,9 @@ const near = (pose: Readonly<PlayerPose>, rest: Readonly<PlayerPose>) =>
   Math.abs(pose.squash[0] - rest.squash[0]) < 0.02 &&
   Math.abs(pose.squash[1] - rest.squash[1]) < 0.02 &&
   Math.abs(pose.zoom - rest.zoom) < 0.02 &&
-  Math.abs(pose.lids - rest.lids) < 0.05
+  Math.abs(pose.lids - rest.lids) < 0.05 &&
+  Math.abs(pose.opacity - rest.opacity) < 0.02 &&
+  Math.abs(pose.eyeSize - rest.eyeSize) < 0.02
 
 /** The faces a clip asks for after one time and up to another. */
 const fireFaces = (player: AvatarPlayer, clip: ClipDefinition, after: number, upTo: number) => {
@@ -379,6 +395,8 @@ const advanceClip = (player: AvatarPlayer, seconds: number) => {
       ],
       zoom: between(join.from.zoom, join.to.zoom),
       lids: between(join.from.lids, join.to.lids),
+      opacity: between(join.from.opacity, join.to.opacity),
+      eyeSize: between(join.from.eyeSize, join.to.eyeSize),
     }
     return
   }
@@ -455,6 +473,8 @@ export const playerFrame = (player: Readonly<AvatarPlayer>): PlayerFrame => {
     squash: [player.pose.squash[0], player.pose.squash[1]],
     zoom: player.pose.zoom,
     lids: shownLids(player),
+    opacity: player.pose.opacity,
+    eyeSize: player.pose.eyeSize,
     squashAnchor: player.squashAnchor,
     face: player.face,
     eyes: playerEyes(player),

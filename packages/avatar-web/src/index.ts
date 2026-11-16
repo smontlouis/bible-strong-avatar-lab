@@ -220,7 +220,7 @@ const paint = (picture: Picture, scene: CharacterScene, id: string) => {
   const round = spinner?.round ?? 0
   const fading = String(1 - round)
   picture.body.setAttribute('transform', `matrix(${transform.join(' ')})`)
-  picture.body.setAttribute('opacity', String(spinner?.opacity ?? 1))
+  picture.body.setAttribute('opacity', String(scene.opacity))
   picture.head.setAttribute('d', geometry.headPath)
   picture.head.setAttribute('fill', colors.body)
   picture.head.setAttribute('visibility', round >= 0.999 ? 'hidden' : 'visible')
