@@ -707,7 +707,8 @@ export function ClipEditor({
   // Keys of the keyboard: play, walk the clip, pick and move keys, zoom, undo and redo.
   const keyboard = useRef<(event: KeyboardEvent) => void>(() => {})
   keyboard.current = event => {
-    if (isTyping(event.target) || help) return
+    // A key a control already took (the photo frame's arrows, a gizmo's Enter) is not ours.
+    if (isTyping(event.target) || help || editor.photoMode || event.defaultPrevented) return
     const command = event.metaKey || event.ctrlKey
     if (command && event.key.toLowerCase() === 'z') {
       event.preventDefault()
