@@ -24,6 +24,24 @@ const character: AvatarCharacter = {
   face: { eyes: { width: 1, height: 1, gap: 1, shiftY: 0 }, perspective: 1 },
 }
 
+const outlinedCharacter: AvatarCharacter = {
+  name: 'Outlined',
+  body: {
+    primary: { type: 'sphere', width: 240, height: 240, depth: 240, roundness: 1 },
+    nodes: [
+      {
+        color: '#333333',
+        surface: { type: 'sphere', width: 90, height: 90, depth: 90, roundness: 1 },
+        position: [-100, -80, 20],
+        rotation: [0, 0, 0],
+      },
+    ],
+  },
+  colors: { body: '#ffffff', eyes: '#111316' },
+  style: { outline: { enabled: true, color: '#111316', width: 6, opacity: 0.8 } },
+  face: { eyes: { width: 1, height: 1, gap: 1, shiftY: 0 }, perspective: 1 },
+}
+
 // Frames are asked for by hand: `frames(n)` runs n of them, a sixtieth of a second apart.
 let pending: FrameRequestCallback[] = []
 let clock = 0
@@ -65,6 +83,25 @@ describe('@bible-strong/avatar-react', () => {
     expect(part(container, 'head').getAttribute('d')).toMatch(/^M/)
     expect(part(container, 'left').getAttribute('d')).toMatch(/^M/)
     expect(part(container, 'head').getAttribute('fill')).toBe('#5b7fe5')
+  })
+
+  it('outlines the whole silhouette once, not each of its parts', () => {
+    const { container } = render(<Avatar character={outlinedCharacter} />)
+    frames(2)
+    const svg = container.querySelector('svg')!
+    // One group strokes every shape, underneath and twice as wide: the fills over it leave the
+    // outer half, round the whole silhouette, and no line between the parts.
+    const strokes = [...svg.querySelectorAll('[stroke]')].filter(
+      element => element.getAttribute('stroke') !== 'none'
+    )
+    expect(strokes).toHaveLength(1)
+    const [outline] = strokes
+    expect(outline.getAttribute('stroke-width')).toBe('12')
+    expect(outline.getAttribute('fill')).toBe('none')
+    expect(Number(outline.getAttribute('opacity'))).toBeCloseTo(0.8)
+    expect(outline.parentElement!.firstElementChild).toBe(outline)
+    const traced = [...outline.querySelectorAll('path')].filter(path => path.getAttribute('d'))
+    expect(traced.length).toBeGreaterThanOrEqual(2)
   })
 
   it('moves without a render of React: the paths change from frame to frame', () => {

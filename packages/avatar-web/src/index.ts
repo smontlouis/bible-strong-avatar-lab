@@ -171,24 +171,31 @@ const buildPicture = (character: AvatarCharacter, id: string) => {
     return shape
   })
 
+  // The outline goes round the whole silhouette, not round each part: every shape is stroked
+  // underneath, twice as wide, and the fills drawn over it hide all but the outer half.
   const outline = character.style?.outline?.enabled ? character.style.outline : null
-  const stroked = (path: SVGPathElement) => {
-    if (!outline) return path
-    path.setAttribute('stroke', outline.color)
-    path.setAttribute('stroke-width', String(outline.width))
-    path.setAttribute('stroke-opacity', String(outline.opacity))
-    path.setAttribute('stroke-linejoin', 'round')
-    return path
-  }
+  const outlineGroup = outline
+    ? element('g', {
+        fill: 'none',
+        stroke: outline.color,
+        'stroke-width': String(outline.width * 2),
+        'stroke-linejoin': 'round',
+      })
+    : null
+  const outlineOpacity = outline?.opacity ?? 1
+  const outlineBack = Array.from({ length: outline ? slots : 0 }, () => element('path'))
+  const outlineHead = element('path')
+  const outlineFront = Array.from({ length: outline ? slots : 0 }, () => element('path'))
+  outlineGroup?.append(...outlineBack, outlineHead, ...outlineFront)
 
   const marks = Array.from({ length: MARK_SLOTS }, () =>
     element('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })
   )
   const body = element('g')
   const backGroup = element('g')
-  const back = Array.from({ length: slots }, () => stroked(element('path')))
+  const back = Array.from({ length: slots }, () => element('path'))
   backGroup.append(...back)
-  const head = stroked(element('path'))
+  const head = element('path')
   const face = element('g', { 'clip-path': `url(#${id}-head)` })
   const left = element('path')
   const right = element('path')
@@ -196,9 +203,10 @@ const buildPicture = (character: AvatarCharacter, id: string) => {
   const mouth = element('path')
   face.append(left, right, nose, mouth)
   const frontGroup = element('g')
-  const front = Array.from({ length: slots }, () => stroked(element('path')))
+  const front = Array.from({ length: slots }, () => element('path'))
   frontGroup.append(...front)
   const disc = element('path')
+  if (outlineGroup) body.append(outlineGroup)
   body.append(backGroup, head, face, frontGroup, disc)
   svg.append(defs, ...marks, body)
 
@@ -209,6 +217,11 @@ const buildPicture = (character: AvatarCharacter, id: string) => {
     frontClips,
     marks,
     body,
+    outlineGroup,
+    outlineOpacity,
+    outlineBack,
+    outlineHead,
+    outlineFront,
     backGroup,
     back,
     head,
@@ -243,6 +256,16 @@ const paint = (picture: Picture, scene: CharacterScene, id: string) => {
   picture.face.setAttribute('opacity', fading)
   picture.backGroup.setAttribute('opacity', fading)
   picture.frontGroup.setAttribute('opacity', fading)
+  if (picture.outlineGroup) {
+    picture.outlineGroup.setAttribute('opacity', String(picture.outlineOpacity * (1 - round)))
+    picture.outlineHead.setAttribute('d', round >= 0.999 ? '' : geometry.headPath)
+    picture.outlineBack.forEach((path, index) =>
+      path.setAttribute('d', geometry.backPaths[index] ?? '')
+    )
+    picture.outlineFront.forEach((path, index) =>
+      path.setAttribute('d', geometry.frontPaths[index] ?? '')
+    )
+  }
   for (let index = 0; index < picture.slots; index += 1) {
     const backPath = picture.back[index]
     backPath.setAttribute('d', geometry.backPaths[index] ?? '')

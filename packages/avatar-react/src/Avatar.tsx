@@ -227,7 +227,15 @@ export function Avatar({
     set('face', 'opacity', fading)
     set('back', 'opacity', fading)
     set('front', 'opacity', fading)
+    const outlined = root.querySelector('[data-part="outline"]')
+    if (outlined) {
+      const opacity = Number(outlined.getAttribute('data-outline-opacity') ?? 1)
+      outlined.setAttribute('opacity', String(opacity * (1 - round)))
+      set('outline-head', 'd', round >= 0.999 ? '' : geometry.headPath)
+    }
     for (let index = 0; index < nodeSlots; index += 1) {
+      set(`outline-back-${index}`, 'd', geometry.backPaths[index] ?? '')
+      set(`outline-front-${index}`, 'd', geometry.frontPaths[index] ?? '')
       set(`back-${index}`, 'd', geometry.backPaths[index] ?? '')
       set(`back-${index}`, 'fill', bodyColors.back[index] ?? colors.body)
       const clipped = geometry.frontClipPaths[index] ?? ''
@@ -372,15 +380,9 @@ export function Avatar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, character, reduced, state, clip, face, pose, paused, emphasis, settleAfterMs])
 
+  // The outline goes round the whole silhouette, not round each part: every shape is stroked
+  // underneath, twice as wide, and the fills drawn over it hide all but the outer half.
   const outline = character.style?.outline?.enabled ? character.style.outline : null
-  const stroke = outline
-    ? {
-        stroke: outline.color,
-        strokeWidth: outline.width,
-        strokeOpacity: outline.opacity,
-        strokeLinejoin: 'round' as const,
-      }
-    : {}
   const { geometry, colors, bodyColors, transform, spinner } = first
   const round = spinner?.round ?? 0
   const slots = Array.from({ length: nodeSlots }, (_, index) => index)
@@ -428,13 +430,39 @@ export function Avatar({
         )
       })}
       <g data-part="body" transform={`matrix(${transform.join(' ')})`} opacity={first.opacity}>
+        {outline && (
+          <g
+            data-part="outline"
+            data-outline-opacity={outline.opacity}
+            fill="none"
+            stroke={outline.color}
+            strokeWidth={outline.width * 2}
+            strokeLinejoin="round"
+            opacity={outline.opacity * (1 - round)}
+          >
+            {slots.map(index => (
+              <path
+                data-part={`outline-back-${index}`}
+                d={geometry.backPaths[index] ?? ''}
+                key={index}
+              />
+            ))}
+            <path data-part="outline-head" d={round >= 0.999 ? '' : geometry.headPath} />
+            {slots.map(index => (
+              <path
+                data-part={`outline-front-${index}`}
+                d={geometry.frontPaths[index] ?? ''}
+                key={index}
+              />
+            ))}
+          </g>
+        )}
         <g data-part="back" opacity={1 - round}>
           {slots.map(index => (
             <path
               data-part={`back-${index}`}
               d={geometry.backPaths[index] ?? ''}
               fill={bodyColors.back[index] ?? colors.body}
-              {...stroke}
               key={index}
             />
           ))}
@@ -444,7 +472,6 @@ export function Avatar({
           d={geometry.headPath}
           fill={colors.body}
           visibility={round >= 0.999 ? 'hidden' : 'visible'}
-          {...stroke}
         />
         <g data-part="face" clipPath={`url(#${id}-head)`} fill={colors.eyes} opacity={1 - round}>
           <path data-part="left" d={geometry.leftVisible ? geometry.leftPath : ''} />
@@ -459,7 +486,6 @@ export function Avatar({
               d={geometry.frontPaths[index] ?? ''}
               fill={bodyColors.front[index] ?? colors.body}
               clipPath={geometry.frontClipPaths[index] ? `url(#${id}-front-${index})` : undefined}
-              {...stroke}
               key={index}
             />
           ))}

@@ -36,8 +36,14 @@ export const pictureSvg = (
   const composition = normalizeSnapshotComposition(options.composition)
   const round = spinner?.round ?? 0
   const outline = character.style?.outline?.enabled ? character.style.outline : null
-  const stroke = outline
-    ? ` stroke="${outline.color}" stroke-width="${outline.width}" stroke-opacity="${outline.opacity}" stroke-linejoin="round"`
+  // The outline goes round the whole silhouette, not round each part: every shape is stroked
+  // underneath, twice as wide, and the fills drawn over it hide all but the outer half.
+  const underlay = outline
+    ? `<g fill="none" stroke="${outline.color}" stroke-width="${outline.width * 2}" stroke-linejoin="round" opacity="${outline.opacity * (1 - round)}">` +
+      [...geometry.backPaths, ...(round < 0.999 ? [geometry.headPath] : []), ...geometry.frontPaths]
+        .map(path => `<path d="${path}"/>`)
+        .join('') +
+      '</g>'
     : ''
   const marks = (spinner?.marks ?? [])
     .map(mark =>
@@ -47,12 +53,12 @@ export const pictureSvg = (
     )
     .join('')
   const back = geometry.backPaths
-    .map((path, index) => `<path d="${path}" fill="${bodyColors.back[index]}"${stroke}/>`)
+    .map((path, index) => `<path d="${path}" fill="${bodyColors.back[index]}"/>`)
     .join('')
   const front = geometry.frontPaths
     .map((path, index) => {
       const clip = geometry.frontClipPaths[index] ? ` clip-path="url(#front-${index})"` : ''
-      return `<path d="${path}" fill="${bodyColors.front[index]}"${clip}${stroke}/>`
+      return `<path d="${path}" fill="${bodyColors.front[index]}"${clip}/>`
     })
     .join('')
   const clips = geometry.frontClipPaths
@@ -87,8 +93,9 @@ export const pictureSvg = (
     `<g transform="translate(${composition.x} ${composition.y}) scale(${composition.scale})">` +
     marks +
     `<g transform="matrix(${transform.join(' ')})" opacity="${spinner?.opacity ?? 1}">` +
+    underlay +
     `<g opacity="${1 - round}">${back}</g>` +
-    (round < 0.999 ? `<path d="${geometry.headPath}" fill="${colors.body}"${stroke}/>` : '') +
+    (round < 0.999 ? `<path d="${geometry.headPath}" fill="${colors.body}"/>` : '') +
     `<g clip-path="url(#head)" fill="${colors.eyes}" opacity="${1 - round}">${face}</g>` +
     `<g opacity="${1 - round}">${front}</g>` +
     (spinner && round > 0

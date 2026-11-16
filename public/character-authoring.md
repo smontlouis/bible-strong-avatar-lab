@@ -209,7 +209,7 @@ Exactly these five keys; `color` and `followsHead` are optional. No `id` or `nam
   inner ears: cones 48 × 62 × 14 at z −8 on ears 84 × 106 × 32 at z −16. At z −4 they vanished, at
   z +4 only a sliver showed: try a few depths and look at the sheet.
 - **Parts of the body's colour merge into the head** where they overlap it, since nothing draws
-  a line between them unless the character has an outline. Such a part reads only where it sticks
+  a line between them, outline or not. Such a part reads only where it sticks
   out of the silhouette: a tail tucked behind the head disappears in profile, and a tip of another
   colour left on it looks like a floating dot. Let it reach out, or give it a colour.
 - **Parts in front are drawn over the eyes, the nose and the mouth.** Keep them below the face, or
@@ -248,8 +248,9 @@ shares. The character scales and places them.
 - **`face.perspective`**: how much nearer things look bigger. 0 draws everything at one size
   (Grok bot); 1 is the usual view (the front of a 240 sphere is shown 1.24× larger). Past 1.5 the
   picture distorts, and at high values it breaks. Use 0…1.5.
-- **`style.outline`**: a line around the head and every part, never on the face. The Studio offers
-  widths 0.5…12.
+- **`style.outline`**: one line round the whole silhouette, the head and its parts together:
+  no line where a part meets the head or another part, and none on the face. All of the width
+  lies outside the shapes. The Studio offers widths 0.5…12.
 
 ## The Studio's characters
 

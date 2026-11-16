@@ -20,6 +20,24 @@ const run = (count: number) => {
   }
 }
 
+const outlinedCharacter = {
+  name: 'Outlined',
+  body: {
+    primary: { type: 'sphere', width: 240, height: 240, depth: 240, roundness: 1 },
+    nodes: [
+      {
+        color: '#333333',
+        surface: { type: 'sphere', width: 90, height: 90, depth: 90, roundness: 1 },
+        position: [-100, -80, 20],
+        rotation: [0, 0, 0],
+      },
+    ],
+  },
+  colors: { body: '#ffffff', eyes: '#111316' },
+  style: { outline: { enabled: true, color: '#111316', width: 6, opacity: 0.8 } },
+  face: { eyes: { width: 1, height: 1, gap: 1, shiftY: 0 }, perspective: 1 },
+}
+
 const head = () => document.querySelectorAll('#avatar svg > g > path')[0]?.getAttribute('d')
 
 describe('@bible-strong/avatar-web', () => {
@@ -64,6 +82,25 @@ describe('@bible-strong/avatar-web', () => {
     expect(() => createAvatar('#avatar', { character: { body: {} } })).toThrow(
       /Invalid avatar character/
     )
+  })
+
+  it('outlines the whole silhouette once, not each of its parts', () => {
+    createAvatar('#avatar', { character: outlinedCharacter })
+    run(2)
+    const svg = document.querySelector('#avatar svg')!
+    // One group strokes every shape, underneath and twice as wide: the fills over it leave the
+    // outer half, round the whole silhouette, and no line between the parts.
+    const strokes = [...svg.querySelectorAll('[stroke]')].filter(
+      element => element.getAttribute('stroke') !== 'none'
+    )
+    expect(strokes).toHaveLength(1)
+    const [outline] = strokes
+    expect(outline.getAttribute('stroke-width')).toBe('12')
+    expect(outline.getAttribute('fill')).toBe('none')
+    expect(Number(outline.getAttribute('opacity'))).toBeCloseTo(0.8)
+    expect(outline.parentElement!.firstElementChild).toBe(outline)
+    const traced = [...outline.querySelectorAll('path')].filter(path => path.getAttribute('d'))
+    expect(traced.length).toBeGreaterThanOrEqual(2)
   })
 
   it('moves at every frame while it is in sight', () => {
