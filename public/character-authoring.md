@@ -21,8 +21,9 @@ https://avatars.bible-strong.app/#character={"name":"Fox","body":{...},"colors":
 ```
 
 - Opening the link opens the Avatars tab with the character as a **draft**: a new avatar, marked
-  "brouillon", shown on the stage, with its **sheet**. Nothing is saved until the person presses
-  "Enregistrer dans mes avatars" (Save to my avatars). The person's other avatars are not touched.
+  "brouillon", shown on the stage, with its **sheet**. Nothing is saved until someone presses
+  "Enregistrer dans mes avatars" (Save to my avatars): the person, or an agent that drives their
+  browser, when the person asks it to. The person's other avatars are not touched.
 - `character=` must come last: everything after it is the JSON, as it is or percent-encoded.
 - While the Avatars tab shows the draft, every change made in the Studio (body, parts, colours,
   face) rewrites the address about 0.3 s later; a new address written in the same tab replaces
@@ -476,4 +477,4 @@ https://avatars.bible-strong.app/#character=<the JSON above>
 2. Write the character and open its link. If it does not open, read `[data-link-problem]`.
 3. Capture the sheet and look at every side and every face. Fix and reopen.
 4. Hand the link to the person; they adjust it in the Studio (Avatars → Modifier) and the address
-   follows. Once saved, show it moving with a clip or state link and `avatar=pip`.
+   follows. When it is right they save it, or ask you to save it if you drive their browser. Once saved, show it moving with a clip or state link and `avatar=pip`.

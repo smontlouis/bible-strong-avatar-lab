@@ -23,8 +23,9 @@ holds all the guides in one file.
   states then name it like a built-in face.
 
 The four work the same way. You write the clip, state, character or face as JSON and hand it over as a
-link to the Studio, which opens it as a **draft** (nothing is saved until the person saves it), in
-the browser of whoever opens it. Each kind has a view made for checking it in one screenshot: the
+link to the Studio, which opens it as a **draft**, in the browser of whoever opens it. Nothing is
+saved until someone presses its save button: the person, or you if you drive their browser and
+they ask you to (saving a draft opened from a saved one replaces it). Each kind has a view made for checking it in one screenshot: the
 frame sheet of a clip, the run of a state, the character sheet, the face sheet. While the draft is shown, the
 Studio rewrites the link with every change the person makes, and takes up at once a new link
 written in the same tab: an agent driving the browser and the person work on the same draft. The

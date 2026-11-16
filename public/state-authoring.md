@@ -65,7 +65,7 @@ https://avatars.bible-strong.app/#avatar=strobi&state={"name":"cheering","clips"
 ```
 
 - Opening the link opens the States tab with the state as a **draft** and plays it on the stage.
-  Nothing is saved until the person presses "Enregistrer dans mes états" (Save to my states).
+  Nothing is saved until someone presses "Enregistrer dans mes états" (Save to my states): the person, or an agent that drives their browser, when the person asks it to. Saving a draft opened from a saved state replaces that state.
 - `state=` must come **last**: everything after it is the state's JSON, written as it is or
   percent-encoded. Before it, optionally, `avatar=<file name>` (`strobi`, `freddy`… as listed in
   llms.txt), `view=frames` to open the frame sheet instead of the run, and `fps=2|4|8|12` for the
@@ -147,4 +147,5 @@ says (a window 1500 px wide and tall enough, `page.locator('[data-sheet]').scree
 1. Read the catalogue states closest to the request, and the clips they play.
 2. Write the state (and its `newClips` if the catalogue lacks the motion) and open its link.
 3. Read the run: order, timing, hand-over. Capture the sheet if the faces or the spinner matter.
-4. Hand the link to the person; they adjust it in the Studio and the address follows.
+4. Hand the link to the person; they adjust it in the Studio and the address follows. When it is
+   right they save it, or ask you to save it if you drive their browser.

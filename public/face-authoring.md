@@ -154,8 +154,8 @@ The JSON comes last and may be written as it is; spaces and `"` may be percent-e
 Studio reads a link encoded once more on the way. The face opens in the Faces tab and the stage
 holds it. While it is shown, every change made by hand rewrites the address a moment later, and a
 new link written into the same tab is taken up at once: an agent driving the browser and the
-person work on the same draft. Nothing is kept until the person clicks _Enregistrer dans mes
-visages_. A link that holds no valid face says what is wrong (`[data-link-problem]`).
+person work on the same draft. Nothing is kept until someone clicks _Enregistrer dans mes
+visages_: the person, or an agent that drives their browser, when the person asks it to. Saving a draft opened from a saved face replaces that face. A link that holds no valid face says what is wrong (`[data-link-problem]`).
 
 ## Checking a face: the sheet
 
@@ -219,5 +219,5 @@ library's `faces`.
 1. Write the face and open its link.
 2. Capture the sheet: front, sides, small sizes, blink, the change of face.
 3. Adjust the marks; the person adjusts them in the Studio and the address follows.
-4. When it is right, the person saves it, names it in a clip key or a state, and exports the
-   library for their app.
+4. When it is right, the person saves it, or asks you to save it if you drive their browser; then
+   it can be named in a clip key or a state, and the library exported for their app.
