@@ -398,6 +398,8 @@ const english: Record<string, string> = {
   'Aperçu du clip': 'Clip overview',
   'La timeline est en bas, sous la scène.': 'The timeline is at the bottom, under the stage.',
   'La remettre ici': 'Bring it back here',
+  'Choisir un visage': 'Pick a face',
+  'Double-clic pour dessiner une copie': 'Double-click to draw a copy',
   'Maj + clic sur un tracé, ou cadre sur le vide': 'Shift + click a mark, or a box on nothing',
   'Choisir plusieurs tracés': 'Pick several marks',
   'Poignée ronde de la boîte': 'The round handle of the box',

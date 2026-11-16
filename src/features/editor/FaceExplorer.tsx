@@ -44,7 +44,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { SectionCombobox } from '@/components/ui/section-combobox'
 import { Switch } from '@/components/ui/switch'
 import { characterViews } from '@/features/editor/CharacterSheet'
 import { LinkProblemNote } from '@/features/editor/ClipExplorer'
@@ -56,10 +55,9 @@ import {
   faceFileName,
   faceFileText,
   faceNameProblem,
-  isBuiltInFaceName,
   marksFromSvgText,
 } from '@/features/editor/faceLibrary'
-import { restFrameWithFace } from '@/features/editor/CharacterPreview'
+import { CharacterPreview, restFrameWithFace } from '@/features/editor/CharacterPreview'
 import { Scene } from '@/features/editor/Scene'
 import type { ClipRef } from '@/features/editor/useClipLibrary'
 import type { Editor } from '@/features/editor/useEditor'
@@ -811,6 +809,139 @@ function Note({ children }: { children: ReactNode }) {
   return <p className="px-3 pb-2 text-xs text-muted-foreground">{children}</p>
 }
 
+/** One face as a card: the avatar of the stage showing it, and its name. */
+function FaceCard({
+  editor,
+  face,
+  label,
+  drawn,
+  pressed,
+  onPick,
+  onDoubleClick,
+  title,
+}: {
+  editor: Editor
+  face: string
+  label: string
+  drawn: Readonly<Record<string, CompiledFace>>
+  pressed: boolean
+  onPick: () => void
+  onDoubleClick?: () => void
+  title?: string
+}) {
+  const { character } = editor
+  return (
+    <Button
+      className="avatar-card face-card"
+      variant="outline"
+      type="button"
+      aria-pressed={pressed}
+      aria-label={label}
+      title={title}
+      data-face-card={face}
+      onClick={onPick}
+      onDoubleClick={onDoubleClick}
+    >
+      {character && <CharacterPreview character={character} face={face} faces={drawn} />}
+      <span>{label}</span>
+    </Button>
+  )
+}
+
+/**
+ * The faces as a shelf of cards, as the avatars are: the draft, the drawn ones, then the built-in
+ * ones, each shown on the avatar of the stage. It scrolls when there are many.
+ */
+function FaceShelf({
+  editor,
+  name,
+  onDraft,
+  drawn,
+  onPick,
+  onCreate,
+  onDrawBuiltIn,
+}: {
+  editor: Editor
+  /** The face shown. */
+  name: string
+  onDraft: boolean
+  drawn: Readonly<Record<string, CompiledFace>>
+  onPick: (face: string) => void
+  onCreate: () => void
+  onDrawBuiltIn: (face: FaceName) => void
+}) {
+  const { t, clipLibrary } = editor
+  const draft = clipLibrary.faceDraft
+  const own = clipLibrary.faces.filter(face => face.name !== draft?.face.name || !onDraft)
+  return (
+    <section className="face-shelf" aria-label={t('Choisir un visage')} data-face-shelf>
+      {draft && (
+        <>
+          <p className="face-shelf-heading">
+            <strong>{t('Brouillon')}</strong>
+          </p>
+          <div className="face-grid">
+            <FaceCard
+              editor={editor}
+              face={draft.face.name}
+              label={`${draft.face.name} · ${t('brouillon')}`}
+              drawn={drawn}
+              pressed={onDraft}
+              onPick={() => onPick(draft.face.name)}
+            />
+          </div>
+        </>
+      )}
+      <p className="face-shelf-heading">
+        <strong>{t('Mes visages')}</strong>
+        <span>{clipLibrary.faces.length}</span>
+      </p>
+      <div className="face-grid">
+        {own.map(face => (
+          <FaceCard
+            editor={editor}
+            face={face.name}
+            label={face.name}
+            drawn={drawn}
+            pressed={!onDraft && name === face.name}
+            onPick={() => onPick(face.name)}
+            key={face.name}
+          />
+        ))}
+        <Button
+          variant="outline"
+          className="avatar-add creation-card face-card"
+          type="button"
+          aria-label={t('Nouveau visage')}
+          title={t('Nouveau visage')}
+          onClick={onCreate}
+        >
+          <Plus />
+        </Button>
+      </div>
+      <p className="face-shelf-heading">
+        <strong>{t('Visages intégrés')}</strong>
+        <span>{t('Double-clic pour dessiner une copie')}</span>
+      </p>
+      <div className="face-grid">
+        {faceNames.map(face => (
+          <FaceCard
+            editor={editor}
+            face={face}
+            label={face}
+            drawn={drawn}
+            pressed={!onDraft && name === face}
+            title={t('Double-clic pour dessiner une copie')}
+            onPick={() => onPick(face)}
+            onDoubleClick={() => onDrawBuiltIn(face)}
+            key={face}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export function FacesPanel({ editor }: { editor: Editor }) {
   const { t, clipLibrary, holdFaceForFaces, setPlaying } = editor
   const file = useRef<HTMLInputElement>(null)
@@ -826,7 +957,6 @@ export function FacesPanel({ editor }: { editor: Editor }) {
   const builtIn =
     !custom && (faceNames as readonly string[]).includes(name) ? (name as FaceName) : null
   const drawn = clipLibrary.drawnFaces()
-  const draftItem = draft ? `${draft.face.name} (${t('brouillon')})` : null
 
   const show = (shown: string | null) => {
     holdFaceForFaces(shown)
@@ -836,20 +966,16 @@ export function FacesPanel({ editor }: { editor: Editor }) {
   return (
     <div className="panel-stack">
       <div className={`${surface} flex flex-col gap-0.5 p-1.5`}>
-        <SectionCombobox
-          label={t('Visage')}
-          value={onDraft ? draftItem : name}
-          sections={[
-            ...(draftItem ? [{ value: t('Brouillon'), items: [draftItem] }] : []),
-            ...(clipLibrary.faces.length
-              ? [{ value: t('Mes visages'), items: clipLibrary.faces.map(face => face.name) }]
-              : []),
-            { value: t('Visages intégrés'), items: [...faceNames] },
-          ]}
-          detail={item => (isBuiltInFaceName(item) ? undefined : t('dessiné'))}
-          placeholder={t('Rechercher un visage…')}
-          empty={t('Aucun visage')}
-          onPick={item => show(item === draftItem && draft ? draft.face.name : item)}
+        <FaceShelf
+          editor={editor}
+          name={name}
+          onDraft={onDraft}
+          drawn={drawn}
+          onPick={show}
+          onCreate={() => show(clipLibrary.createFace(t('visage')))}
+          onDrawBuiltIn={face =>
+            show(clipLibrary.openFaceDraft(builtInFaceAsDrawn(face, `${face}-${t('dessiné')}`)))
+          }
         />
         <div className="flex flex-wrap items-center gap-1.5 px-1.5 pt-1 pb-1.5">
           <Button

@@ -368,6 +368,8 @@ export const chinese: Record<string, string> = {
   'Aperçu du clip': '片段概览',
   'La timeline est en bas, sous la scène.': '时间轴在下方，舞台之下。',
   'La remettre ici': '放回这里',
+  'Choisir un visage': '选择表情',
+  'Double-clic pour dessiner une copie': '双击以绘制副本',
   'Maj + clic sur un tracé, ou cadre sur le vide': 'Shift + 点击路径，或在空白处框选',
   'Choisir plusieurs tracés': '选择多个路径',
   'Poignée ronde de la boîte': '边框的圆形手柄',

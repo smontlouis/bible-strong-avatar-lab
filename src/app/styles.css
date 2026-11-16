@@ -5032,3 +5032,52 @@ p {
     height: 22px;
   }
 }
+
+/* The faces as a shelf of cards, as the avatars are; it scrolls when there are many. */
+.face-shelf {
+  max-height: min(26rem, 48vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 6px 6px;
+}
+.face-shelf-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 2px 6px;
+}
+.face-shelf-heading:first-child {
+  margin-top: 2px;
+}
+.face-shelf-heading strong {
+  font-size: 11px;
+}
+.face-shelf-heading span {
+  color: #8d929c;
+  font-size: 9px;
+}
+.face-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px;
+}
+.face-grid .face-card {
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 1;
+  flex-direction: column;
+  align-items: stretch;
+  border-radius: 14px;
+  padding: 5px;
+}
+.face-grid .face-card .avatar-preview {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.face-grid .face-card > span {
+  min-height: 12px;
+  padding: 2px 3px 0;
+  font-size: 9px;
+}

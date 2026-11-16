@@ -218,6 +218,8 @@ export function VectorEditor({
   // The turn of the box of each set of marks: path data has none, the editor keeps it.
   const [angles, setAngles] = useState<Record<string, number>>({})
   const [guides, setGuides] = useState<Guides | null>(null)
+  // How far the box is turned by a rotation under way: it turns with the marks as they turn.
+  const [turning, setTurning] = useState(0)
   // Fingers on the artboard, for a pinch.
   const touches = useRef(new Map<number, { x: number; y: number }>())
   const pinch = useRef<{
@@ -257,7 +259,7 @@ export function VectorEditor({
     !editing && members.length
       ? orientedBox(
           members.map(index => readPath(marks[index].d)),
-          angles[groupKey] ?? 0
+          (angles[groupKey] ?? 0) + turning
         )
       : null
   /** A point of the box's own frame on the artboard. */
@@ -806,6 +808,7 @@ export function VectorEditor({
           Math.atan2(raw[1] - current.center[1], raw[0] - current.center[0]) - current.start
         if (event.shiftKey) angle = Math.round(angle / (Math.PI / 12)) * (Math.PI / 12)
         current.turned = angle
+        setTurning(angle)
         carryMarks(current.from, rotation(angle, current.center), 'transform')
         return
       }
@@ -978,9 +981,11 @@ export function VectorEditor({
     drag.current = null
     setMarquee(null)
     setGuides(null)
-    if (current?.kind === 'rotate' && current.turned) {
+    if (current?.kind === 'rotate') {
       // The box keeps the turn, as the marks have taken it.
-      setAngles({ ...angles, [groupKey]: (angles[groupKey] ?? 0) + current.turned })
+      if (current.turned)
+        setAngles({ ...angles, [groupKey]: (angles[groupKey] ?? 0) + current.turned })
+      setTurning(0)
     }
     if (current?.kind === 'shape') {
       const end = current.now

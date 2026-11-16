@@ -48,6 +48,9 @@ const setup = (start: FaceMark[]) => {
   return { view, board, last, onMarks }
 }
 
+const near = (values: number[], expected: number[]) =>
+  values.forEach((value, index) => expect(value).toBeCloseTo(expected[index], 1))
+
 const ring: FaceMark = { d: 'M30 50A20 20 0 1 0 70 50A20 20 0 1 0 30 50Z' }
 
 afterEach(() => vi.restoreAllMocks())
@@ -248,5 +251,34 @@ describe('the vector editor', () => {
     const scaled = pathBounds(readPath(last()[0].d))!
     expect(scaled.x + scaled.width).toBeCloseTo(60, 6)
     expect(scaled.height).toBeCloseTo(20, 6)
+  })
+
+  it('turns the box with the marks while they turn, the same size all the way', () => {
+    const { view, board } = setup([{ d: 'M20 45H80V55H20Z' }])
+    const sides = () => {
+      const points = view.container
+        .querySelector('[data-transform-box] polygon')!
+        .getAttribute('points')!
+        .split(' ')
+        .map(Number)
+      const corner = (index: number) => [points[index * 2], points[index * 2 + 1]]
+      const [a, b, c] = [corner(0), corner(1), corner(2)]
+      return [Math.hypot(b[0] - a[0], b[1] - a[1]), Math.hypot(c[0] - b[0], c[1] - b[1])]
+    }
+    near(sides(), [60, 10])
+    const knob = view.container.querySelector('[data-role="rotate"]')!
+    fireEvent.pointerDown(knob, { pointerId: 1, ...at(50, 30) })
+    // An eighth of a turn, halfway through the gesture: the box is turned and as big as before.
+    fireEvent.pointerMove(board, { pointerId: 1, ...at(60.6, 39.4) })
+    expect(view.container.querySelector('[data-transform-box]')!.getAttribute('data-angle')).toBe(
+      '45'
+    )
+    near(sides(), [60, 10])
+    fireEvent.pointerMove(board, { pointerId: 1, ...at(70, 50) })
+    fireEvent.pointerUp(board, { pointerId: 1 })
+    expect(view.container.querySelector('[data-transform-box]')!.getAttribute('data-angle')).toBe(
+      '90'
+    )
+    near(sides(), [60, 10])
   })
 })
