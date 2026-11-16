@@ -59,7 +59,7 @@ function Cell({
 }) {
   return (
     <span className="flex flex-col items-center gap-0.5 rounded-md bg-muted p-1" {...data}>
-      <span className="relative aspect-square w-full">
+      <span className="relative aspect-square w-full overflow-hidden rounded-sm">
         <svg
           viewBox={VIEW}
           className="absolute inset-0 size-full text-muted-foreground"

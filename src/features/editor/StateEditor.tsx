@@ -328,7 +328,7 @@ function StateSheetView({
             title={`${index + 1} · ${secondsText(time)} · ${clip}`}
             key={index}
           >
-            <span className="relative aspect-square w-full">
+            <span className="relative aspect-square w-full overflow-hidden rounded-sm">
               <svg
                 viewBox={CELL_VIEW}
                 className="absolute inset-0 size-full text-muted-foreground"
