@@ -277,16 +277,17 @@ describe('the editor', () => {
     key('.')
     expect(clock()).toBe('0.50 s / 2.00 s')
 
-    // The key at 0.5 s picked, Option and the arrow move it a twelfth of a second on.
+    // The key at 0.5 s picked, Option and the arrow move it a twelfth of a second on, twice.
     const picked = view.getByRole('button', { name: /^Position · 0\.50/ })
     picked.setPointerCapture ??= () => {}
     fireEvent.pointerDown(picked, { pointerId: 1 })
     fireEvent.pointerUp(picked, { pointerId: 1 })
     frames(2)
     key('ArrowRight', { altKey: true })
+    key('ArrowRight', { altKey: true })
     await wait(LINK_WRITE_MS + 50)
     expect(readClipLink(window.location.hash)?.clip?.tracks.position?.map(k => k.t)).toEqual([
-      0, 0.583, 1,
+      0, 0.667, 1,
     ])
 
     key(' ')

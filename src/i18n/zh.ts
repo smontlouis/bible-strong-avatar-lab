@@ -372,7 +372,6 @@ export const chinese: Record<string, string> = {
   Fin: 'End',
   Suppr: 'Delete',
   Échap: 'Esc',
-  '⌘ + molette': '⌘ + 滚轮',
   'Lecture / pause': '播放 / 暂停',
   'Une image avant / après': '后退 / 前进一帧',
   'Une seconde avant / après': '后退 / 前进一秒',

@@ -402,7 +402,6 @@ const english: Record<string, string> = {
   Fin: 'End',
   Suppr: 'Delete',
   Échap: 'Esc',
-  '⌘ + molette': '⌘ + wheel',
   'Lecture / pause': 'Play / pause',
   'Une image avant / après': 'One frame back / forward',
   'Une seconde avant / après': 'One second back / forward',

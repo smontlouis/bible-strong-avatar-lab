@@ -93,6 +93,7 @@ import {
   type TimelineView,
 } from '@/features/editor/timelineView'
 import type { Editor } from '@/features/editor/useEditor'
+import type { StudioLanguage } from '@/i18n'
 
 // The editor of a custom clip: its settings, its tracks with their keys, which are added,
 // dragged in time and removed, and the key picked, with its value and the curve to the next.
@@ -128,25 +129,54 @@ const takesKeys = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
   !!target.closest('[role=slider],[role=listbox],[role=option],[role=menu],[role=combobox]')
 
-/** The keys of the timeline, as the help lists them; words among the keys are translated. */
+// Keys are named as the keyboard in front of the user names them.
+const onMac =
+  typeof navigator !== 'undefined' &&
+  /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+const MOD = onMac ? '⌘' : 'Ctrl+'
+const ALT = onMac ? '⌥' : 'Alt+'
+const SHIFT = onMac ? '⇧' : 'Shift+'
+/** The name of a key in a language; the French names are the ones the code writes. */
+const keyNames: Record<StudioLanguage, Record<string, string>> = {
+  fr: {},
+  en: {
+    Espace: 'Space',
+    Début: 'Home',
+    Fin: 'End',
+    Suppr: 'Delete',
+    Échap: 'Esc',
+    molette: 'wheel',
+  },
+  'zh-CN': {
+    Espace: '空格',
+    Début: 'Home',
+    Fin: 'End',
+    Suppr: 'Delete',
+    Échap: 'Esc',
+    molette: '滚轮',
+  },
+}
+const keyName = (key: string, language: StudioLanguage) =>
+  key.replace(/Espace|Début|Fin|Suppr|Échap|molette/g, word => keyNames[language][word] ?? word)
+
+/** The keys of the timeline, as the help lists them. */
 const shortcuts: readonly { keys: string[]; label: string }[] = [
   { keys: ['Espace'], label: 'Lecture / pause' },
   { keys: ['←', '→'], label: 'Une image avant / après' },
-  { keys: ['⇧←', '⇧→'], label: 'Une seconde avant / après' },
+  { keys: [`${SHIFT}←`, `${SHIFT}→`], label: 'Une seconde avant / après' },
   { keys: [',', '.'], label: 'Clé précédente / suivante' },
   { keys: ['Début', 'Fin'], label: 'Début / fin du clip' },
   { keys: ['L'], label: 'Boucle' },
   { keys: ['K'], label: 'Ajouter une clé à la tête de lecture' },
-  { keys: ['⌥←', '⌥→'], label: 'Déplacer la clé choisie d’une image' },
+  { keys: [`${ALT}←`, `${ALT}→`], label: 'Déplacer la clé choisie d’une image' },
   { keys: ['Suppr'], label: 'Supprimer la clé choisie' },
   { keys: ['Échap'], label: 'Désélectionner la clé' },
   { keys: ['+', '−'], label: 'Zoomer / dézoomer' },
   { keys: ['F'], label: 'Tout voir' },
-  { keys: ['⌘ + molette'], label: 'Zoomer sous le pointeur' },
-  { keys: ['⌘Z', '⇧⌘Z'], label: 'Annuler / rétablir' },
+  { keys: [`${onMac ? '⌘' : 'Ctrl'} + molette`], label: 'Zoomer sous le pointeur' },
+  { keys: [`${MOD}Z`, `${onMac ? '⇧⌘' : 'Ctrl+Shift+'}Z`], label: 'Annuler / rétablir' },
   { keys: ['?'], label: 'Cette aide' },
 ]
-const wordKeys = new Set(['Espace', 'Début', 'Fin', 'Suppr', 'Échap', '⌘ + molette'])
 
 const download = (clip: ClipDefinition) => {
   const link = document.createElement('a')
@@ -231,7 +261,7 @@ function ClipSettings({
           size="icon-sm"
           type="button"
           aria-label={t('Annuler')}
-          title={`${t('Annuler')} (⌘Z)`}
+          title={`${t('Annuler')} (${MOD}Z)`}
           disabled={!clipLibrary.canUndo}
           onClick={clipLibrary.undo}
         >
@@ -242,7 +272,7 @@ function ClipSettings({
           size="icon-sm"
           type="button"
           aria-label={t('Rétablir')}
-          title={`${t('Rétablir')} (⇧⌘Z)`}
+          title={`${t('Rétablir')} (${onMac ? '⇧⌘' : 'Ctrl+Shift+'}Z)`}
           disabled={!clipLibrary.canRedo}
           onClick={clipLibrary.redo}
         >
@@ -594,7 +624,7 @@ export function ClipEditor({
   /** The draft, or the saved custom clip being edited. */
   clipRef: ClipRef
 }) {
-  const { t, clipLibrary, engine } = editor
+  const { t, clipLibrary, engine, language } = editor
   const sheet = clipLibrary.view.view === 'frames'
   const lane = useRef<HTMLDivElement>(null)
   const [loops, setLoops] = useState(true)
@@ -689,9 +719,12 @@ export function ClipEditor({
 
   const [help, setHelp] = useState(false)
   const fps = clipLibrary.view.fps
-  /** The time a frame before or after this one, on the grid of the sheet's frames. */
+  /**
+   * The time a frame before or after this one, on the grid of the sheet's frames. Key times are
+   * kept to the millisecond, so a time a little off a frame counts as on it.
+   */
   const frameFrom = (time: number, by: 1 | -1) =>
-    by > 0 ? (Math.floor(time * fps + 1e-6) + 1) / fps : (Math.ceil(time * fps - 1e-6) - 1) / fps
+    by > 0 ? (Math.floor(time * fps + 0.05) + 1) / fps : (Math.ceil(time * fps - 0.05) - 1) / fps
   /** The key before or after the playhead: on the picked or shown track, else on any. */
   const keyFrom = (time: number, by: 1 | -1) => {
     const track = selected?.track ?? shown
@@ -727,7 +760,8 @@ export function ClipEditor({
       event.preventDefault()
       const key = clip.tracks[selected.track]![selected.index]
       const moved = moveClipKey(clip, selected.track, selected.index, frameFrom(key.t, arrow))
-      clipLibrary.update(clipRef, moved.clip)
+      // A run of presses is one step of the history, as a drag is.
+      clipLibrary.update(clipRef, moved.clip, `nudge-${selected.track}`)
       select({ track: selected.track, index: moved.index })
       seekShown(moved.clip.tracks[selected.track]![moved.index].t)
       return
@@ -886,6 +920,7 @@ export function ClipEditor({
       >
         {!sheet && (
           <>
+            <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />
             <Button
               variant="ghost"
               size="icon-sm"
@@ -902,7 +937,7 @@ export function ClipEditor({
               size="icon-sm"
               type="button"
               aria-label={t('Zoomer')}
-              title={`${t('Zoomer')} (+, ⌘ + molette)`}
+              title={`${t('Zoomer')} (+, ${keyName(`${onMac ? '⌘' : 'Ctrl'} + molette`, language)})`}
               disabled={span <= MIN_VIEW_SECONDS + 1e-6}
               onClick={() => zoomBy(0.5)}
             >
@@ -921,6 +956,7 @@ export function ClipEditor({
             </Button>
           </>
         )}
+        <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />
         <Button
           variant="ghost"
           size="icon-sm"
@@ -1097,7 +1133,7 @@ export function ClipEditor({
                   style={{ left: 'calc(var(--at, 0) * 100%)' }}
                 />
                 <span
-                  className={`absolute inset-y-0 rounded-full ring-1 ring-ring ${zoom ? 'cursor-grab bg-ring/20' : 'bg-transparent'}`}
+                  className={`absolute inset-y-0 rounded-full ${zoom ? 'cursor-grab bg-ring/20 ring-1 ring-ring' : ''}`}
                   style={{
                     left: `${(view.start / duration) * 100}%`,
                     width: `${(span / duration) * 100}%`,
@@ -1270,7 +1306,7 @@ export function ClipEditor({
                       className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[0.7rem]"
                       key={key}
                     >
-                      {wordKeys.has(key) ? t(key) : key}
+                      {keyName(key, language)}
                     </kbd>
                   ))}
                 </dt>
