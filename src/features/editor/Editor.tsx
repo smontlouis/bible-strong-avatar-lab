@@ -526,9 +526,15 @@ export function Editor() {
   const { photoMode } = editor
   const stopped = building || photoMode
 
+  // The clip timeline can leave the panel and stretch across the bottom of the stage.
+  const canDock = !stacked && !photoMode && !building && tab === 'clips'
+  const timelineDocked = canDock && editor.timelineDocked
+
   const stage = (
     <section
-      className={`stage-column${photoMode ? ' photo-mode-active' : ''}`}
+      className={`stage-column${photoMode ? ' photo-mode-active' : ''}${
+        timelineDocked ? ' timeline-docked' : ''
+      }`}
       style={
         {
           '--avatar-body-color': activeAvatar.colors.body,
@@ -604,6 +610,7 @@ export function Editor() {
           </Button>
         </div>
       )}
+      {canDock && <div className="timeline-dock" ref={editor.setTimelineDock} />}
       <p className="stage-credit">
         Made with ❤️ by{' '}
         <a href="https://x.com/_smontlouis" target="_blank" rel="noreferrer">

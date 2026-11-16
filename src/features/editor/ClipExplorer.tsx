@@ -38,6 +38,13 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { SectionCombobox } from '@/components/ui/section-combobox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
 import { ClipEditor } from '@/features/editor/ClipEditor'
 import type { LinkKind } from '@/features/editor/clipLink'
@@ -117,6 +124,7 @@ export function Curve({
   label,
   color,
   duration,
+  view = { start: 0, end: duration },
   selected,
   onPick,
 }: {
@@ -125,15 +133,19 @@ export function Curve({
   label: string
   color: string
   duration: number
+  /** The window of the clip the plot shows, as the timeline above it does. */
+  view?: { start: number; end: number }
   selected: number | null
   onPick: (index: number) => void
 }) {
+  const span = view.end - view.start || 1
   const values = Array.from({ length: CURVE_SAMPLES + 1 }, (_, index) => {
-    const time = (index / CURVE_SAMPLES) * duration
+    const time = view.start + (index / CURVE_SAMPLES) * span
     return sampleClipTrack(keys, time)[part]
   })
-  let low = Math.min(...values, ...keys.map(key => key.v[part]))
-  let high = Math.max(...values, ...keys.map(key => key.v[part]))
+  const shown = keys.filter(key => key.t >= view.start - 1e-6 && key.t <= view.end + 1e-6)
+  let low = Math.min(...values, ...shown.map(key => key.v[part]))
+  let high = Math.max(...values, ...shown.map(key => key.v[part]))
   if (high - low < 1e-6) {
     // A number that does not change is drawn in the middle, not along an edge.
     low -= 1
@@ -159,7 +171,7 @@ export function Curve({
         </span>
         <span className="text-right">{short(low)}</span>
       </div>
-      <div className="relative h-20 cursor-ew-resize rounded-md bg-white ring-1 ring-border">
+      <div className="relative h-20 cursor-ew-resize overflow-hidden rounded-md bg-white ring-1 ring-border">
         <div className="absolute inset-y-2 right-2.5 left-2.5">
           <svg
             className="absolute inset-0 size-full overflow-visible"
@@ -177,14 +189,17 @@ export function Curve({
           </svg>
           <span
             className="pointer-events-none absolute -inset-y-2 w-0.5 -translate-x-1/2 bg-ring"
-            style={{ left: 'calc(var(--at, 0) * 100%)' }}
+            style={{ left: 'calc((var(--at, 0) - var(--vs, 0)) / var(--vw, 1) * 100%)' }}
           />
           {keys.map((key, index) => (
             <button
               type="button"
               data-still
               className="absolute grid size-4 -translate-x-1/2 -translate-y-1/2 place-items-center"
-              style={{ left: `${(key.t / duration) * 100}%`, top: `${up(key.v[part])}%` }}
+              style={{
+                left: `${((key.t - view.start) / span) * 100}%`,
+                top: `${up(key.v[part])}%`,
+              }}
               aria-label={`${label} · ${seconds(key.t)} · ${short(key.v[part])}`}
               aria-pressed={selected === index}
               key={index}
@@ -330,41 +345,46 @@ export function ClipTransport({
       >
         <SkipBack />
       </Button>
-      <span className="px-1.5 font-mono text-[0.7rem] tabular-nums" ref={clock} />
+      <span className="px-1.5 font-mono text-[0.7rem] whitespace-nowrap tabular-nums" ref={clock} />
       <span className="hidden rounded-full bg-secondary px-2 py-0.5 text-[0.6rem] font-semibold text-secondary-foreground group-data-[joining=true]:inline">
         {t('raccord')}
       </span>
-      <div className="ml-auto flex items-center rounded-lg bg-background p-0.5 ring-1 ring-border">
-        {speeds.map(value => (
-          <button
-            type="button"
-            className={`h-6 rounded-md px-1.5 text-[0.65rem] font-semibold tabular-nums ${
-              speed === value
-                ? 'bg-secondary text-secondary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            aria-pressed={speed === value}
-            aria-label={`${t('Vitesse')} ×${value}`}
-            key={value}
-            onClick={() => setSpeed(value)}
-          >
-            {value}×
-          </button>
-        ))}
-      </div>
-      {loops !== undefined && (
-        <Button
-          variant={loops ? 'secondary' : 'ghost'}
-          size="icon-sm"
-          type="button"
-          aria-pressed={loops}
-          aria-label={t('Boucle')}
-          onClick={() => setLoops?.(!loops)}
+      <div className="ml-auto flex items-center gap-0.5">
+        <Select
+          value={speed}
+          items={speeds.map(value => ({ value, label: `${value}×` }))}
+          onValueChange={next => next !== null && setSpeed(next)}
         >
-          <Repeat />
-        </Button>
-      )}
-      {children}
+          <SelectTrigger
+            aria-label={t('Vitesse')}
+            title={t('Vitesse')}
+            className="h-8 w-auto gap-1 border-0 bg-transparent px-2 text-[0.7rem] font-semibold tabular-nums shadow-none hover:bg-background"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {speeds.map(value => (
+              <SelectItem value={value} key={value} className="text-xs tabular-nums">
+                {value}×
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {loops !== undefined && (
+          <Button
+            variant={loops ? 'secondary' : 'ghost'}
+            size="icon-sm"
+            type="button"
+            aria-pressed={loops}
+            aria-label={t('Boucle')}
+            title={`${t('Boucle')} (L)`}
+            onClick={() => setLoops?.(!loops)}
+          >
+            <Repeat />
+          </Button>
+        )}
+        {children}
+      </div>
     </div>
   )
 }
@@ -419,7 +439,7 @@ export function ClipTimeline({
   const playhead = (
     <span
       className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-ring"
-      style={{ left: 'calc(var(--at, 0) * 100%)' }}
+      style={{ left: 'calc((var(--at, 0) - var(--vs, 0)) / var(--vw, 1) * 100%)' }}
     />
   )
 
@@ -470,7 +490,7 @@ export function ClipTimeline({
               ))}
               <span
                 className="pointer-events-none absolute -bottom-1 size-2 -translate-x-1/2 rotate-45 bg-ring"
-                style={{ left: 'calc(var(--at, 0) * 100%)' }}
+                style={{ left: 'calc((var(--at, 0) - var(--vs, 0)) / var(--vw, 1) * 100%)' }}
               />
             </div>
           </div>

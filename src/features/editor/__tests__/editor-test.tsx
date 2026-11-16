@@ -213,6 +213,90 @@ describe('the editor', () => {
     ).toBe('true')
   })
 
+  it('zooms the timeline in and out, and moves it under the stage and back', () => {
+    const hop = {
+      name: 'Hop',
+      duration: 2,
+      tracks: { position: [0, 0.5, 1, 1.5, 2].map(t => ({ t, v: [0, t === 1 ? 0.2 : 0] })) },
+    }
+    window.history.replaceState(null, '', `/#clip=${JSON.stringify(hop)}`)
+    const view = open()
+    const range = () =>
+      view.container.querySelector('[data-overview]')!.parentElement!.firstElementChild!.textContent
+    expect(range()).toBe('')
+    expect(view.getByRole('button', { name: 'Tout voir' })).toHaveProperty('disabled', true)
+
+    fireEvent.click(view.getByRole('button', { name: 'Zoomer' }))
+    frames(2)
+    expect(range()).toMatch(/ – /)
+    fireEvent.keyDown(window, { key: '+' })
+    frames(2)
+    const [from, to] = range()!
+      .split(' – ')
+      .map(part => parseFloat(part))
+    expect(to - from).toBeCloseTo(0.5, 1)
+    fireEvent.keyDown(window, { key: 'f' })
+    frames(2)
+    expect(range()).toBe('')
+
+    // Across the bottom of the stage, with a note left in the panel to bring it back.
+    fireEvent.click(view.getByRole('button', { name: 'Agrandir la timeline' }))
+    frames(2)
+    expect(view.container.querySelector('.timeline-dock [data-timeline]')).toBeTruthy()
+    expect(view.container.querySelectorAll('[data-timeline]')).toHaveLength(1)
+    fireEvent.click(view.getByRole('button', { name: /La remettre ici/ }))
+    frames(2)
+    expect(view.container.querySelector('.timeline-dock [data-timeline]')).toBeNull()
+    expect(view.container.querySelectorAll('[data-timeline]')).toHaveLength(1)
+  })
+
+  it('walks a clip with the keyboard, and moves the picked key a frame at a time', async () => {
+    const hop = {
+      name: 'Hop',
+      duration: 2,
+      tracks: { position: [0, 0.5, 1].map(t => ({ t, v: [0, t === 0.5 ? 0.2 : 0] })) },
+    }
+    window.history.replaceState(null, '', `/#fps=12&clip=${JSON.stringify(hop)}`)
+    const view = open()
+    const clock = () => view.container.querySelector('[data-timeline] .tabular-nums')!.textContent
+    const key = (name: string, init: Partial<KeyboardEventInit> = {}) => {
+      fireEvent.keyDown(window, { key: name, ...init })
+      frames(2)
+    }
+    key('Home')
+    expect(view.getByRole('button', { name: 'Lecture' })).toBeTruthy()
+    expect(clock()).toBe('0.00 s / 2.00 s')
+    key('ArrowRight')
+    key('ArrowRight')
+    expect(clock()).toBe('0.17 s / 2.00 s')
+    key('ArrowRight', { shiftKey: true })
+    expect(clock()).toBe('1.17 s / 2.00 s')
+    key('End')
+    expect(clock()).toBe('2.00 s / 2.00 s')
+    key('Home')
+    key('.')
+    expect(clock()).toBe('0.50 s / 2.00 s')
+
+    // The key at 0.5 s picked, Option and the arrow move it a twelfth of a second on, twice.
+    const picked = view.getByRole('button', { name: /^Position · 0\.50/ })
+    picked.setPointerCapture ??= () => {}
+    fireEvent.pointerDown(picked, { pointerId: 1 })
+    fireEvent.pointerUp(picked, { pointerId: 1 })
+    frames(2)
+    key('ArrowRight', { altKey: true })
+    key('ArrowRight', { altKey: true })
+    await wait(LINK_WRITE_MS + 50)
+    expect(readClipLink(window.location.hash)?.clip?.tracks.position?.map(k => k.t)).toEqual([
+      0, 0.667, 1,
+    ])
+
+    key(' ')
+    expect(view.getByRole('button', { name: 'Pause' })).toBeTruthy()
+    key(' ')
+    key('?')
+    expect(view.getByRole('dialog', { name: 'Raccourcis clavier' })).toBeTruthy()
+  })
+
   it('shows a clip from a link on the avatar the link names, and writes it back', async () => {
     const nod = { name: 'Nod', duration: 1, tracks: { rotation: [{ t: 0, v: [0, 0, 0] }] } }
     window.history.replaceState(null, '', `/#avatar=freddy&clip=${JSON.stringify(nod)}`)
