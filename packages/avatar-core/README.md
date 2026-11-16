@@ -137,13 +137,22 @@ requestAnimationFrame(tick)
 | `engineFrame(engine)`                           | What to draw now: the pose, the face, the eyelids, the spinner.        |
 | `renderCharacterFrame(character, frame)`        | The scene of that frame for a character.                               |
 
-### Clips and states of your own
+### Clips, states and faces of your own
 
-`createAvatarEngine` and `setEngineLibrary` take clips and states besides the catalogue's, each a
-record by name. A state of your own may draw your clips and the catalogue's, and hand over to a
-state of either; a name you give takes the place of the catalogue's for that engine, an alias
-included. `engineStateOf(engine, name)` and `engineClipOf(engine, name)` read what an engine
-knows. The renderers do not pass them yet: this is for an engine you drive yourself.
+`createAvatarEngine` and `setEngineLibrary` take clips, states and drawn faces besides the
+catalogue's, each a record by name. A state of your own may draw your clips and the catalogue's,
+and hand over to a state of either; a name you give takes the place of the catalogue's for that
+engine, an alias included. `engineStateOf(engine, name)` and `engineClipOf(engine, name)` read what
+an engine knows. The renderers take the same as their `library`.
+
+`readAvatarLibrary(library)` reads a library as the Studio exports it (`{ clips, states, faces }`,
+lists of named items) into those records, and returns the `problems` of what it left out:
+
+```ts
+const { library: read, problems } = readAvatarLibrary(library)
+const engine = createAvatarEngine({ seed: 1, ...read })
+setEngineState(engine, 'greeting')
+```
 
 ```ts
 const engine = createAvatarEngine({
@@ -152,6 +161,23 @@ const engine = createAvatarEngine({
 })
 setEngineState(engine, 'greeting')
 ```
+
+### Drawn faces
+
+A drawn face (`FaceDefinition`) is the marks of its eyes on an artboard of 100 by 100, paths filled
+or stroked with SVG's caps and joins; the guide is
+https://avatars.bible-strong.app/face-authoring.md. `compileFace(face)` reads it once into filled
+shapes in each eye's frame (`CompiledFace`, with the `problems` of marks that do not draw), which
+is what an engine's `faces` holds. `faceFromSvg({ name, svg })` and `faceEyesFromSvg(svg)` read an
+SVG file of the eye, without a DOM, and say what they ignored; `flattenPath(d)` reads path data.
+Names are exact and cannot be a built-in face's (`faceNameProblem`).
+
+A clip or state names a drawn face like a built-in one; a name the engine does not know shows
+`neutral`. Built-in faces still morph into each other (`morphEyeShapes`); a change to or from a
+drawn face is a blink of `FACE_SWAP_SECONDS`, and lids squash a drawn eye. A frame's `eyes` are
+`PlayerEye`s, built-in (`FaceEye`) or drawn (`DrawnEye`, with `drawnEyeShapes` for its shapes now);
+`renderCharacterFrame` draws both, a drawn eye as several subpaths of one path, filled `nonzero`.
+To show a face at once on a player, without the change, use `settlePlayerFace`.
 
 `engine.state` is the state that plays, or `null` while a clip plays alone; `engine.player.clip`
 is the clip. A state that hands over changes `engine.state` by itself: compare it after each step

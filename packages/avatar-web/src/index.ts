@@ -1,9 +1,10 @@
 import {
   advanceEngine,
   characterOf,
-  clips,
   createAvatarEngine,
+  engineClipOf,
   engineFrame,
+  engineStateOf,
   pauseEngine,
   playEngineClip,
   pokeEngine,
@@ -16,11 +17,13 @@ import {
   setEngineFace,
   setEngineGaze,
   setEngineGazeAlways,
+  setEngineLibrary,
   setEngineLookAt,
   engineAtRest,
+  readAvatarLibrary,
   setEngineState,
-  states,
   type AvatarCharacter,
+  type AvatarLibrary,
   type CharacterScene,
   type GestureName,
 } from '@bible-strong/avatar-core'
@@ -31,6 +34,11 @@ export type CreateAvatarOptions = {
    * first format, of which only the character is kept. It is checked once, here.
    */
   character: unknown
+  /**
+   * Clips, states and drawn faces of the app's own, as the Studio exports them, besides the
+   * catalogue's. The states and clips asked for, and the faces they name, may be among them.
+   */
+  library?: AvatarLibrary
   /** The state the avatar starts in. With neither a state nor a clip it is `idle`. */
   state?: string
   /** A clip to play alone, round and round, instead of a state. */
@@ -75,8 +83,10 @@ export type AvatarSnapshot = {
 }
 
 export type AvatarController = {
-  /** Put the avatar in a state of the catalogue. Returns `false` for a name it does not know. */
+  /** Put the avatar in a state: its library's, or the catalogue's. `false` for a name it does not know. */
   setState(state: string): boolean
+  /** Give the avatar another library, in place of the one it had. What plays goes on. */
+  setLibrary(library: AvatarLibrary | null): void
   /** Play one clip alone, round and round. Returns `false` for a name it does not know. */
   playClip(clip: string): boolean
   /** Hold a face whatever the avatar does, or pass `null` to let it decide again. */
@@ -288,6 +298,7 @@ export function createAvatar(
     ariaLabel = 'Avatar',
     className,
     onStateChange,
+    library,
   }: CreateAvatarOptions
 ): AvatarController {
   const character = characterOf(input)
@@ -310,12 +321,21 @@ export function createAvatar(
   host.append(picture.svg)
   mount.append(host)
 
+  const readLibrary = (given: AvatarLibrary | null | undefined) => {
+    const read = readAvatarLibrary(given)
+    if (read.problems.length) {
+      console.warn(`@bible-strong/avatar-web: library\n${read.problems.join('\n')}`)
+    }
+    return read.library
+  }
   const engine = createAvatarEngine({
     seed: seed ?? seedOfName(character.name ?? 'avatar'),
     compact: typeof size === 'number' && size < COMPACT_UNDER,
+    ...readLibrary(library),
   })
   setEngineEmphasis(engine, emphasis)
-  if (state === undefined && clip !== undefined && clips[clip]) playEngineClip(engine, clips[clip])
+  const firstClip = clip === undefined ? undefined : engineClipOf(engine, clip)
+  if (state === undefined && firstClip) playEngineClip(engine, firstClip)
   else setEngineState(engine, state ?? 'idle')
   if (face !== undefined) setEngineFace(engine, face)
   if (paused) pauseEngine(engine)
@@ -425,13 +445,19 @@ export function createAvatar(
 
   return {
     setState(name) {
-      if (!states[resolveStateName(name)]) return false
+      if (!engineStateOf(engine, name) && !engineStateOf(engine, resolveStateName(name))) {
+        return false
+      }
       setEngineState(engine, name)
       ask()
       return true
     },
+    setLibrary(next) {
+      setEngineLibrary(engine, readLibrary(next))
+      ask()
+    },
     playClip(name) {
-      const asked = clips[name]
+      const asked = engineClipOf(engine, name)
       if (!asked) return false
       playEngineClip(engine, asked)
       ask()

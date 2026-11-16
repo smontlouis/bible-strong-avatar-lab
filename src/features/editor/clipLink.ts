@@ -9,11 +9,12 @@ import { checkClip, type ClipProblem } from '@/features/editor/clipLibrary'
 //   https://avatars.bible-strong.app/#avatar=strobi&view=frames&fps=30&clip={"name":"Hop",...}
 //   https://avatars.bible-strong.app/#state={"name":"cheering","clips":["Hop","Done_A"],...}
 //   https://avatars.bible-strong.app/#character={"name":"Fox","body":{...},...}
+//   https://avatars.bible-strong.app/#avatar=strobi&face={"name":"Star","eyes":{"left":[...]}}
 //
 // The JSON may be written as it is or percent-encoded: an agent writes the link by hand, and a
 // browser encodes some characters of it on its own. The fragment never reaches a server.
 
-export const linkKinds = ['clip', 'state', 'character'] as const
+export const linkKinds = ['clip', 'state', 'character', 'face'] as const
 export type LinkKind = (typeof linkKinds)[number]
 
 export const clipViews = ['timeline', 'frames'] as const

@@ -33,6 +33,17 @@ describe('the instructions for a coding agent', () => {
     }
   })
 
+  it('say to pass the library when the person made clips, states or faces of their own', () => {
+    for (const integration of integrations) {
+      expect(agentInstructions(integration, names)).not.toContain(
+        'avatar-library.json` (Export tab'
+      )
+      const text = agentInstructions(integration, names, true)
+      expect(text).toContain('avatar-library.json` (Export tab, Library)')
+      expect(text).toContain('library')
+    }
+  })
+
   it('carry the setup each package needs, React Native its Bundle Mode', () => {
     const native = integrations.find(item => item.id === 'react-native')!
     const text = agentInstructions(native, names)

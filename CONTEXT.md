@@ -35,8 +35,8 @@ tracks run side by side, not one after the other.
 
 A Clip a creator keeps in the Studio, saved from a Draft; the Clip it was copied from stays as it
 was. It has the shape of a catalogue Clip and a name no catalogue Clip has. Custom Clips are kept
-by the Studio beside the Avatars, not inside one: every Avatar plays them. The runtime packages
-do not know them yet, and no State draws them. Shown as “My clips”.
+by the Studio beside the Avatars, not inside one: every Avatar plays them, and Custom States draw
+them. Apps play them through a Library. Shown as “My clips”.
 
 ### Custom State
 
@@ -47,7 +47,7 @@ State's nor an Alias. Shown as "My states".
 
 ### Draft
 
-The Clip, State or Character being made, before it is saved: a new one, a copy, a saved one opened
+The Clip, State, Character or Drawn Face being made, before it is saved: a new one, a copy, a saved one opened
 again, or one opened from a link. A Draft lives in the address of the page, not in the browser's
 storage: every change rewrites the address, and a new address changes the Draft. It is how a
 person and an agent work on the same thing. There is one Draft of each kind at a time; the address
@@ -98,8 +98,30 @@ leads an Alias to its State; the catalogue lists each State once.
 
 ### Face
 
-The shape of the two eyes, one of nine (`neutral`, `happy`, `sleepy`…). The Clip asks for a Face,
-a State may hold one over it, and a Face held from outside comes before both.
+The shape of the two eyes: one of nine built in (`neutral`, `happy`, `sleepy`…), or a Drawn Face.
+The Clip asks for a Face, a State may hold one over it, and a Face held from outside comes before
+both. A name the avatar does not know shows `neutral`.
+
+### Drawn Face
+
+A Face made of Marks, kept in the Studio beside the Custom Clips and States and named by its exact
+name, never a built-in Face's or an Alias. Each eye is drawn on the Artboard; the right one mirrors
+the left unless drawn too. It comes and goes with a blink, where built-in Faces morph. Shown as
+“My faces”.
+
+### Mark
+
+One path of a Drawn Face's eye, filled, stroked (with a width, ends and corners), or both. The
+Marks of an eye add up to one shape in the Character's eye colour.
+
+### Artboard
+
+The square of 100 by 100 a Drawn Face's eye is drawn on, y down; its middle is where the eye sits.
+
+### Library
+
+What an app gives an avatar besides the catalogue: Custom Clips, Custom States and Drawn Faces,
+each with its name, as the Studio's Export tab downloads it (`avatar-library.json`).
 
 ### Gesture
 

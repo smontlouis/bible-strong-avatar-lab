@@ -1,4 +1,5 @@
 import facesData from './catalogue/faces.json' with { type: 'json' }
+import type { DrawnEye } from './drawnFaces.js'
 
 // Faces. A face is the shape of the two eyes. An eye is a line with a thickness: the line bends
 // for a smile, shrinks to a point for a round eye, and lies flat for a squint. One face turns
@@ -30,6 +31,9 @@ export type FaceEye = {
    */
   path: number[]
 }
+
+/** An eye as the player gives it: a built-in eye, or a drawn one. */
+export type PlayerEye = FaceEye | DrawnEye
 
 export type FaceShape = {
   /** Whether a blink written in a clip closes these eyes. A smile does not blink. */

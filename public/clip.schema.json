@@ -104,27 +104,35 @@
               },
               "v": {
                 "type": "string",
-                "enum": [
-                  "neutral",
-                  "happy",
-                  "surprised",
-                  "sad",
-                  "sleepy",
-                  "squinted",
-                  "calm",
-                  "inspecting",
-                  "inspect",
-                  "confused",
-                  "blink",
-                  "strange",
-                  "thinking",
-                  "angry",
-                  "squint",
-                  "idle",
-                  "smile",
-                  "sleep"
-                ],
-                "description": "A face, 'blink', or an alias the engine reads: inspect and strange (inspecting), thinking (sad), angry and idle (neutral), squint (squinted), smile (happy), sleep (sleepy)."
+                "minLength": 1,
+                "anyOf": [
+                  {
+                    "enum": [
+                      "neutral",
+                      "happy",
+                      "surprised",
+                      "sad",
+                      "sleepy",
+                      "squinted",
+                      "calm",
+                      "inspecting",
+                      "inspect",
+                      "confused",
+                      "blink",
+                      "strange",
+                      "thinking",
+                      "angry",
+                      "squint",
+                      "idle",
+                      "smile",
+                      "sleep"
+                    ],
+                    "description": "A face, 'blink', or an alias the engine reads: inspect and strange (inspecting), thinking (sad), angry and idle (neutral), squint (squinted), smile (happy), sleep (sleepy)."
+                  },
+                  {
+                    "description": "The name of a drawn face, exactly as the face gives it: https://avatars.bible-strong.app/face-authoring.md. An avatar that does not have it shows neutral."
+                  }
+                ]
               },
               "cut": {
                 "type": "boolean",

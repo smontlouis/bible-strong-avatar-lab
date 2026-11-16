@@ -600,7 +600,8 @@ export function ClipTimeline({
                               ) : (
                                 <CharacterPreview
                                   character={character}
-                                  face={resolveFaceName(key.v)}
+                                  face={key.v}
+                                  faces={editor.clipLibrary.drawnFaces()}
                                 />
                               )}
                             </span>

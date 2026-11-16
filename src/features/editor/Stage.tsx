@@ -131,11 +131,18 @@ export function Stage({
   const setHead = (next: Expression) =>
     setPose({ ...pose, head: [next.headX, next.headY, next.headZ] })
 
-  // The engine knows every custom clip and state, and the drafts, besides the catalogue's.
-  const { clips: customClips, states: customStates, draft: clipDraft, stateDraft } = clipLibrary
+  // The engine knows every custom clip, state and face, and the drafts, besides the catalogue's.
+  const {
+    clips: customClips,
+    states: customStates,
+    faces: customFaces,
+    draft: clipDraft,
+    stateDraft,
+    faceDraft,
+  } = clipLibrary
   useEffect(() => {
     setEngineLibrary(engine.current, clipLibrary.engineLibrary())
-  }, [customClips, customStates, clipDraft, stateDraft, engine])
+  }, [customClips, customStates, customFaces, clipDraft, stateDraft, faceDraft, engine])
 
   // A state draft that changes is taken up again on the stage, from its start.
   const stateDraftDefinition = stateDraft?.document.state

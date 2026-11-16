@@ -12,6 +12,7 @@ import {
   Play,
   Plus,
   RotateCcw,
+  Smile,
   Trash2,
   Upload,
 } from 'lucide-react'
@@ -48,6 +49,7 @@ import { LinkProblemNote } from '@/features/editor/ClipExplorer'
 import { DraftBanner } from '@/features/editor/DraftBanner'
 import { ExportPanel } from '@/features/editor/ExportPanel'
 import { ClipsPanel, StatesPanel } from '@/features/editor/ClipExplorer'
+import { FacesPanel } from '@/features/editor/FaceExplorer'
 import { PhotoPanel, PoseControls, takePicture } from '@/features/editor/PhotoPanel'
 import { Scene } from '@/features/editor/Scene'
 import { emptyStatus, Stage, type StageStatus } from '@/features/editor/Stage'
@@ -70,6 +72,7 @@ const tabLabels: Record<EditorTab, string> = {
   pose: 'Pose',
   states: 'États',
   clips: 'Clips',
+  faces: 'Visages',
   export: 'Exporter',
 }
 
@@ -77,6 +80,7 @@ const tabIcons: Record<Exclude<EditorTab, 'avatars'>, typeof Play> = {
   pose: Move3D,
   states: Activity,
   clips: Film,
+  faces: Smile,
   export: Download,
 }
 
@@ -690,6 +694,7 @@ export function Editor() {
             {tab === 'pose' && <PosePanel editor={editor} />}
             {tab === 'states' && <StatesPanel editor={editor} status={status} />}
             {tab === 'clips' && <ClipsPanel editor={editor} status={status} />}
+            {tab === 'faces' && <FacesPanel editor={editor} />}
             {tab === 'export' && <ExportPanel editor={editor} />}
           </>
         )}
@@ -723,7 +728,7 @@ export function Editor() {
         </footer>
       )}
       {!building && !photoMode && (
-        <nav className="mobile-mode-tabs has-five-tabs" aria-label={t('Mode d’édition')}>
+        <nav className="mobile-mode-tabs has-six-tabs" aria-label={t('Mode d’édition')}>
           <Button
             className="mobile-mode-tab mobile-avatar-tab"
             variant="ghost"

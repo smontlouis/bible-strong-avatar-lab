@@ -207,11 +207,9 @@ export const checkStateDocument = (
     state.compactClips = compact.list
   }
   if (source.face !== undefined) {
-    if (
-      typeof source.face !== 'string' ||
-      !(faceNames as readonly string[]).includes(source.face)
-    ) {
-      return fail('face', `expected one of ${faceNames.join(', ')}`)
+    // A built-in face, or a drawn one by its name: one the Studio does not have shows neutral.
+    if (typeof source.face !== 'string' || !source.face.trim()) {
+      return fail('face', `expected the name of a face: ${faceNames.join(', ')}, or a drawn one`)
     }
     state.face = source.face
   }

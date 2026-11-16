@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 
 import { characterOfAvatar } from '@/features/editor/avatar'
 import { checkClip } from '@/features/editor/clipLibrary'
+import { checkFace } from '@/features/editor/faceLibrary'
 import {
   DEFAULT_FRAME_RATE,
   DEFAULT_STATE_FRAME_RATE,
@@ -24,7 +25,7 @@ import type { Editor } from '@/features/editor/useEditor'
 /** How long the address waits after the last change before it is rewritten. */
 export const LINK_WRITE_MS = 300
 
-const tabOfKind = { clip: 'clips', state: 'states', character: 'avatars' } as const
+const tabOfKind = { clip: 'clips', state: 'states', character: 'avatars', face: 'faces' } as const
 
 export const useClipLink = (editor: Editor) => {
   const { clipLibrary } = editor
@@ -63,6 +64,22 @@ export const useClipLink = (editor: Editor) => {
     if (link.avatar) {
       const avatar = editor.avatars.find(item => slugOf(item.name) === link.avatar)
       if (avatar && avatar.id !== editor.activeAvatar.id) editor.selectAvatar(avatar.id)
+    }
+
+    if (link.kind === 'face') {
+      const checked = checkFace(link.value)
+      if (checked.problem) return fail(checked.problem.path, checked.problem.message)
+      clipLibrary.setLinkProblem(null)
+      const face = checked.face!
+      const current = clipLibrary.faceDraft
+      if (JSON.stringify(current?.face) !== JSON.stringify(face)) {
+        const sameFace = current && current.face.name === face.name
+        clipLibrary.openFaceDraft(face, sameFace ? current.source : undefined)
+      }
+      // The face is held on the stage, whatever the avatar does.
+      if (editor.face !== face.name) editor.holdFaceForFaces(face.name)
+      if (opening) editor.setPlaying(true)
+      return
     }
 
     if (link.kind === 'state') {
@@ -116,12 +133,13 @@ export const useClipLink = (editor: Editor) => {
     return () => window.removeEventListener('hashchange', changed)
   }, [])
 
-  const { draft, view, stateDraft, stateView } = clipLibrary
+  const { draft, view, stateDraft, stateView, faceDraft } = clipLibrary
   const { characterDraft, tab } = editor
   const avatar = slugOf(editor.activeAvatar.name)
   if (tab === 'clips') focus.current = 'clip'
   if (tab === 'states') focus.current = 'state'
   if (tab === 'avatars') focus.current = 'character'
+  if (tab === 'faces') focus.current = 'face'
   const kind = focus.current
 
   useEffect(() => {
@@ -141,7 +159,9 @@ export const useClipLink = (editor: Editor) => {
               )
             : kind === 'character' && characterDraft
               ? studioLinkHash('character', characterOfAvatar(characterDraft))
-              : null
+              : kind === 'face' && faceDraft
+                ? studioLinkHash('face', faceDraft.face, {}, avatar)
+                : null
       if (hash) {
         // Replaced, not pushed: the history of the page is not one step per change.
         if (window.location.hash !== hash) {
@@ -159,5 +179,5 @@ export const useClipLink = (editor: Editor) => {
       }
     }, LINK_WRITE_MS)
     return () => window.clearTimeout(timer)
-  }, [kind, draft, view, stateDraft, stateView, characterDraft, avatar])
+  }, [kind, draft, view, stateDraft, stateView, characterDraft, faceDraft, avatar])
 }

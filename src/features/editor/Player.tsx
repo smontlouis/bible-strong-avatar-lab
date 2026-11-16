@@ -24,9 +24,10 @@ const gestureIcons = { nod: MoveVertical, bounce: ArrowUpFromLine, spin: RotateC
 const seconds = (value: number) => `${value.toFixed(1)} s`
 
 function FacePicker({ editor, shown }: { editor: Editor; shown: string }) {
-  const { t, character, face, setFace } = editor
+  const { t, character, face, setFace, clipLibrary } = editor
   if (!character) return null
-  const choices: (string | null)[] = [null, ...faceNames]
+  const drawn = clipLibrary.drawnFaces()
+  const choices: (string | null)[] = [null, ...faceNames, ...Object.keys(drawn)]
   return (
     <Popover.Root>
       <Popover.Trigger
@@ -34,7 +35,7 @@ function FacePicker({ editor, shown }: { editor: Editor; shown: string }) {
         className="flex h-9 items-center gap-1.5 rounded-lg px-1.5 text-xs font-semibold outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/30 data-[popup-open]:bg-muted"
       >
         <span className="size-7 shrink-0 [&_.avatar-preview]:size-full">
-          <CharacterPreview character={character} face={resolveFaceName(face ?? shown)} />
+          <CharacterPreview character={character} face={face ?? shown} faces={drawn} />
         </span>
         <span className="max-w-20 truncate">{face ?? t('Auto')}</span>
         <ChevronDown className="size-3 shrink-0 opacity-60" />
@@ -60,10 +61,7 @@ function FacePicker({ editor, shown }: { editor: Editor; shown: string }) {
                     onClick={() => setFace(name)}
                   >
                     <span className="size-9 [&_.avatar-preview]:size-full">
-                      <CharacterPreview
-                        character={character}
-                        face={resolveFaceName(name ?? shown)}
-                      />
+                      <CharacterPreview character={character} face={name ?? shown} faces={drawn} />
                     </span>
                     <span className="w-full truncate text-center">{name ?? t('Auto')}</span>
                   </button>

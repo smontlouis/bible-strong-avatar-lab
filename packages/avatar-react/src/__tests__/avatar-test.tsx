@@ -120,6 +120,37 @@ describe('@bible-strong/avatar-react', () => {
     expect(wide(container)).toBeGreaterThan(neutral * 1.3)
   })
 
+  it('shows a drawn face of its library, in several pieces', () => {
+    const library = {
+      faces: [
+        {
+          name: 'Dead',
+          eyes: {
+            left: [
+              {
+                d: 'M25 25L75 75M75 25L25 75',
+                fill: false,
+                stroke: { width: 14, cap: 'round' as const },
+              },
+            ],
+          },
+        },
+      ],
+    }
+    const pieces = (container: HTMLElement) =>
+      part(container, 'left').getAttribute('d')!.match(/M/g)!.length
+    const { container, rerender } = render(<Avatar character={character} clip="Logo_A" />)
+    frames(30)
+    expect(pieces(container)).toBe(1)
+    rerender(<Avatar character={character} clip="Logo_A" face="Dead" library={library} />)
+    frames(40)
+    expect(pieces(container)).toBeGreaterThan(1)
+    // The same library given again, as a new object, is not read again.
+    rerender(<Avatar character={character} clip="Logo_A" face="Dead" library={{ ...library }} />)
+    frames(5)
+    expect(pieces(container)).toBeGreaterThan(1)
+  })
+
   it('takes a gesture through its ref', () => {
     const handle = createRef<AvatarHandle>()
     const { container } = render(<Avatar character={character} clip="Blocked_B" ref={handle} />)

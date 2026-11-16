@@ -105,6 +105,36 @@ describe('@bible-strong/avatar-web', () => {
     avatar.destroy()
   })
 
+  it('draws a face of its library, in several pieces, and takes another library', () => {
+    const library = {
+      faces: [
+        {
+          name: 'Dead',
+          eyes: {
+            left: [
+              {
+                d: 'M25 25L75 75M75 25L25 75',
+                fill: false,
+                stroke: { width: 14, cap: 'round' as const },
+              },
+            ],
+          },
+        },
+      ],
+      clips: [{ name: 'Dead_A', duration: 1, tracks: { expression: [{ t: 0, v: 'Dead' }] } }],
+    }
+    const avatar = createAvatar('#avatar', { character: legacyJson, clip: 'Dead_A', library })
+    run(60)
+    expect(avatar.getState().clip).toBe('Dead_A')
+    const eye = () =>
+      document.querySelector('#avatar svg g[clip-path] > path')?.getAttribute('d') ?? ''
+    expect(eye().match(/M/g)!.length).toBeGreaterThan(1)
+    avatar.setLibrary(null)
+    run(60)
+    expect(eye().match(/M/g)!.length).toBe(1)
+    avatar.destroy()
+  })
+
   it('holds still when paused, and goes on when resumed', () => {
     const avatar = createAvatar('#avatar', { character: legacyJson, state: 'happy', paused: true })
     // Nothing is computed while it is paused.

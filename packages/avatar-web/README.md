@@ -74,6 +74,13 @@ Every character plays the same catalogue, exported by `@bible-strong/avatar-core
 - **Faces** (`faceNames`): the shape of the eyes, held over whatever plays.
 - **Gestures**: `nod`, `bounce`, `spin`, laid over whatever plays.
 
+The `library` option gives the avatar clips, states and drawn faces besides the catalogue's, as
+the Studio exports them (Export tab, `avatar-library.json`): `{ clips, states, faces }`, each a
+list of items with their names, a face as its marks or as `{ name, svg }`. `state`, `clip`,
+`face`, the controller and the library's own clips and states may then name them; a face the
+avatar does not have shows `neutral`. `setLibrary` gives another. What cannot be used is left out
+with a warning in the console. Drawn faces: https://avatars.bible-strong.app/face-authoring.md
+
 ## Options of `createAvatar(target, options)`
 
 `target` is a CSS selector or an `HTMLElement`.
@@ -84,6 +91,7 @@ Every character plays the same catalogue, exported by `@bible-strong/avatar-core
 | `state`         | `string`           | `idle`        | The state the avatar starts in.                                |
 | `clip`          | `string`           | —             | A clip to play alone instead of a state. A state wins over it. |
 | `face`          | `string`           | —             | A face to hold whatever the avatar does.                       |
+| `library`       | `AvatarLibrary`    | —             | Clips, states and drawn faces of your own.                     |
 | `emphasis`      | `boolean`          | `false`       | A state without a face of its own shows surprise.              |
 | `paused`        | `boolean`          | `false`       | Start still: nothing is computed until `resume()`.             |
 | `lookAt`        | `[x, y] \| null`   | `null`        | A point to look at: right and up, each from -1 to 1.           |
@@ -102,8 +110,9 @@ Under 48 pixels an avatar is compact: a state with a shorter list of clips uses 
 
 | Method                  | Returns          | Behavior                                                         |
 | ----------------------- | ---------------- | ---------------------------------------------------------------- |
-| `setState(state)`       | `boolean`        | Goes into a state. `false` for a name the catalogue lacks.       |
-| `playClip(clip)`        | `boolean`        | Plays one clip alone. `false` for a name the catalogue lacks.    |
+| `setState(state)`       | `boolean`        | Goes into a state. `false` for a name it does not know.          |
+| `playClip(clip)`        | `boolean`        | Plays one clip alone. `false` for a name it does not know.       |
+| `setLibrary(library)`   | `void`           | Gives another library, or `null` for none. What plays goes on.   |
 | `setFace(face \| null)` | `void`           | Holds a face, or lets the avatar decide again.                   |
 | `setEmphasis(on)`       | `void`           | See the option.                                                  |
 | `poke(gesture, turns?)` | `void`           | Lays a gesture over what plays. Gestures add up.                 |

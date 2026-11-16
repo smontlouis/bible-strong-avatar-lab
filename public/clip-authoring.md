@@ -24,9 +24,8 @@ https://avatars.bible-strong.app/#clip={"name":"Hop","duration":1.2,"tracks":{..
 ```
 
 - Opening the link opens the Clips tab with the clip as a **draft**, playing in a loop, ready to
-  be edited. Nothing
-  is saved in the person's browser until they press "Enregistrer dans mes clips" (Save to my
-  clips).
+  be edited. Nothing is saved in the person's browser until someone presses "Enregistrer dans mes
+  clips" (Save to my clips): the person, or an agent that drives their browser, when the person asks it to. Saving a draft opened from a saved clip replaces that clip.
 - The JSON may be written as it is or percent-encoded. `clip=` must come **last**: everything after
   it is the clip.
 - Optional settings come before it, in any order:
@@ -154,7 +153,10 @@ Faces: `neutral`, `happy`, `surprised`, `sad`, `sleepy`, `squinted`, `calm`, `in
 `happy`, `sad`, `sleepy`, `squinted`, `calm` and `confused` the eyes stay as the face draws them.
 The engine also reads a few aliases the catalogue uses:
 `strange` (inspecting), `thinking` (sad), `angry` and `idle` (neutral), `squint`, `smile`,
-`sleep`. Any other name falls back to `neutral`; the schema refuses it.
+`sleep`. A key may also name a **drawn face** by its exact name (see
+https://avatars.bible-strong.app/face-authoring.md): it shows where the avatar has that face, in
+the Studio and in an app given it in a library. Any other name falls back to `neutral`, and the
+Studio's key inspector says so.
 
 How faces behave:
 
@@ -277,6 +279,7 @@ https://avatars.bible-strong.app/#avatar=strobi&view=frames&fps=12&clip=<the JSO
    `[data-link-problem]`, fix and reopen.
 3. Capture the sheet (see above) and look: poses, spacing, faces, and whether the last frame
    meets the first. Fix and reopen; two to four rounds are usual.
-4. Hand the link to the person. They edit in the Studio; the address follows their changes.
+4. Hand the link to the person. They edit in the Studio; the address follows their changes. When
+   it is right they save it, or ask you to save it if you drive their browser.
 5. To go on from their version, read the clip back from the address (or ask them to paste it),
    change it, and write the new link.

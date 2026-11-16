@@ -2,6 +2,7 @@ import {
   clips as catalogueClips,
   states as catalogueStates,
   type ClipDefinition,
+  type FaceDefinition,
   type StateDefinition,
 } from '@bible-strong/avatar-core'
 import { useEffect, useRef, useState } from 'react'
@@ -21,6 +22,16 @@ import {
   type ClipLinkView,
   type LinkKind,
 } from '@/features/editor/clipLink'
+import {
+  compiledFaces,
+  createFace,
+  duplicateFace,
+  faceFromFile,
+  freeFaceName,
+  loadCustomFaces,
+  persistCustomFaces,
+  renameFace,
+} from '@/features/editor/faceLibrary'
 import {
   checkStateDocument,
   createState,
@@ -46,12 +57,16 @@ const MERGE_MS = 1200
 export type ClipDraft = { clip: ClipDefinition; source?: string }
 /** A state being made, with the clips it brings along. `source` as for a clip. */
 export type StateDraft = { document: StateDocument; source?: string }
+/** A drawn face being made. `source` as for a clip. */
+export type FaceDraft = { face: FaceDefinition; source?: string }
 
 type Snapshot = {
   clips: ClipDefinition[]
   states: CustomState[]
+  faces: FaceDefinition[]
   draft: ClipDraft | null
   stateDraft: StateDraft | null
+  faceDraft: FaceDraft | null
 }
 type History = { past: Snapshot[]; future: Snapshot[] }
 
@@ -63,8 +78,10 @@ const loadSnapshot = (): Snapshot => {
   return {
     clips,
     states: loadCustomStates(clips.map(clip => clip.name)),
+    faces: loadCustomFaces(),
     draft: null,
     stateDraft: null,
+    faceDraft: null,
   }
 }
 
@@ -79,7 +96,7 @@ export const useClipLibrary = () => {
   // What was wrong with the last link that could not be opened, and what it held.
   const [linkProblem, setLinkProblem] = useState<(ClipProblem & { kind: LinkKind }) | null>(null)
   const lastChange = useRef<{ tag: string; at: number } | null>(null)
-  const { clips, states, draft, stateDraft } = state
+  const { clips, states, faces, draft, stateDraft, faceDraft } = state
 
   useEffect(() => {
     persistCustomClips(clips)
@@ -87,6 +104,9 @@ export const useClipLibrary = () => {
   useEffect(() => {
     persistCustomStates(states)
   }, [states])
+  useEffect(() => {
+    persistCustomFaces(faces)
+  }, [faces])
 
   const commit = (change: Partial<Snapshot>, tag?: string) => {
     const now = Date.now()
@@ -142,7 +162,23 @@ export const useClipLibrary = () => {
     return document.state.name
   }
 
-  /** What the engine is given besides the catalogue: every clip and state there is here. */
+  // Faces.
+
+  const openFaceDraft = (face: FaceDefinition, source?: string) => {
+    commit({ faceDraft: source ? { face, source } : { face } })
+    return face.name
+  }
+  /** Every drawn face there is here, the draft in place of the face it was opened from. */
+  const facesHere = () => {
+    const shown = faceDraft
+      ? faces.filter(face => face.name !== faceDraft.source && face.name !== faceDraft.face.name)
+      : faces
+    return faceDraft ? [...shown, faceDraft.face] : shown
+  }
+  /** The drawn faces read into what draws them, by name, for the engine and the previews. */
+  const drawnFaces = () => compiledFaces(facesHere())
+
+  /** What the engine is given besides the catalogue: every clip, state and face there is here. */
   const engineLibrary = () => {
     const ownClips: Record<string, ClipDefinition> = {}
     for (const clip of clips) ownClips[clip.name] = clip
@@ -151,7 +187,7 @@ export const useClipLibrary = () => {
     const ownStates: Record<string, StateDefinition> = {}
     for (const item of states) ownStates[item.name] = item
     if (stateDraft) ownStates[stateDraft.document.state.name] = stateDraft.document.state
-    return { clips: ownClips, states: ownStates }
+    return { clips: ownClips, states: ownStates, faces: drawnFaces() }
   }
 
   return {
@@ -305,6 +341,76 @@ export const useClipLibrary = () => {
       return checked.document ? openStateDraft(checked.document) : null
     },
     engineLibrary,
+
+    faces,
+    faceDraft,
+    facesHere,
+    drawnFaces,
+    findFace: (name: string, fromDraft = false) =>
+      fromDraft ? faceDraft?.face : faces.find(face => face.name === name),
+    isCustomFace: (name: string) => faces.some(face => face.name === name),
+    /** Replace a face by its new version; a saved face renamed is renamed where it is named. */
+    updateFace: (ref: ClipRef, next: FaceDefinition, tag?: string) => {
+      const tagged = tagOf(ref, 'face', tag)
+      if ('draft' in ref) {
+        if (faceDraft) commit({ faceDraft: { ...faceDraft, face: next } }, tagged)
+        return
+      }
+      commit(
+        {
+          faces: faces.map(face => (face.name === ref.name ? next : face)),
+          ...renameFace(ref.name, next.name, clips, states),
+        },
+        tagged
+      )
+    },
+    openFaceDraft,
+    createFace: (wanted: string) => openFaceDraft(createFace(freeFaceName(wanted, faces))),
+    duplicateFace: (name: string, wanted: string, fromDraft = false) => {
+      const source = fromDraft ? faceDraft?.face : faces.find(face => face.name === name)
+      return source ? openFaceDraft(duplicateFace(source, freeFaceName(wanted, faces))) : null
+    },
+    editFace: (name: string) => {
+      const source = faces.find(face => face.name === name)
+      return source ? openFaceDraft(structuredClone(source), name) : null
+    },
+    /**
+     * Keep the face draft among the faces, in place of the face it was opened from or under a
+     * free name. Clips and states that named the face it replaces follow its name.
+     */
+    saveFaceDraft: () => {
+      if (!faceDraft) return null
+      const source = faceDraft.source
+      const replacing = source !== undefined && faces.some(face => face.name === source)
+      const others = replacing ? faces.filter(face => face.name !== source) : faces
+      const saved = { ...faceDraft.face, name: freeFaceName(faceDraft.face.name, others) }
+      commit({
+        faces: replacing
+          ? faces.map(face => (face.name === source ? saved : face))
+          : [...faces, saved],
+        ...(replacing ? renameFace(source!, saved.name, clips, states) : {}),
+        faceDraft: null,
+      })
+      return saved.name
+    },
+    discardFaceDraft: () => commit({ faceDraft: null }),
+    removeFace: (name: string) => commit({ faces: faces.filter(face => face.name !== name) }),
+    /** The clips and states here that name a face. */
+    usersOfFace: (name: string) => [
+      ...clips
+        .filter(clip => clip.tracks.expression?.some(key => key.v === name))
+        .map(clip => clip.name),
+      ...states.filter(item => item.face === name).map(item => item.name),
+    ],
+    /** Bring in a face from a file (`.face.json` or `.svg`), as the draft. */
+    importFaceFile: (text: string, fileName: string) => {
+      const read = faceFromFile(text, fileName, faces)
+      return {
+        name: read.face ? openFaceDraft(read.face) : null,
+        problem: read.problem ?? null,
+        ignored: read.ignored,
+      }
+    },
 
     view,
     setView,

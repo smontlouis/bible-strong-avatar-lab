@@ -104,10 +104,15 @@ export type RenderAvatarOptions = {
    * of the face. When given, the eyes are these shapes laid on the head, and the eyes of the
    * pose are not drawn.
    */
-  eyeOutlines?: Readonly<{ left: EyeOutline; right: EyeOutline }>
+  eyeOutlines?: Readonly<{ left: EyeOutline | EyeShapes; right: EyeOutline | EyeShapes }>
 }
 
 export type EyeOutline = readonly (readonly [number, number])[]
+/**
+ * An eye of several shapes, a drawn one: filled together under SVG's `nonzero` rule. They are
+ * drawn as straight lines between their points, which are dense, unless `smooth`.
+ */
+export type EyeShapes = { shapes: readonly EyeOutline[]; smooth?: boolean }
 
 export type BodyNodeEditorGeometry = {
   center: Point3
@@ -1791,14 +1796,28 @@ export const renderAvatar = (
   // head's surface. It is not wrapped again, as the eyes of a pose are.
   const onHead = ([x, y]: readonly [number, number]) =>
     projectLocalSurfacePoint(pose, surfaceFrontSampleAt(surface, x, y))
-  const leftSamples = outlines
-    ? outlines.left.map(onHead)
+  const shapesOf = (eye: EyeOutline | EyeShapes) =>
+    'shapes' in eye ? eye.shapes.map(shape => shape.map(onHead)) : [eye.map(onHead)]
+  const leftShapes = outlines ? shapesOf(outlines.left) : null
+  const rightShapes = outlines ? shapesOf(outlines.right) : null
+  const leftSamples = leftShapes
+    ? leftShapes.flat()
     : eyePoints(pose, surface, -1, blink, options.eyeOffset)
-  const rightSamples = outlines
-    ? outlines.right.map(onHead)
+  const rightSamples = rightShapes
+    ? rightShapes.flat()
     : eyePoints(pose, surface, 1, blink, options.eyeOffset)
   const left = leftSamples.map(sample => sample.point)
   const right = rightSamples.map(sample => sample.point)
+  // An eye given by its outline is a curve through the outline's points, not a polygon. A drawn
+  // eye is its shapes, each closed, together in one path.
+  const outlinePath = (eye: EyeOutline | EyeShapes, shapes: { point: Point3 }[][]) =>
+    'shapes' in eye
+      ? shapes
+          .map(shape => shape.map(sample => sample.point))
+          .filter(points => points.length >= 3)
+          .map(points => (eye.smooth ? smoothClosedPath(points) : path(points)))
+          .join('')
+      : smoothClosedPath(shapes[0].map(sample => sample.point))
   const nose = nosePoints(pose, surface)
   const mouth = mouthPoints(pose, surface)
   const accessories =
@@ -1813,9 +1832,8 @@ export const renderAvatar = (
     frontNodeIds: accessories.frontNodeIds,
     frontClipPaths: accessories.frontClipPaths,
     headPath: headPath(pose, surface),
-    // An eye given by its outline is a curve through the outline's points, not a polygon.
-    leftPath: outlines ? smoothClosedPath(left) : path(left),
-    rightPath: outlines ? smoothClosedPath(right) : path(right),
+    leftPath: outlines ? outlinePath(outlines.left, leftShapes!) : path(left),
+    rightPath: outlines ? outlinePath(outlines.right, rightShapes!) : path(right),
     // Like the eyes, the nose and the mouth are on the face: turned away, they are not drawn.
     nosePath: facesViewer(nose) ? path(nose.map(sample => sample.point)) : '',
     mouthPath: facesViewer(mouth)

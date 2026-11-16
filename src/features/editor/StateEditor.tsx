@@ -527,7 +527,7 @@ export function StateEditor({
         <div className="flex flex-col gap-1.5">
           <p className="eyebrow">{t('Visage tenu')}</p>
           <div className="flex flex-wrap gap-1">
-            {[null, ...stateFaceChoices].map(face => (
+            {[null, ...stateFaceChoices, ...clipLibrary.faces.map(face => face.name)].map(face => (
               <Button
                 variant={(state.face ?? null) === face ? 'default' : 'outline'}
                 size="sm"

@@ -93,6 +93,21 @@ Every character plays the same catalogue, exported by `@bible-strong/avatar-core
 (`stateNames`, `stateGroups`), clips (`clipNames`), faces (`faceNames`) and the gestures `nod`,
 `bounce` and `spin`. The README of `@bible-strong/avatar-web` lists the states by group.
 
+### Clips, states and faces of your own
+
+`library` gives the avatar clips, states and drawn faces besides the catalogue's, as the Studio
+exports them (Export tab, `avatar-library.json`): `{ clips, states, faces }`, each a list of items
+with their names. `state`, `clip` and `face` may then name them, and so may the clips and states of
+the library; a face may be given as its marks or as `{ name, svg }`. A face the avatar does not have
+shows `neutral`. The library is read again only when what it holds changes; what cannot be used is
+left out with a warning in the console. Drawn faces: https://avatars.bible-strong.app/face-authoring.md
+
+```tsx
+import library from './avatar-library.json'
+
+;<Avatar character={character} library={library} state="cheering" face="Star" />
+```
+
 ## Props
 
 | Prop                 | Type                   | Default       | Behavior                                                           |
@@ -101,6 +116,7 @@ Every character plays the same catalogue, exported by `@bible-strong/avatar-core
 | `state`              | `string`               | `idle`        | What the avatar is in. Changing it goes there from where it is.    |
 | `clip`               | `string`               | —             | A clip to play alone, round and round. A state wins over it.       |
 | `face`               | `string`               | —             | A face to hold whatever the avatar does.                           |
+| `library`            | `AvatarLibrary`        | —             | Clips, states and drawn faces of your own, besides the catalogue.  |
 | `lookAt`             | `[x, y] \| null`       | `null`        | A point to look at: right and up, each from -1 to 1.               |
 | `paused`             | `boolean`              | `false`       | Stops the avatar where it is: nothing is computed meanwhile.       |
 | `emphasis`           | `boolean`              | `false`       | A state without a face of its own shows surprise.                  |

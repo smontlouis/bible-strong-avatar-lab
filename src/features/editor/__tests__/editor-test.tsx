@@ -297,6 +297,64 @@ describe('the editor', () => {
     expect(view.getByRole('dialog', { name: 'Raccourcis clavier' })).toBeTruthy()
   })
 
+  it('opens a drawn face from a link, saves it, and offers it to the keys of a clip', async () => {
+    const star = {
+      name: 'Star',
+      eyes: {
+        left: [
+          {
+            d: 'M50 10L61 38L92 39L68 58L76 88L50 71L24 88L32 58L8 39L39 38Z',
+            stroke: { width: 9, join: 'round' },
+          },
+        ],
+      },
+    }
+    window.history.replaceState(null, '', `/#avatar=strobi&face=${JSON.stringify(star)}`)
+    const view = open()
+    expect(view.getByRole('heading', { level: 1 }).textContent).toBe('Visages')
+    expect((view.getByRole('textbox', { name: 'Nom du visage' }) as HTMLInputElement).value).toBe(
+      'Star'
+    )
+    expect(view.container.querySelector('[data-face-sheet="Star"]')).toBeTruthy()
+    // The stage holds the face, and the sheet shows it come from neutral by a blink.
+    const steps = [...view.container.querySelectorAll('[data-step]')]
+    expect(steps.some(step => step.getAttribute('data-face') === 'Star')).toBe(true)
+
+    // Changed by hand, the face is written back to the address.
+    // Inside its label, the switch is named by the label's whole text.
+    fireEvent.click(view.getByRole('switch', { name: /^Cligne des yeux/ }))
+    await wait(LINK_WRITE_MS + 50)
+    expect(readStudioLink(window.location.hash)).toMatchObject({
+      kind: 'face',
+      value: { name: 'Star', blinks: false },
+    })
+
+    fireEvent.click(view.getByRole('button', { name: 'Enregistrer dans mes visages' }))
+    frames(2)
+    const stored = JSON.parse(window.localStorage.getItem('bible-strong-avatar-studio-faces-v1')!)
+    expect(stored.faces.map((face: { name: string }) => face.name)).toEqual(['Star'])
+    await wait(LINK_WRITE_MS + 50)
+    expect(readStudioLink(window.location.hash)).toBeNull()
+
+    // Left for another tab, the Faces tab lets go of the face it held on the stage.
+    const held = () =>
+      view
+        .getAllByRole('button', { name: 'Visage' })
+        .map(button => button.textContent)
+        .join(' ')
+    expect(held()).toContain('Star')
+    fireEvent.click(view.getByRole('button', { name: 'Clips' }))
+    frames(2)
+    expect(held()).toContain('Auto')
+    expect(held()).not.toContain('Star')
+    // A new clip can show it on a key of its face track.
+    fireEvent.click(view.getByRole('button', { name: 'Nouveau clip' }))
+    frames(4)
+    fireEvent.click(view.getByRole('button', { name: 'Ajouter une image clé · Visage' }))
+    frames(4)
+    expect(view.getByRole('button', { name: 'Visage Star' })).toBeTruthy()
+  })
+
   it('shows a clip from a link on the avatar the link names, and writes it back', async () => {
     const nod = { name: 'Nod', duration: 1, tracks: { rotation: [{ t: 0, v: [0, 0, 0] }] } }
     window.history.replaceState(null, '', `/#avatar=freddy&clip=${JSON.stringify(nod)}`)

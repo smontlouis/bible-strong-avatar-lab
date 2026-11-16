@@ -62,28 +62,44 @@ Every character plays the same catalogue, exported by `@bible-strong/avatar-core
 (`stateNames`, `stateGroups`), clips (`clipNames`), faces (`faceNames`) and the gestures `nod`,
 `bounce` and `spin`. The README of `@bible-strong/avatar-web` lists the states by group.
 
+### Clips, states and faces of your own
+
+`library` gives the avatar clips, states and drawn faces besides the catalogue's, as the Studio
+exports them (Export tab, `avatar-library.json`): `{ clips, states, faces }`, each a list of items
+with their names. `state`, `clip` and `face` may then name them, and so may the clips and states of
+the library; a face may be given as its marks or as `{ name, svg }`. A face the avatar does not have
+shows `neutral`. The library is read again only when what it holds changes; what cannot be used is
+left out with a warning in the console. Drawn faces: https://avatars.bible-strong.app/face-authoring.md
+
+```tsx
+import library from './avatar-library.json'
+
+;<Avatar character={character} library={library} state="cheering" face="Star" />
+```
+
 ## Props
 
-| Prop            | Type                | Default       | Behavior                                                        |
-| --------------- | ------------------- | ------------- | --------------------------------------------------------------- |
-| `character`     | `AvatarCharacter`   | required      | Absent from a component made by `createAvatar`.                 |
-| `state`         | `string`            | `idle`        | What the avatar is in. Changing it goes there from where it is. |
-| `clip`          | `string`            | —             | A clip to play alone, round and round. A state wins over it.    |
-| `face`          | `string`            | —             | A face to hold whatever the avatar does.                        |
-| `pose`          | `FreePose`          | —             | A pose set by hand, which pauses what plays (for an editor).    |
-| `paused`        | `boolean`           | `false`       | Stops the avatar where it is: nothing is computed meanwhile.    |
-| `lookAt`        | `[x, y] \| null`    | `null`        | A point to look at: right and up, each from -1 to 1.            |
-| `followPointer` | `boolean`           | `false`       | The head follows the pointer. `lookAt` comes before it.         |
-| `emphasis`      | `boolean`           | `false`       | A state without a face of its own shows surprise.               |
-| `muted`         | `boolean`           | `false`       | Fades every colour to its grey in 300 ms (a CSS filter).        |
-| `settleAfterMs` | `number`            | `0`           | Holds the pose this long after the last change, eyes open.      |
-| `seed`          | `number`            | from the name | Two avatars with the same seed draw the same clips.             |
-| `size`          | `number \| string`  | `240`         | Width and height. A number is in pixels.                        |
-| `className`     | `string`            | —             | Class of the `svg`.                                             |
-| `style`         | `CSSProperties`     | —             | Inline styles of the `svg`.                                     |
-| `ariaLabel`     | `string`            | `Avatar`      | Accessible name of the image.                                   |
-| `onStateChange` | function            | —             | Receives the new state, or `null` while a clip plays alone.     |
-| `ref`           | `Ref<AvatarHandle>` | —             | `poke(gesture, turns?)` lays a gesture over what plays.         |
+| Prop            | Type                | Default       | Behavior                                                          |
+| --------------- | ------------------- | ------------- | ----------------------------------------------------------------- |
+| `character`     | `AvatarCharacter`   | required      | Absent from a component made by `createAvatar`.                   |
+| `state`         | `string`            | `idle`        | What the avatar is in. Changing it goes there from where it is.   |
+| `clip`          | `string`            | —             | A clip to play alone, round and round. A state wins over it.      |
+| `face`          | `string`            | —             | A face to hold whatever the avatar does.                          |
+| `library`       | `AvatarLibrary`     | —             | Clips, states and drawn faces of your own, besides the catalogue. |
+| `pose`          | `FreePose`          | —             | A pose set by hand, which pauses what plays (for an editor).      |
+| `paused`        | `boolean`           | `false`       | Stops the avatar where it is: nothing is computed meanwhile.      |
+| `lookAt`        | `[x, y] \| null`    | `null`        | A point to look at: right and up, each from -1 to 1.              |
+| `followPointer` | `boolean`           | `false`       | The head follows the pointer. `lookAt` comes before it.           |
+| `emphasis`      | `boolean`           | `false`       | A state without a face of its own shows surprise.                 |
+| `muted`         | `boolean`           | `false`       | Fades every colour to its grey in 300 ms (a CSS filter).          |
+| `settleAfterMs` | `number`            | `0`           | Holds the pose this long after the last change, eyes open.        |
+| `seed`          | `number`            | from the name | Two avatars with the same seed draw the same clips.               |
+| `size`          | `number \| string`  | `240`         | Width and height. A number is in pixels.                          |
+| `className`     | `string`            | —             | Class of the `svg`.                                               |
+| `style`         | `CSSProperties`     | —             | Inline styles of the `svg`.                                       |
+| `ariaLabel`     | `string`            | `Avatar`      | Accessible name of the image.                                     |
+| `onStateChange` | function            | —             | Receives the new state, or `null` while a clip plays alone.       |
+| `ref`           | `Ref<AvatarHandle>` | —             | `poke(gesture, turns?)` lays a gesture over what plays.           |
 
 An unknown state or clip changes nothing. Under 48 pixels an avatar is compact: a state with a
 shorter list of clips uses it.

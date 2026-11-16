@@ -32,7 +32,7 @@ import { useClipLibrary } from '@/features/editor/useClipLibrary'
 import { restExpression, type PhotoTool, type SnapshotBackground } from '@/features/editor/utils'
 import { useStudioLanguage } from '@/i18n'
 
-export const editorTabs = ['avatars', 'pose', 'states', 'clips', 'export'] as const
+export const editorTabs = ['avatars', 'pose', 'states', 'clips', 'faces', 'export'] as const
 export type EditorTab = (typeof editorTabs)[number]
 
 /** What the avatar on the stage does: a state, or one clip, which may be the draft. */
@@ -67,6 +67,21 @@ export const useEditor = () => {
   const [building, setBuilding] = useState(false)
   const [doing, setDoing] = useState<Doing>({ state: 'idle' })
   const [face, setFace] = useState<string | null>(null)
+  // The face the Faces tab (or a face link) holds on the stage: let go when the tab is left.
+  const [faceHeldByFaces, setFaceHeldByFaces] = useState<string | null>(null)
+  /** Hold a face on the stage for the Faces tab, until the tab is left. */
+  const holdFaceForFaces = (name: string | null) => {
+    setFace(name)
+    setFaceHeldByFaces(name)
+  }
+  // Left for another tab, the Faces tab lets go of the face it held, unless another was held since.
+  useEffect(() => {
+    if (tab === 'faces' || faceHeldByFaces === null) return
+    if (face === faceHeldByFaces) setFace(null)
+    setFaceHeldByFaces(null)
+    // Only leaving the tab lets go.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab])
   const [playing, setPlaying] = useState(true)
   // Stopped: the avatar is at rest and still. Played again, it starts what it was doing anew.
   const [stopped, setStopped] = useState(false)
@@ -305,6 +320,8 @@ export const useEditor = () => {
     },
     face,
     setFace,
+    faceHeldByFaces,
+    holdFaceForFaces,
     playing,
     setPlaying: (next: boolean) => {
       if (next && stopped) {

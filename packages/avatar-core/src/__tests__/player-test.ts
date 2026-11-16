@@ -1,3 +1,4 @@
+import type { FaceEye } from '../faces.js'
 import { clipNames, clips } from '../catalogue/index.js'
 import {
   advancePlayer,
@@ -37,7 +38,7 @@ describe('the player', () => {
           frame.lids,
         ]
         expect(numbers.every(Number.isFinite)).toBe(true)
-        expect(frame.eyes[0].path.every(Number.isFinite)).toBe(true)
+        expect((frame.eyes[0] as FaceEye).path.every(Number.isFinite)).toBe(true)
       }
       expect(player.loopCount).toBeGreaterThan(0)
     }
@@ -120,15 +121,15 @@ describe('the player', () => {
     const player = createAvatarPlayer()
     playClip(player, clips.Logo_A)
     run(player, 0.1)
-    const neutral = playerFrame(player).eyes[0].wid
+    const neutral = (playerFrame(player).eyes[0] as FaceEye).wid
     setPlayerFace(player, 'surprised')
     advancePlayer(player, 1 / 60)
     advancePlayer(player, 0.1)
-    const between = playerFrame(player).eyes[0].wid
+    const between = (playerFrame(player).eyes[0] as FaceEye).wid
     expect(between).toBeGreaterThan(neutral)
     expect(between).toBeLessThan(0.21)
     run(player, 0.4)
-    expect(playerFrame(player).eyes[0].wid).toBeCloseTo(0.21, 6)
+    expect((playerFrame(player).eyes[0] as FaceEye).wid).toBeCloseTo(0.21, 6)
   })
 
   it('stops the clip without stopping the face when the clip is slowed to nothing', () => {
@@ -139,7 +140,7 @@ describe('the player', () => {
     setPlayerFace(player, 'surprised')
     for (let step = 0; step < 30; step += 1) advancePlayer(player, 1 / 60, 0)
     expect(player.time).toBe(time)
-    expect(playerFrame(player).eyes[0].wid).toBeCloseTo(0.21, 6)
+    expect((playerFrame(player).eyes[0] as FaceEye).wid).toBeCloseTo(0.21, 6)
   })
 })
 

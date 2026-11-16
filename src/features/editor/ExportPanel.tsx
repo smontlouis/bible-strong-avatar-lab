@@ -105,7 +105,12 @@ export const avatarNames = (name: string): AvatarNames => {
  * What to give a coding agent to put the avatar in a project: the package's README, with the
  * example avatar of its code renamed after this one.
  */
-export const agentInstructions = (integration: Integration, names: AvatarNames) => {
+export const agentInstructions = (
+  integration: Integration,
+  names: AvatarNames,
+  /** Whether the person made clips, states or faces of their own, which the app needs too. */
+  ownLibrary = false
+) => {
   const readme = integration.readme
     .replace(/\bstrobi\.avatar\.json\b/g, names.file)
     .replace(/\bStrobi\b/g, names.component)
@@ -115,7 +120,16 @@ export const agentInstructions = (integration: Integration, names: AvatarNames) 
 The avatar's character is the file \`${names.file}\`, exported by Avatar Lab. Put it in the
 project, then follow the package's guide below, from its setup to its checklist. Its examples
 already use this avatar's file and names.
-
+${
+  ownLibrary
+    ? `
+The person also made clips, states or faces of their own in Avatar Lab. They come as the file
+\`avatar-library.json\` (Export tab, Library): put it in the project and give it to every avatar
+as \`library\`, as the guide's « Clips, states and faces of your own » shows. The states, clips and
+faces it holds are then named like the catalogue's.
+`
+    : ''
+}
 ---
 
 ${readme}`
@@ -133,7 +147,7 @@ function CodeBlock({ code, label }: { code: string; label: string }) {
 }
 
 export function ExportPanel({ editor }: { editor: Editor }) {
-  const { t, character, activeAvatar } = editor
+  const { t, character, activeAvatar, clipLibrary } = editor
   const [chosen, setChosen] = useState<IntegrationId>('react')
   const [copied, setCopied] = useState<'done' | 'failed' | null>(null)
   useEffect(() => {
@@ -154,9 +168,30 @@ export function ExportPanel({ editor }: { editor: Editor }) {
     link.click()
     URL.revokeObjectURL(link.href)
   }
+  // What the renderers' `library` reads: each clip, state and face with its name.
+  const saveLibrary = () => {
+    const library = {
+      clips: clipLibrary.clips,
+      states: clipLibrary.states,
+      faces: clipLibrary.faces,
+    }
+    const link = window.document.createElement('a')
+    link.href = URL.createObjectURL(
+      new Blob([`${JSON.stringify(library, null, 2)}\n`], { type: 'application/json' })
+    )
+    link.download = 'avatar-library.json'
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
   const copyInstructions = async () => {
     try {
-      await navigator.clipboard.writeText(agentInstructions(integration, names))
+      await navigator.clipboard.writeText(
+        agentInstructions(
+          integration,
+          names,
+          clipLibrary.clips.length + clipLibrary.states.length + clipLibrary.faces.length > 0
+        )
+      )
       setCopied('done')
     } catch {
       setCopied('failed')
@@ -169,11 +204,34 @@ export function ExportPanel({ editor }: { editor: Editor }) {
         <PanelTitle
           level={3}
           title="Personnage"
-          subtitle="Le corps, les couleurs et le visage. Les états, les clips et les visages viennent avec le paquet."
+          subtitle="Le corps, les couleurs et le visage. Le catalogue d’états, de clips et de visages vient avec le paquet ; les tiens sont dans la bibliothèque."
         />
         <Button type="button" onClick={saveCharacter}>
           <Download />
           {t('Télécharger')} {names.file}
+        </Button>
+      </InspectorCard>
+
+      <InspectorCard>
+        <PanelTitle
+          level={3}
+          title="Bibliothèque"
+          subtitle="Tes clips, tes états et tes visages dessinés, à donner à l’avatar d’une app par sa prop library."
+        />
+        <p className="text-xs text-muted-foreground" data-library-count>
+          {clipLibrary.clips.length} {t('clips')} · {clipLibrary.states.length} {t('états')} ·{' '}
+          {clipLibrary.faces.length} {t('visages')}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={
+            !clipLibrary.clips.length && !clipLibrary.states.length && !clipLibrary.faces.length
+          }
+          onClick={saveLibrary}
+        >
+          <Download />
+          {t('Télécharger')} avatar-library.json
         </Button>
       </InspectorCard>
 

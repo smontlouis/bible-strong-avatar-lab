@@ -30,7 +30,7 @@ export const ${name}Probe: number = ${name}
 `
 await writeFile(
   path.join(consumer, 'web.ts'),
-  `import { characterOf, readCharacter, morphEyeShapes, createAvatarPlayer } from '@bible-strong/avatar-core'
+  `import { characterOf, readCharacter, morphEyeShapes, createAvatarPlayer, compileFace, readAvatarLibrary, faceEyesFromSvg } from '@bible-strong/avatar-core'
 import { normalizeQuaternion } from '@bible-strong/avatar-core/geometry'
 import { Avatar, createAvatar } from '@bible-strong/avatar-react'
 import { createAvatar as createWebAvatar } from '@bible-strong/avatar-web'
@@ -39,6 +39,9 @@ ${[
   'readCharacter',
   'morphEyeShapes',
   'createAvatarPlayer',
+  'compileFace',
+  'readAvatarLibrary',
+  'faceEyesFromSvg',
   'normalizeQuaternion',
   'Avatar',
   'createAvatar',
