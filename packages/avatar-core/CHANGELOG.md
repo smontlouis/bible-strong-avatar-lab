@@ -1,5 +1,22 @@
 # @bible-strong/avatar-core
 
+## 1.2.0
+
+### Minor Changes
+
+- e77f858: Eyes pass from one face to another through a capsule: its middle, angle, length and width are mixed. Straight eyes (`neutral`, `surprised`, `sad`, `squinted`, `inspecting`) turn about their middle the short way instead of shrinking through it; towards or away from the oval of `calm`, the capsule has the oval's size and swells into it late on the way there, instead of shrinking to a dot. Bent eyes (`happy`, `confused`, `sleepy`) still mix their numbers. New exports: `morphEyeShapes`, `eyeMorphOf`, the `EyeMorph` type, and `FaceEye.ovalMix`; `mixEyeShapes` is unchanged.
+- f630df5: Drawn faces and libraries.
+
+  - **Drawn faces.** A face can be drawn as the marks of its eyes: SVG paths on an artboard of 100 by 100, filled and/or stroked with round, butt or square ends and round, miter or bevel corners, holes included; the right eye mirrors the left unless drawn too. `compileFace` reads one into filled shapes, `faceFromSvg` and `faceEyesFromSvg` read an SVG file of the eye without a DOM, `flattenPath` reads path data. Clips and states name a drawn face like a built-in one; an unknown name shows `neutral`. A change to or from a drawn face is a blink (`FACE_SWAP_SECONDS`), and lids squash a drawn eye. Guide: https://avatars.bible-strong.app/face-authoring.md
+  - **Libraries.** `readAvatarLibrary` reads `{ clips, states, faces }` as the Studio exports them (`avatar-library.json`). React and React Native take it as the `library` prop, the web renderer as the `library` option and `setLibrary`; clips asked for by name are looked up there first. The engine library has `faces`.
+  - **Types.** The player's and the frame's face fields are now face names (`string`), and `PlayerFrame.eyes` are `PlayerEye`s, built-in (`FaceEye`) or drawn (`DrawnEye`). `RenderAvatarOptions.eyeOutlines` also takes `EyeShapes`. `settlePlayerFace` shows a face at once.
+
+- 1f035f4: Two clip tracks: `opacity` fades the whole avatar (spinner marks included), and `eyeSize` scales both eyes about their place, on every face. Both rest at 1, are joined and counted in the loop's rest pose. `CharacterScene.opacity` carries the avatar's opacity; the three renderers give it to the moved group in place of the spinner's own.
+
+### Patch Changes
+
+- cbeb098: The published declarations type under `moduleResolution: nodenext` and `node16` (#20). Relative imports in the sources carry their `.js` extension, so `export * from './faces.js'` resolves in an ECMAScript package; before, `@bible-strong/avatar-core` exposed no exports there and the React, web and React Native packages' exports were `any`. avatar-core, avatar-react and avatar-web now emit their declarations under `NodeNext`, which refuses an import without its extension; `pnpm packages:types` types every package from a `nodenext` consumer in `pnpm check`.
+
 ## 1.1.0
 
 ### Minor Changes
