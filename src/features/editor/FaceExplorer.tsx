@@ -70,10 +70,10 @@ import type { Editor } from '@/features/editor/useEditor'
 
 const surface = 'rounded-2xl border border-border bg-card shadow-[0_4px_14px_rgb(24_28_35/5%)]'
 
-// The point editor reads paths with Paper.js: it is loaded when an eye is first edited, not with
+// The vector editor reads paths with Paper.js: it is loaded when an eye is first edited, not with
 // the Studio.
-const PointEditor = lazy(() =>
-  import('@/features/editor/PointEditor').then(module => ({ default: module.PointEditor }))
+const VectorEditor = lazy(() =>
+  import('@/features/editor/VectorEditor').then(module => ({ default: module.VectorEditor }))
 )
 
 const download = (name: string, text: string) => {
@@ -191,7 +191,7 @@ function EyeEditor({
             />
           }
         >
-          <PointEditor
+          <VectorEditor
             editor={editor}
             marks={marks}
             selected={selected}
@@ -274,17 +274,6 @@ function EyeEditor({
             ))}
           </div>
           <div className="flex flex-wrap gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => {
-                onChange([...marks, { d: 'M50 30A20 20 0 1 0 50 70A20 20 0 1 0 50 30Z' }])
-                setSelected(marks.length)
-              }}
-            >
-              <Plus /> {t('Tracé')}
-            </Button>
             <Button
               variant={code !== null ? 'secondary' : 'ghost'}
               size="sm"
