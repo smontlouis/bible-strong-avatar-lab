@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Copy,
   Download,
+  Keyboard,
   MoveHorizontal,
   PanelBottom,
   PanelBottomClose,
@@ -37,6 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { CharacterPreview } from '@/features/editor/CharacterPreview'
 import {
@@ -121,6 +123,30 @@ const surface = 'rounded-2xl border border-border bg-card shadow-[0_4px_14px_rgb
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
   (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+/** A control that takes the arrows and the space bar for itself. */
+const takesKeys = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  !!target.closest('[role=slider],[role=listbox],[role=option],[role=menu],[role=combobox]')
+
+/** The keys of the timeline, as the help lists them; words among the keys are translated. */
+const shortcuts: readonly { keys: string[]; label: string }[] = [
+  { keys: ['Espace'], label: 'Lecture / pause' },
+  { keys: ['←', '→'], label: 'Une image avant / après' },
+  { keys: ['⇧←', '⇧→'], label: 'Une seconde avant / après' },
+  { keys: [',', '.'], label: 'Clé précédente / suivante' },
+  { keys: ['Début', 'Fin'], label: 'Début / fin du clip' },
+  { keys: ['L'], label: 'Boucle' },
+  { keys: ['K'], label: 'Ajouter une clé à la tête de lecture' },
+  { keys: ['⌥←', '⌥→'], label: 'Déplacer la clé choisie d’une image' },
+  { keys: ['Suppr'], label: 'Supprimer la clé choisie' },
+  { keys: ['Échap'], label: 'Désélectionner la clé' },
+  { keys: ['+', '−'], label: 'Zoomer / dézoomer' },
+  { keys: ['F'], label: 'Tout voir' },
+  { keys: ['⌘ + molette'], label: 'Zoomer sous le pointeur' },
+  { keys: ['⌘Z', '⇧⌘Z'], label: 'Annuler / rétablir' },
+  { keys: ['?'], label: 'Cette aide' },
+]
+const wordKeys = new Set(['Espace', 'Début', 'Fin', 'Suppr', 'Échap', '⌘ + molette'])
 
 const download = (clip: ClipDefinition) => {
   const link = document.createElement('a')
@@ -661,10 +687,27 @@ export function ClipEditor({
   const playheadTime = () =>
     engine.current.player.clip?.name === clip.name ? engine.current.player.time : 0
 
-  // Keys of the keyboard: remove the picked key, add one at the playhead, undo and redo.
+  const [help, setHelp] = useState(false)
+  const fps = clipLibrary.view.fps
+  /** The time a frame before or after this one, on the grid of the sheet's frames. */
+  const frameFrom = (time: number, by: 1 | -1) =>
+    by > 0 ? (Math.floor(time * fps + 1e-6) + 1) / fps : (Math.ceil(time * fps - 1e-6) - 1) / fps
+  /** The key before or after the playhead: on the picked or shown track, else on any. */
+  const keyFrom = (time: number, by: 1 | -1) => {
+    const track = selected?.track ?? shown
+    const keys = (track ? [track] : trackOrder).flatMap(name =>
+      (clip.tracks[name] ?? []).map((key, index) => ({ track: name, index, t: key.t }))
+    )
+    const ahead = keys
+      .filter(key => (by > 0 ? key.t > time + 1e-4 : key.t < time - 1e-4))
+      .sort((a, b) => (a.t - b.t) * by)
+    return ahead[0] ?? null
+  }
+
+  // Keys of the keyboard: play, walk the clip, pick and move keys, zoom, undo and redo.
   const keyboard = useRef<(event: KeyboardEvent) => void>(() => {})
   keyboard.current = event => {
-    if (isTyping(event.target)) return
+    if (isTyping(event.target) || help) return
     const command = event.metaKey || event.ctrlKey
     if (command && event.key.toLowerCase() === 'z') {
       event.preventDefault()
@@ -677,7 +720,47 @@ export function ClipEditor({
       clipLibrary.redo()
       return
     }
+    const arrow = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
+    if (arrow && takesKeys(event.target)) return
+    if (arrow && event.altKey && !command && selected) {
+      event.preventDefault()
+      const key = clip.tracks[selected.track]![selected.index]
+      const moved = moveClipKey(clip, selected.track, selected.index, frameFrom(key.t, arrow))
+      clipLibrary.update(clipRef, moved.clip)
+      select({ track: selected.track, index: moved.index })
+      seekShown(moved.clip.tracks[selected.track]![moved.index].t)
+      return
+    }
     if (command || event.altKey) return
+    if (arrow) {
+      event.preventDefault()
+      const now = playheadTime()
+      seekShown(event.shiftKey ? now + arrow : frameFrom(now, arrow))
+      return
+    }
+    if (event.key === ' ' && !takesKeys(event.target)) {
+      event.preventDefault()
+      toggle()
+      return
+    }
+    if (event.key === ',' || event.key === '.') {
+      const key = keyFrom(playheadTime(), event.key === '.' ? 1 : -1)
+      if (key) {
+        if (selected?.track === key.track || shown === key.track) {
+          select({ track: key.track, index: key.index })
+        }
+        seekShown(key.t)
+      }
+      return
+    }
+    if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault()
+      seekShown(event.key === 'Home' ? 0 : duration)
+      return
+    }
+    if (event.key.toLowerCase() === 'l') setLoops(!loops)
+    if (event.key === 'Escape' && selected) select(null)
+    if (event.key === '?') setHelp(true)
     if ((event.key === 'Delete' || event.key === 'Backspace') && selected) {
       event.preventDefault()
       const count = clip.tracks[selected.track]!.length
@@ -837,6 +920,16 @@ export function ClipEditor({
             </Button>
           </>
         )}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          type="button"
+          aria-label={t('Raccourcis clavier')}
+          title={`${t('Raccourcis clavier')} (?)`}
+          onClick={() => setHelp(true)}
+        >
+          <Keyboard />
+        </Button>
         {dock && (
           <Button
             variant={docked ? 'secondary' : 'ghost'}
@@ -1162,6 +1255,30 @@ export function ClipEditor({
       <ClipSettings editor={editor} clip={clip} clipRef={clipRef} />
 
       {docked ? createPortal(timelineCard, dock!) : timelineCard}
+      <Dialog open={help} onOpenChange={setHelp}>
+        <DialogContent style={{ width: 'min(460px, calc(100vw - 32px))' }}>
+          <DialogHeader>
+            <DialogTitle>{t('Raccourcis clavier')}</DialogTitle>
+          </DialogHeader>
+          <dl className="grid grid-cols-[auto_1fr] items-center gap-x-5 gap-y-2 overflow-y-auto px-7 py-5 text-sm">
+            {shortcuts.map(shortcut => (
+              <div className="contents" key={shortcut.label}>
+                <dt className="flex gap-1">
+                  {shortcut.keys.map(key => (
+                    <kbd
+                      className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[0.7rem]"
+                      key={key}
+                    >
+                      {wordKeys.has(key) ? t(key) : key}
+                    </kbd>
+                  ))}
+                </dt>
+                <dd className="text-muted-foreground">{t(shortcut.label)}</dd>
+              </div>
+            ))}
+          </dl>
+        </DialogContent>
+      </Dialog>
       {docked && (
         <div
           className={`${surface} flex items-center justify-between gap-2 p-3 text-xs text-muted-foreground`}
