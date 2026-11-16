@@ -319,3 +319,94 @@ export const snapPoint = (at: Vec, step: number, others: readonly Vec[], reach: 
   if (best) return [best[0], best[1]]
   return [Math.round(at[0] / step) * step, Math.round(at[1] / step) * step]
 }
+
+/** The matrix that does `second` after `first`. */
+export const multiply = (second: Matrix, first: Matrix): Matrix => {
+  const [a1, b1, c1, d1, e1, f1] = first
+  const [a2, b2, c2, d2, e2, f2] = second
+  return [
+    a2 * a1 + c2 * b1,
+    b2 * a1 + d2 * b1,
+    a2 * c1 + c2 * d1,
+    b2 * c1 + d2 * d1,
+    a2 * e1 + c2 * f1 + e2,
+    b2 * e1 + d2 * f1 + f2,
+  ]
+}
+
+/** A point carried by a matrix. */
+export const carry = ([a, b, c, d, e, f]: Matrix, [x, y]: Vec): Vec => [
+  a * x + c * y + e,
+  b * x + d * y + f,
+]
+
+/** The box around several paths together. */
+export const unionBounds = (paths: readonly EditPath[]): Box | null => {
+  const boxes = paths.map(pathBounds).filter((box): box is Box => box !== null)
+  if (!boxes.length) return null
+  const left = Math.min(...boxes.map(box => box.x))
+  const top = Math.min(...boxes.map(box => box.y))
+  const right = Math.max(...boxes.map(box => box.x + box.width))
+  const bottom = Math.max(...boxes.map(box => box.y + box.height))
+  return { x: left, y: top, width: right - left, height: bottom - top }
+}
+
+/**
+ * A box turned by `angle` around some paths: `local` is the box in the paths' frame once turned
+ * back, `toWorld` carries a point of that frame onto the artboard.
+ */
+export type OrientedBox = { local: Box; angle: number; toWorld: Matrix; toLocal: Matrix }
+
+export const orientedBox = (paths: readonly EditPath[], angle: number): OrientedBox | null => {
+  const toLocal = rotation(-angle, [0, 0])
+  const local = unionBounds(paths.map(path => transformPath(path, toLocal)))
+  if (!local) return null
+  return { local, angle, toWorld: rotation(angle, [0, 0]), toLocal }
+}
+
+/** Where lines are drawn to show what a box or a point lines up with. */
+export type Guides = { xs: number[]; ys: number[] }
+
+/**
+ * How far to move a box, at most `reach` each way, so that its edges or middle line up with the
+ * lines given; and which lines it then lines up with.
+ */
+export const alignBox = (
+  box: Box,
+  xs: readonly number[],
+  ys: readonly number[],
+  reach: number
+): { by: Vec; guides: Guides } => {
+  const nearest = (own: number[], lines: readonly number[]) => {
+    let best: { shift: number; line: number } | null = null
+    for (const value of own) {
+      for (const line of lines) {
+        const shift = line - value
+        if (Math.abs(shift) <= reach && (!best || Math.abs(shift) < Math.abs(best.shift))) {
+          best = { shift, line }
+        }
+      }
+    }
+    return best
+  }
+  const across = nearest([box.x, box.x + box.width / 2, box.x + box.width], xs)
+  const upDown = nearest([box.y, box.y + box.height / 2, box.y + box.height], ys)
+  const by: Vec = [across?.shift ?? 0, upDown?.shift ?? 0]
+  const moved = { ...box, x: box.x + by[0], y: box.y + by[1] }
+  const on = (own: number[], lines: readonly number[]) => [
+    ...new Set(lines.filter(line => own.some(value => Math.abs(value - line) < 1e-6))),
+  ]
+  return {
+    by,
+    guides: {
+      xs: on([moved.x, moved.x + moved.width / 2, moved.x + moved.width], xs),
+      ys: on([moved.y, moved.y + moved.height / 2, moved.y + moved.height], ys),
+    },
+  }
+}
+
+/** The lines a box lines up with: the artboard's edges and middle, and the boxes of other marks. */
+export const guideLines = (others: readonly Box[]) => ({
+  xs: [0, 50, 100, ...others.flatMap(box => [box.x, box.x + box.width / 2, box.x + box.width])],
+  ys: [0, 50, 100, ...others.flatMap(box => [box.y, box.y + box.height / 2, box.y + box.height])],
+})

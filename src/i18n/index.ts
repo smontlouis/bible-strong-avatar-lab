@@ -398,6 +398,15 @@ const english: Record<string, string> = {
   'Aperçu du clip': 'Clip overview',
   'La timeline est en bas, sous la scène.': 'The timeline is at the bottom, under the stage.',
   'La remettre ici': 'Bring it back here',
+  'Maj + clic sur un tracé, ou cadre sur le vide': 'Shift + click a mark, or a box on nothing',
+  'Choisir plusieurs tracés': 'Pick several marks',
+  'Poignée ronde de la boîte': 'The round handle of the box',
+  'Tourner (Maj : par 15°) ; la boîte garde l’angle':
+    'Turn (Shift: by 15°); the box keeps the angle',
+  'Deux doigts': 'Two fingers',
+  'Zoomer et se déplacer': 'Zoom and move about',
+  'Aligne sur le milieu, les bords et les autres tracés (lignes roses)':
+    'Lines up with the middle, the edges and the other marks (pink lines)',
   'Ajouter un point': 'Add a point',
   'Alt en tirant une forme': 'Alt while drawing a shape',
   'Alt en tirant une poignée': 'Alt while dragging a handle',

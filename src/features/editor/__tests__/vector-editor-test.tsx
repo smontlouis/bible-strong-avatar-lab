@@ -166,4 +166,74 @@ describe('the vector editor', () => {
     ])
     expect(Math.hypot(...points[1].out)).toBeGreaterThan(1)
   })
+
+  it('picks several marks, with Shift or a box, and duplicates and deletes them together', () => {
+    const { view, board, last } = setup([
+      ring,
+      { d: 'M10 10H20V20H10Z' },
+      { d: 'M80 80H90V90H80Z' },
+    ])
+    const markPaths = () => [...view.container.querySelectorAll('[data-role="mark"]')]
+    fireEvent.pointerDown(markPaths()[1], { pointerId: 1, shiftKey: true, ...at(15, 15) })
+    fireEvent.pointerUp(board, { pointerId: 1 })
+    expect(view.container.querySelectorAll('[data-picked-mark]')).toHaveLength(2)
+    fireEvent.keyDown(board, { key: 'd', metaKey: true })
+    expect(last()).toHaveLength(5)
+    fireEvent.keyDown(board, { key: 'Delete' })
+    expect(last()).toHaveLength(3)
+    // A box drawn on nothing picks the marks it touches.
+    fireEvent.pointerDown(board, { pointerId: 1, ...at(5, 5) })
+    fireEvent.pointerMove(board, { pointerId: 1, ...at(95, 95) })
+    fireEvent.pointerUp(board, { pointerId: 1 })
+    expect(view.container.querySelectorAll('[data-picked-mark]')).toHaveLength(3)
+  })
+
+  it('keeps the turn of its box, and scales a turned mark along its own sides', () => {
+    const { view, board, last } = setup([{ d: 'M20 45H80V55H20Z' }])
+    const knob = view.container.querySelector('[data-role="rotate"]')!
+    // The knob is above the middle of the top: turned a quarter clockwise, it points to the right.
+    fireEvent.pointerDown(knob, { pointerId: 1, ...at(50, 30) })
+    fireEvent.pointerMove(board, { pointerId: 1, ...at(70, 50) })
+    fireEvent.pointerUp(board, { pointerId: 1 })
+    expect(view.container.querySelector('[data-transform-box]')!.getAttribute('data-angle')).toBe(
+      '90'
+    )
+    const turned = pathBounds(readPath(last()[0].d))!
+    expect(turned.width).toBeCloseTo(10, 0)
+    expect(turned.height).toBeCloseTo(60, 0)
+    // Its own right side is now its bottom: pulled further down, it grows longer, not wider.
+    const side = view.container.querySelector('[data-handle="e"]')!
+    fireEvent.pointerDown(side, { pointerId: 1, ...at(50, 80) })
+    fireEvent.pointerMove(board, { pointerId: 1, ...at(50, 90) })
+    fireEvent.pointerUp(board, { pointerId: 1 })
+    const longer = pathBounds(readPath(last()[0].d))!
+    expect(longer.width).toBeCloseTo(10, 0)
+    expect(longer.height).toBeCloseTo(70, 0)
+  })
+
+  it('lines a mark moved up with the middle of the artboard, and shows the guide', () => {
+    const { view, board, last } = setup([{ d: 'M10 10H20V20H10Z' }])
+    const markPath = view.container.querySelector('[data-role="mark"]')!
+    fireEvent.pointerDown(markPath, { pointerId: 1, ...at(15, 15) })
+    // Moved so that its middle comes to 49 across: it lands on 50.
+    fireEvent.pointerMove(board, { pointerId: 1, ...at(49, 15) })
+    expect(view.container.querySelectorAll('[data-guide]').length).toBeGreaterThan(0)
+    fireEvent.pointerUp(board, { pointerId: 1 })
+    const moved = pathBounds(readPath(last()[0].d))!
+    expect(moved.x + moved.width / 2).toBeCloseTo(50, 6)
+    expect(view.container.querySelectorAll('[data-guide]')).toHaveLength(0)
+  })
+
+  it('zooms with two fingers moved apart', () => {
+    const { view, board } = setup([ring])
+    const zoom = () =>
+      view.container.querySelector('[data-vector-editor] .tabular-nums')!.textContent
+    expect(zoom()).toBe('100 %')
+    fireEvent.pointerDown(board, { pointerId: 1, pointerType: 'touch', clientX: 0.4, clientY: 0.5 })
+    fireEvent.pointerDown(board, { pointerId: 2, pointerType: 'touch', clientX: 0.6, clientY: 0.5 })
+    fireEvent.pointerMove(board, { pointerId: 2, pointerType: 'touch', clientX: 0.8, clientY: 0.5 })
+    fireEvent.pointerUp(board, { pointerId: 2, pointerType: 'touch' })
+    fireEvent.pointerUp(board, { pointerId: 1, pointerType: 'touch' })
+    expect(zoom()).toBe('200 %')
+  })
 })

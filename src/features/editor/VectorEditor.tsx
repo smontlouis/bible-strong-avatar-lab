@@ -41,8 +41,14 @@ import {
 } from '@/features/editor/pathGeometry'
 import type { Editor } from '@/features/editor/useEditor'
 import {
+  alignBox,
   bendSegment,
+  carry,
   curveThrough,
+  guideLines,
+  multiply,
+  orientedBox,
+  unionBounds,
   dragBox,
   flipPath,
   movePoints,
@@ -59,6 +65,8 @@ import {
   transformPath,
   translation,
   type Box,
+  type Guides,
+  type OrientedBox,
   type ShapeKind,
 } from '@/features/editor/vectorGeometry'
 
@@ -98,9 +106,10 @@ const HANDLES: { id: HandleId; at: (box: Box) => Vec; cursor: string }[] = [
 
 type Drag =
   | { kind: 'pan'; from: View; start: { x: number; y: number }; width: number }
-  | { kind: 'move'; from: string; start: Vec }
-  | { kind: 'scale'; from: EditPath; box: Box; handle: HandleId }
-  | { kind: 'rotate'; from: EditPath; center: Vec; start: number }
+  | { kind: 'move'; from: Record<number, string>; start: Vec; box: Box | null }
+  | { kind: 'scale'; from: Record<number, string>; frame: OrientedBox; handle: HandleId }
+  | { kind: 'rotate'; from: Record<number, string>; center: Vec; start: number; turned: number }
+  | { kind: 'pick-marks'; start: Vec; add: number[] }
   | { kind: 'points'; from: EditPath; picked: Picked[]; start: Vec }
   | { kind: 'handle'; from: EditPath; picked: Picked; which: 'in' | 'out'; pointKind: PointKind }
   | { kind: 'bend'; from: EditPath; subpath: number; curve: number; time: number }
@@ -154,6 +163,8 @@ const shortcuts: { keys: string; label: string }[] = [
   { keys: 'Double-clic sur un point', label: 'Angle ou courbe' },
   { keys: 'Alt en tirant une poignée', label: 'Casser la courbe en angle' },
   { keys: 'Maj + clic, ou cadre', label: 'Choisir plusieurs points' },
+  { keys: 'Maj + clic sur un tracé, ou cadre sur le vide', label: 'Choisir plusieurs tracés' },
+  { keys: 'Poignée ronde de la boîte', label: 'Tourner (Maj : par 15°) ; la boîte garde l’angle' },
   { keys: 'Plume : clic, ou clic-glisser', label: 'Un angle, ou une courbe' },
   { keys: 'Plume : clic sur le dernier point', label: 'Retirer sa poignée de sortie' },
   { keys: 'Plume : sur une extrémité', label: 'Continuer le tracé' },
@@ -163,6 +174,11 @@ const shortcuts: { keys: string; label: string }[] = [
   { keys: '⌘D', label: 'Dupliquer le tracé' },
   { keys: 'Flèches (Maj : ×10)', label: 'Déplacer le tracé ou les points' },
   { keys: 'Espace en glissant · ⌘ + molette', label: 'Se déplacer · zoomer' },
+  { keys: 'Deux doigts', label: 'Zoomer et se déplacer' },
+  {
+    keys: 'Magnétisme',
+    label: 'Aligne sur le milieu, les bords et les autres tracés (lignes roses)',
+  },
 ]
 
 export function VectorEditor({
@@ -197,6 +213,19 @@ export function VectorEditor({
   const [pointer, setPointer] = useState<Vec | null>(null)
   const [marquee, setMarquee] = useState<Box | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  // The marks picked together: the one the eye editor shows first. One opens to its points.
+  const [group, setGroup] = useState<number[]>(selected !== null ? [selected] : [])
+  // The turn of the box of each set of marks: path data has none, the editor keeps it.
+  const [angles, setAngles] = useState<Record<string, number>>({})
+  const [guides, setGuides] = useState<Guides | null>(null)
+  // Fingers on the artboard, for a pinch.
+  const touches = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef<{
+    distance: number
+    view: View
+    middle: { x: number; y: number }
+    box: DOMRect
+  } | null>(null)
   const drag = useRef<Drag | null>(null)
   // What a pen or a curve is drawing, until it is closed or ended.
   // Path data cannot hold the handle out of an open path's last point: the pen keeps it until
@@ -207,12 +236,44 @@ export function VectorEditor({
   useEffect(() => {
     setPicked([])
     setKinds({})
-    if (selected === null) setEditing(false)
+    if (selected === null) {
+      setEditing(false)
+      setGroup([])
+    } else if (!group.includes(selected)) setGroup([selected])
+    // Only a change of the mark picked from outside picks it alone.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected])
+  // Marks added or taken away move the others' places: the turns kept by place go.
+  useEffect(() => {
+    setAngles({})
+    setGroup(current => current.filter(index => index < marks.length))
+  }, [marks.length])
 
   const mark = selected !== null ? marks[selected] : undefined
   const path: EditPath = mark ? readPath(mark.d) : []
-  const box = mark && !editing ? pathBounds(path) : null
+  const members = group.filter(index => marks[index])
+  const groupKey = [...members].sort((a, b) => a - b).join(',')
+  const frame =
+    !editing && members.length
+      ? orientedBox(
+          members.map(index => readPath(marks[index].d)),
+          angles[groupKey] ?? 0
+        )
+      : null
+  /** A point of the box's own frame on the artboard. */
+  const onBoard = (at: Vec) => (frame ? carry(frame.toWorld, at) : at)
+  /** The path data of the marks picked, as they are now. */
+  const snapshot = (indices: readonly number[] = members) =>
+    Object.fromEntries(indices.map(index => [index, marks[index].d])) as Record<number, string>
+  /** The boxes of the marks that are not moving, to line up with. */
+  const otherBoxes = (moving: readonly number[]) =>
+    marks
+      .map((item, index) => (moving.includes(index) ? null : pathBounds(readPath(item.d))))
+      .filter((item): item is Box => item !== null)
+  const pickGroup = (next: number[]) => {
+    setGroup(next)
+    onSelect(next.length ? next[0] : null)
+  }
   // Sizes on screen stay the same whatever the zoom: they are a share of what is shown.
   const unit = view.size / 108
   const reach = 3.2 * unit
@@ -226,6 +287,23 @@ export function VectorEditor({
     return kinds[pointKey(at)] ?? (found ? kindOf(found) : 'corner')
   }
 
+  const writeMarks = (updates: Record<number, string>, tag?: string) =>
+    onChange(
+      marks.map((item, index) => (index in updates ? { ...item, d: updates[index] } : item)),
+      tag
+    )
+  /** The marks of a snapshot carried by a matrix. */
+  const carryMarks = (
+    from: Record<number, string>,
+    matrix: ReturnType<typeof translation>,
+    tag: string
+  ) =>
+    writeMarks(
+      Object.fromEntries(
+        Object.entries(from).map(([index, d]) => [index, transformData(d, matrix)])
+      ),
+      tag
+    )
   const writeMark = (index: number, d: string, tag?: string, list: readonly FaceMark[] = marks) =>
     onChange(
       list.map((item, at) => (at === index ? { ...item, d } : item)),
@@ -287,13 +365,22 @@ export function VectorEditor({
     return marks.length
   }
   const removeMark = () => {
-    if (selected === null || marks.length < 2) return
-    onChange(marks.filter((_, index) => index !== selected))
-    onSelect(Math.max(0, selected - 1))
+    const going = members.length ? members : selected !== null ? [selected] : []
+    // An eye keeps one mark at least.
+    if (!going.length || marks.length - going.length < 1) return
+    onChange(marks.filter((_, index) => !going.includes(index)))
+    const first = Math.min(...going)
+    pickGroup([Math.max(0, Math.min(first - 1, marks.length - going.length - 1))])
   }
   const duplicateMark = () => {
-    if (!mark) return
-    addMark({ ...structuredClone(mark), d: transformData(mark.d, translation(4, 4)) })
+    const copied = members.length ? members : selected !== null ? [selected] : []
+    if (!copied.length) return
+    const copies = copied.map(index => ({
+      ...structuredClone(marks[index]),
+      d: transformData(marks[index].d, translation(4, 4)),
+    }))
+    onChange([...marks, ...copies])
+    pickGroup(copies.map((_, at) => marks.length + at))
   }
 
   /** The pen's path, its last point given the handle out the pen keeps. */
@@ -361,6 +448,22 @@ export function VectorEditor({
       Math.hypot(event.clientX - lastDown.current.x, event.clientY - lastDown.current.y) < 6
     lastDown.current = { at: double ? 0 : now, x: event.clientX, y: event.clientY }
     const capture = () => element.setPointerCapture(event.pointerId)
+    touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    if (touches.current.size === 2) {
+      // Two fingers: a pinch zooms and moves about, whatever the first one started.
+      const [a, b] = [...touches.current.values()]
+      drag.current = null
+      setMarquee(null)
+      setGuides(null)
+      pinch.current = {
+        distance: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+        view,
+        middle: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+        box: element.getBoundingClientRect(),
+      }
+      capture()
+      return
+    }
 
     if (tool === 'hand' || panning || event.button === 1) {
       drag.current = {
@@ -463,37 +566,55 @@ export function VectorEditor({
       return
     }
 
-    // The select tool, on a mark picked whole.
+    // The select tool, on marks picked whole.
     if (!editing) {
-      if (role?.role === 'rotate' && mark && box) {
-        const center: Vec = [box.x + box.width / 2, box.y + box.height / 2]
+      if (role?.role === 'rotate' && frame) {
+        const local = frame.local
+        const center = onBoard([local.x + local.width / 2, local.y + local.height / 2])
         drag.current = {
           kind: 'rotate',
-          from: path,
+          from: snapshot(),
           center,
           start: Math.atan2(raw[1] - center[1], raw[0] - center[0]),
+          turned: 0,
         }
         capture()
         return
       }
-      if (role?.role === 'box' && mark && box) {
-        drag.current = { kind: 'scale', from: path, box, handle: role.handle as HandleId }
+      if (role?.role === 'box' && frame) {
+        drag.current = { kind: 'scale', from: snapshot(), frame, handle: role.handle as HandleId }
         capture()
         return
       }
       if (role?.role === 'mark') {
         const index = Number(role.mark)
         if (double) {
-          onSelect(index)
+          pickGroup([index])
           setEditing(true)
           return
         }
-        if (index !== selected) onSelect(index)
-        drag.current = { kind: 'move', from: marks[index].d, start: raw }
+        if (event.shiftKey) {
+          pickGroup(
+            group.includes(index) ? group.filter(item => item !== index) : [...group, index]
+          )
+          return
+        }
+        const moving = group.includes(index) ? members : [index]
+        if (!group.includes(index)) pickGroup([index])
+        drag.current = {
+          kind: 'move',
+          from: snapshot(moving),
+          start: raw,
+          box: unionBounds(moving.map(item => readPath(marks[item].d))),
+        }
         capture()
         return
       }
-      if (!double) onSelect(null)
+      if (double) return
+      // On nothing: a box drawn picks the marks it touches.
+      drag.current = { kind: 'pick-marks', start: raw, add: event.shiftKey ? members : [] }
+      if (!event.shiftKey) pickGroup([])
+      capture()
       return
     }
 
@@ -563,6 +684,31 @@ export function VectorEditor({
   }
 
   const onPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (touches.current.has(event.pointerId)) {
+      touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    }
+    const pinching = pinch.current
+    if (pinching && touches.current.size >= 2) {
+      const [a, b] = [...touches.current.values()]
+      const distance = Math.hypot(a.x - b.x, a.y - b.y) || 1
+      const size = Math.max(
+        MIN_SIZE,
+        Math.min(MAX_SIZE, pinching.view.size * (pinching.distance / distance))
+      )
+      const middle = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+      const { box: rect, view: from } = pinching
+      // The point under the fingers' middle when they came down stays under it.
+      const held: Vec = [
+        from.x + ((pinching.middle.x - rect.left) / (rect.width || 1)) * from.size,
+        from.y + ((pinching.middle.y - rect.top) / (rect.height || 1)) * from.size,
+      ]
+      setView({
+        x: held[0] - ((middle.x - rect.left) / (rect.width || 1)) * size,
+        y: held[1] - ((middle.y - rect.top) / (rect.height || 1)) * size,
+        size,
+      })
+      return
+    }
     const raw = toArtboard(event.clientX, event.clientY)
     const current = drag.current
     if (!current) {
@@ -583,21 +729,39 @@ export function VectorEditor({
       case 'move': {
         let by: Vec = [raw[0] - current.start[0], raw[1] - current.start[1]]
         if (event.shiftKey) by = Math.abs(by[0]) > Math.abs(by[1]) ? [by[0], 0] : [0, by[1]]
-        if (snap) by = [Math.round(by[0]), Math.round(by[1])]
-        if (selected !== null)
-          writeMark(selected, transformData(current.from, translation(...by)), 'move')
+        if (snap) {
+          by = [Math.round(by[0]), Math.round(by[1])]
+          // The marks moved line up with the artboard's middle and edges, and with the others.
+          if (current.box) {
+            const lines = guideLines(otherBoxes(Object.keys(current.from).map(Number)))
+            const lined = alignBox(
+              { ...current.box, x: current.box.x + by[0], y: current.box.y + by[1] },
+              lines.xs,
+              lines.ys,
+              reach * 0.6
+            )
+            by = [by[0] + lined.by[0], by[1] + lined.by[1]]
+            setGuides(lined.guides)
+          }
+        }
+        carryMarks(current.from, translation(...by), 'move')
         return
       }
       case 'scale': {
-        const { box: from, handle } = current
-        const corner = HANDLES.find(item => item.id === handle)!.at(from)
-        const center: Vec = [from.x + from.width / 2, from.y + from.height / 2]
+        // In the box's own frame: turned back, scaled from the handle's opposite, turned again.
+        const { frame: from, handle } = current
+        const local = from.local
+        const corner = HANDLES.find(item => item.id === handle)!.at(local)
+        const center: Vec = [local.x + local.width / 2, local.y + local.height / 2]
         const opposite: Vec = [
-          from.x + from.x + from.width - corner[0],
-          from.y + from.y + from.height - corner[1],
+          local.x + local.x + local.width - corner[0],
+          local.y + local.y + local.height - corner[1],
         ]
         const anchor = event.altKey ? center : opposite
-        const at = snapped(raw, selected ?? undefined)
+        const at = carry(
+          from.toLocal,
+          snap && from.angle === 0 ? snapped(raw, selected ?? undefined) : raw
+        )
         const across = handle.includes('e') || handle.includes('w')
         const upDown = handle.includes('n') || handle.includes('s')
         let sx =
@@ -618,14 +782,19 @@ export function VectorEditor({
           sx = Math.sign(sx || 1) * uniform
           sy = Math.sign(sy || 1) * uniform
         }
-        write(transformPath(current.from, scaling(sx, sy, anchor)), 'transform')
+        carryMarks(
+          current.from,
+          multiply(from.toWorld, multiply(scaling(sx, sy, anchor), from.toLocal)),
+          'transform'
+        )
         return
       }
       case 'rotate': {
         let angle =
           Math.atan2(raw[1] - current.center[1], raw[0] - current.center[0]) - current.start
         if (event.shiftKey) angle = Math.round(angle / (Math.PI / 12)) * (Math.PI / 12)
-        write(transformPath(current.from, rotation(angle, current.center)), 'transform')
+        current.turned = angle
+        carryMarks(current.from, rotation(angle, current.center), 'transform')
         return
       }
       case 'points': {
@@ -646,6 +815,21 @@ export function VectorEditor({
             [...snapTargets(selected ?? undefined), ...others]
           )
           by = [landed[0] - anchor.at[0], landed[1] - anchor.at[1]]
+          // Not on a point: in line with one, across or up and down, or with the middle.
+          if (!others.some(other => other[0] === landed[0] && other[1] === landed[1])) {
+            const lines = {
+              xs: [50, ...others.map(other => other[0])],
+              ys: [50, ...others.map(other => other[1])],
+            }
+            const lined = alignBox(
+              { x: landed[0], y: landed[1], width: 0, height: 0 },
+              lines.xs,
+              lines.ys,
+              reach * 0.6
+            )
+            by = [by[0] + lined.by[0], by[1] + lined.by[1]]
+            setGuides(lined.guides)
+          }
         }
         write(movePoints(current.from, current.picked, by), 'points')
         return
@@ -666,6 +850,23 @@ export function VectorEditor({
       case 'bend':
         write(bendSegment(current.from, current.subpath, current.curve, current.time, raw), 'bend')
         return
+      case 'pick-marks': {
+        const area = dragBox(current.start, raw)
+        setMarquee(area)
+        const touched = marks
+          .map((item, index) => ({ index, box: pathBounds(readPath(item.d)) }))
+          .filter(
+            ({ box: found }) =>
+              found &&
+              found.x <= area.x + area.width &&
+              found.x + found.width >= area.x &&
+              found.y <= area.y + area.height &&
+              found.y + found.height >= area.y
+          )
+          .map(({ index }) => index)
+        pickGroup([...current.add, ...touched.filter(index => !current.add.includes(index))])
+        return
+      }
       case 'marquee': {
         current.now = raw
         const area = dragBox(current.start, raw)
@@ -702,10 +903,20 @@ export function VectorEditor({
         return
       }
       case 'shape': {
-        current.now = raw
-        setPreview(
-          shapeData(current.shape, current.start, snapped(raw), event.shiftKey, event.altKey)
-        )
+        let end = snapped(raw)
+        if (snap) {
+          const lines = guideLines(otherBoxes([]))
+          const lined = alignBox(
+            { x: end[0], y: end[1], width: 0, height: 0 },
+            lines.xs,
+            lines.ys,
+            reach * 0.6
+          )
+          end = [end[0] + lined.by[0], end[1] + lined.by[1]]
+          setGuides(lined.guides)
+        }
+        current.now = end
+        setPreview(shapeData(current.shape, current.start, end, event.shiftKey, event.altKey))
         return
       }
     }
@@ -749,11 +960,18 @@ export function VectorEditor({
   }
 
   const onPointerUp = (event: ReactPointerEvent<SVGSVGElement>) => {
+    touches.current.delete(event.pointerId)
+    if (touches.current.size < 2) pinch.current = null
     const current = drag.current
     drag.current = null
     setMarquee(null)
+    setGuides(null)
+    if (current?.kind === 'rotate' && current.turned) {
+      // The box keeps the turn, as the marks have taken it.
+      setAngles({ ...angles, [groupKey]: (angles[groupKey] ?? 0) + current.turned })
+    }
     if (current?.kind === 'shape') {
-      const end = snapped(toArtboard(event.clientX, event.clientY))
+      const end = current.now
       let d = shapeData(current.shape, current.start, end, event.shiftKey, event.altKey)
       // A click without a drag draws the shape at a size of its own, about the click.
       if (!d || Math.hypot(end[0] - current.start[0], end[1] - current.start[1]) < 2 * unit) {
@@ -770,6 +988,37 @@ export function VectorEditor({
       addMark(current.shape === 'line' ? { ...LINE_MARK, d } : { d }, 'shape')
       setToolState('select')
     }
+  }
+
+  /** The marks picked, or the one opened, every line of them made a curve. */
+  const smoothPicked = () => {
+    const indices = editing || !members.length ? [selected!] : members
+    writeMarks(
+      Object.fromEntries(
+        indices.map(index => {
+          const current = readPath(marks[index].d)
+          return [
+            index,
+            writePath(current.reduce((next, _, at) => smoothSubpath(next, at), current)),
+          ]
+        })
+      )
+    )
+  }
+  /** The marks picked flipped together about the middle of their box. */
+  const flipPicked = (axis: 'x' | 'y') => {
+    const indices = editing || !members.length ? [selected!] : members
+    if (indices.length === 1 && editing) return write(flipPath(path, axis))
+    const around = unionBounds(indices.map(index => readPath(marks[index].d)))
+    if (!around) return
+    const middle: Vec = [around.x + around.width / 2, around.y + around.height / 2]
+    carryMarks(
+      snapshot(indices),
+      axis === 'x' ? scaling(-1, 1, middle) : scaling(1, -1, middle),
+      'flip'
+    )
+    // A box turned one way is turned the other way once flipped.
+    if (angles[groupKey]) setAngles({ ...angles, [groupKey]: -angles[groupKey] })
   }
 
   const removePicked = () => {
@@ -806,12 +1055,15 @@ export function VectorEditor({
       if (pen.current || curve.current) finishDrawing()
       else if (editing && picked.length) setPicked([])
       else if (editing) setEditing(false)
-      else onSelect(null)
+      else pickGroup([])
       return
     }
     if (event.key === 'Enter') {
       if (pen.current || curve.current) finishDrawing()
-      else if (mark && tool === 'select') setEditing(!editing)
+      else if (mark && tool === 'select') {
+        if (!editing) pickGroup([selected!])
+        setEditing(!editing)
+      }
       return
     }
     if (event.key === '?') {
@@ -829,8 +1081,7 @@ export function VectorEditor({
       const step = event.shiftKey ? 10 : 1
       const by: Vec = [arrows[event.key][0] * step, arrows[event.key][1] * step]
       if (editing && picked.length) write(movePoints(path, picked, by), 'nudge')
-      else if (!editing && selected !== null)
-        writeMark(selected, transformData(mark.d, translation(...by)), 'nudge')
+      else if (!editing) carryMarks(snapshot(), translation(...by), 'nudge')
       return
     }
     const choice = tools.find(item => item.key.toLowerCase() === event.key.toLowerCase())
@@ -1023,9 +1274,12 @@ export function VectorEditor({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={() => {
+        onPointerCancel={event => {
+          touches.current.delete(event.pointerId)
+          if (touches.current.size < 2) pinch.current = null
           drag.current = null
           setMarquee(null)
+          setGuides(null)
         }}
         onPointerLeave={() => setPointer(null)}
         onKeyDown={onKeyDown}
@@ -1100,13 +1354,31 @@ export function VectorEditor({
             strokeOpacity={editing ? 1 : 0.8}
           />
         )}
-        {box && tool === 'select' && (
-          <g data-transform-box>
-            <rect
-              x={box.x}
-              y={box.y}
-              width={box.width}
-              height={box.height}
+        {!editing &&
+          members.length > 1 &&
+          members.map(index => (
+            <path
+              key={`picked-${index}`}
+              d={marks[index].d}
+              fill="none"
+              stroke="#5b7fe5"
+              strokeWidth={1.5}
+              vectorEffect="non-scaling-stroke"
+              pointerEvents="none"
+              data-picked-mark={index}
+            />
+          ))}
+        {frame && tool === 'select' && (
+          <g data-transform-box data-angle={Math.round((frame.angle * 180) / Math.PI)}>
+            <polygon
+              points={[
+                [frame.local.x, frame.local.y],
+                [frame.local.x + frame.local.width, frame.local.y],
+                [frame.local.x + frame.local.width, frame.local.y + frame.local.height],
+                [frame.local.x, frame.local.y + frame.local.height],
+              ]
+                .map(corner => onBoard(corner as Vec).join(' '))
+                .join(' ')}
               fill="none"
               stroke="#5b7fe5"
               strokeWidth={1}
@@ -1114,33 +1386,44 @@ export function VectorEditor({
               vectorEffect="non-scaling-stroke"
               pointerEvents="none"
             />
-            <line
-              x1={box.x + box.width / 2}
-              y1={box.y}
-              x2={box.x + box.width / 2}
-              y2={box.y - 7 * unit}
-              stroke="#5b7fe5"
-              strokeWidth={1}
-              vectorEffect="non-scaling-stroke"
-              pointerEvents="none"
-            />
-            <circle
-              cx={box.x + box.width / 2}
-              cy={box.y - 7 * unit}
-              r={1.6 * unit}
-              fill="white"
-              stroke="#5b7fe5"
-              strokeWidth={1.5}
-              vectorEffect="non-scaling-stroke"
-              className="cursor-grab"
-              data-role="rotate"
-            />
+            {(() => {
+              const top = onBoard([frame.local.x + frame.local.width / 2, frame.local.y])
+              const knob = onBoard([
+                frame.local.x + frame.local.width / 2,
+                frame.local.y - 7 * unit,
+              ])
+              return (
+                <>
+                  <line
+                    x1={top[0]}
+                    y1={top[1]}
+                    x2={knob[0]}
+                    y2={knob[1]}
+                    stroke="#5b7fe5"
+                    strokeWidth={1}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                  <circle
+                    cx={knob[0]}
+                    cy={knob[1]}
+                    r={1.6 * unit}
+                    fill="white"
+                    stroke="#5b7fe5"
+                    strokeWidth={1.5}
+                    vectorEffect="non-scaling-stroke"
+                    className="cursor-grab"
+                    data-role="rotate"
+                  />
+                </>
+              )
+            })()}
             {HANDLES.filter(
               handle =>
-                (box.width > 1e-6 || !['n', 's'].includes(handle.id)) &&
-                (box.height > 1e-6 || !['e', 'w'].includes(handle.id))
+                (frame.local.width > 1e-6 || !['n', 's'].includes(handle.id)) &&
+                (frame.local.height > 1e-6 || !['e', 'w'].includes(handle.id))
             ).map(handle => {
-              const [x, y] = handle.at(box)
+              const [x, y] = onBoard(handle.at(frame.local))
               const size = 2.4 * unit
               return (
                 <rect
@@ -1153,6 +1436,7 @@ export function VectorEditor({
                   stroke="#5b7fe5"
                   strokeWidth={1.5}
                   vectorEffect="non-scaling-stroke"
+                  transform={`rotate(${(frame.angle * 180) / Math.PI} ${x} ${y})`}
                   style={{ cursor: handle.cursor }}
                   data-role="box"
                   data-handle={handle.id}
@@ -1161,6 +1445,24 @@ export function VectorEditor({
             })}
           </g>
         )}
+        {guides &&
+          [
+            ...guides.xs.map(x => ({ key: `x${x}`, line: [x, view.y, x, view.y + view.size] })),
+            ...guides.ys.map(y => ({ key: `y${y}`, line: [view.x, y, view.x + view.size, y] })),
+          ].map(({ key, line: [x1, y1, x2, y2] }) => (
+            <line
+              key={key}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke="#e5486d"
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+              pointerEvents="none"
+              data-guide
+            />
+          ))}
         {editing &&
           mark &&
           path.map((line, subpathIndex) =>
@@ -1315,7 +1617,7 @@ export function VectorEditor({
             size="sm"
             type="button"
             title={t('Toutes ses lignes deviennent des courbes')}
-            onClick={() => write(path.reduce((next, _, index) => smoothSubpath(next, index), path))}
+            onClick={() => smoothPicked()}
           >
             <Wand2 /> {t('Lisser')}
           </Button>
@@ -1325,7 +1627,7 @@ export function VectorEditor({
             type="button"
             aria-label={t('Retourner horizontalement')}
             title={t('Retourner horizontalement')}
-            onClick={() => write(flipPath(path, 'x'))}
+            onClick={() => flipPicked('x')}
           >
             <FlipHorizontal2 />
           </Button>
@@ -1335,7 +1637,7 @@ export function VectorEditor({
             type="button"
             aria-label={t('Retourner verticalement')}
             title={t('Retourner verticalement')}
-            onClick={() => write(flipPath(path, 'y'))}
+            onClick={() => flipPicked('y')}
           >
             <FlipVertical2 />
           </Button>
