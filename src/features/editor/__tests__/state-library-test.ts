@@ -66,7 +66,9 @@ describe('reading a state', () => {
       message: 'expected a non-empty list of clip names',
     })
     expect(problem({ name: 'a', clips: ['Done_A', 'Nope'] })?.path).toBe('clips[1]')
-    expect(problem({ name: 'a', clips: ['Done_A'], face: 'grumpy' })?.path).toBe('face')
+    expect(problem({ name: 'a', clips: ['Done_A'], face: ' ' })?.path).toBe('face')
+    // A drawn face is named as freely as a clip: one the Studio does not have shows neutral.
+    expect(problem({ name: 'a', clips: ['Done_A'], face: 'grumpy' })).toBeUndefined()
     expect(problem({ name: 'a', clips: ['Done_A'], morph: 'dots' })?.path).toBe('morph')
     expect(problem({ name: 'a', clips: ['Done_A'], next: 'nowhere' })?.path).toBe('next')
     expect(problem({ name: 'a', clips: ['Done_A'], holdSeconds: 2 })?.message).toBe(

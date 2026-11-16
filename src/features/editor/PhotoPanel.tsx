@@ -127,11 +127,12 @@ export function PoseControls({ editor }: { editor: Editor }) {
 
 /** The nine faces as cards: picking one holds it, picking it again lets the avatar decide. */
 export function FaceGrid({ editor }: { editor: Editor }) {
-  const { character, face, setFace } = editor
+  const { character, face, setFace, clipLibrary } = editor
   if (!character) return null
+  const drawn = clipLibrary.drawnFaces()
   return (
     <div className="expression-grid photo-expression-grid">
-      {faceNames.map(name => (
+      {[...faceNames, ...Object.keys(drawn)].map(name => (
         <Button
           className="expression-card"
           variant="outline"
@@ -141,7 +142,7 @@ export function FaceGrid({ editor }: { editor: Editor }) {
           key={name}
           onClick={() => setFace(face === name ? null : name)}
         >
-          <CharacterPreview character={character} face={name} />
+          <CharacterPreview character={character} face={name} faces={drawn} />
           <span>{name}</span>
         </Button>
       ))}

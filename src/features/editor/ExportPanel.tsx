@@ -133,7 +133,7 @@ function CodeBlock({ code, label }: { code: string; label: string }) {
 }
 
 export function ExportPanel({ editor }: { editor: Editor }) {
-  const { t, character, activeAvatar } = editor
+  const { t, character, activeAvatar, clipLibrary } = editor
   const [chosen, setChosen] = useState<IntegrationId>('react')
   const [copied, setCopied] = useState<'done' | 'failed' | null>(null)
   useEffect(() => {
@@ -151,6 +151,21 @@ export function ExportPanel({ editor }: { editor: Editor }) {
       new Blob([JSON.stringify(character, null, 2)], { type: 'application/json' })
     )
     link.download = names.file
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
+  // What the renderers' `library` reads: each clip, state and face with its name.
+  const saveLibrary = () => {
+    const library = {
+      clips: clipLibrary.clips,
+      states: clipLibrary.states,
+      faces: clipLibrary.faces,
+    }
+    const link = window.document.createElement('a')
+    link.href = URL.createObjectURL(
+      new Blob([`${JSON.stringify(library, null, 2)}\n`], { type: 'application/json' })
+    )
+    link.download = 'avatar-library.json'
     link.click()
     URL.revokeObjectURL(link.href)
   }
@@ -174,6 +189,29 @@ export function ExportPanel({ editor }: { editor: Editor }) {
         <Button type="button" onClick={saveCharacter}>
           <Download />
           {t('Télécharger')} {names.file}
+        </Button>
+      </InspectorCard>
+
+      <InspectorCard>
+        <PanelTitle
+          level={3}
+          title="Bibliothèque"
+          subtitle="Tes clips, tes états et tes visages dessinés, à donner à l’avatar d’une app par sa prop library."
+        />
+        <p className="text-xs text-muted-foreground" data-library-count>
+          {clipLibrary.clips.length} {t('clips')} · {clipLibrary.states.length} {t('états')} ·{' '}
+          {clipLibrary.faces.length} {t('visages')}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={
+            !clipLibrary.clips.length && !clipLibrary.states.length && !clipLibrary.faces.length
+          }
+          onClick={saveLibrary}
+        >
+          <Download />
+          {t('Télécharger')} avatar-library.json
         </Button>
       </InspectorCard>
 

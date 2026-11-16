@@ -415,11 +415,21 @@ function FacePicker({
   value: string
   onPick: (face: string) => void
 }) {
-  const { t, character } = editor
+  const { t, character, clipLibrary } = editor
+  const drawn = clipLibrary.drawnFaces()
+  const choices = [...clipFaceChoices, ...Object.keys(drawn)]
+  // A name that is neither built in nor drawn here shows neutral, in the Studio as in an app.
+  const unknown =
+    !choices.includes(value) && resolveFaceName(value) === 'neutral' && value !== 'neutral'
   return (
     <div className="@container">
+      {unknown && (
+        <p className="mb-1.5 text-[0.7rem] text-destructive">
+          {t('Aucun visage ne porte ce nom ici : l’avatar montre neutral.')} ({value})
+        </p>
+      )}
       <div className="grid grid-cols-3 gap-1.5 @sm:grid-cols-4 @lg:grid-cols-5">
-        {clipFaceChoices.map(face => (
+        {choices.map(face => (
           <button
             type="button"
             className={`flex flex-col items-center gap-0.5 rounded-lg bg-white p-1.5 ring-1 ${
@@ -434,7 +444,7 @@ function FacePicker({
               {face === 'blink' || !character ? (
                 <span className="text-lg leading-none text-muted-foreground">– –</span>
               ) : (
-                <CharacterPreview character={character} face={resolveFaceName(face)} />
+                <CharacterPreview character={character} face={face} faces={drawn} />
               )}
             </span>
             <span className="max-w-full truncate text-[0.65rem] font-semibold">{face}</span>
