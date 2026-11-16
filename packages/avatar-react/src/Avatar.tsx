@@ -1,7 +1,7 @@
 import {
   advanceEngine,
-  clips,
   createAvatarEngine,
+  engineClipOf,
   engineFrame,
   pauseEngine,
   playEngineClip,
@@ -14,12 +14,16 @@ import {
   setEngineFace,
   setEngineGaze,
   setEngineGazeAlways,
+  setEngineLibrary,
   setEngineLookAt,
   engineAtRest,
   setEnginePose,
   setEngineState,
+  readAvatarLibrary,
   type AvatarCharacter,
   type AvatarEngine,
+  type AvatarLibrary,
+  type EngineLibrary,
   type CharacterScene,
   type FreePose,
   type GestureName,
@@ -45,6 +49,11 @@ export type AvatarHandle = {
 export type AvatarProps = {
   character: AvatarCharacter
   ref?: Ref<AvatarHandle>
+  /**
+   * Clips, states and drawn faces of the app's own, as the Studio exports them, besides the
+   * catalogue's. It is read again only when what it holds changes.
+   */
+  library?: AvatarLibrary
   /**
    * What the avatar does. A state draws its own clips; a clip plays alone, round and round. A
    * state wins over a clip. With none the avatar is `idle`.
@@ -106,13 +115,38 @@ const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 const applyDoing = (engine: AvatarEngine, state: string | undefined, clip: string | undefined) => {
-  if (state === undefined && clip !== undefined && clips[clip]) playEngineClip(engine, clips[clip])
+  const asked = clip === undefined ? undefined : engineClipOf(engine, clip)
+  if (state === undefined && asked) playEngineClip(engine, asked)
   else setEngineState(engine, state ?? 'idle')
+}
+
+/**
+ * The library read into what the engine plays, once for each content: a new object that holds
+ * the same is not read again.
+ */
+const useReadLibrary = (library: AvatarLibrary | undefined): EngineLibrary => {
+  const cache = useRef<{
+    given: AvatarLibrary | undefined
+    key: string
+    read: EngineLibrary
+  } | null>(null)
+  if (!cache.current || cache.current.given !== library) {
+    const key = library ? JSON.stringify(library) : ''
+    if (!cache.current || cache.current.key !== key) {
+      const read = readAvatarLibrary(library)
+      if (read.problems.length) {
+        console.warn(`@bible-strong/avatar-react: library\n${read.problems.join('\n')}`)
+      }
+      cache.current = { given: library, key, read: read.library }
+    } else cache.current = { ...cache.current, given: library }
+  }
+  return cache.current.read
 }
 
 export function Avatar({
   character,
   ref,
+  library,
   state,
   clip,
   face,
@@ -137,8 +171,9 @@ export function Avatar({
 
   // The engine is made once for a seed. What the avatar does, and how, is then set on it: on the
   // first render so that the first picture is right, and in effects after that.
+  const read = useReadLibrary(library)
   const engine = useMemo(() => {
-    const created = createAvatarEngine({ seed: resolvedSeed, compact })
+    const created = createAvatarEngine({ seed: resolvedSeed, compact, ...read })
     setEngineEmphasis(created, emphasis)
     applyDoing(created, state, clip)
     setEngineFace(created, face ?? null)
@@ -232,6 +267,7 @@ export function Avatar({
     doing.current = { state, clip }
     applyDoing(engine, state, clip)
   }, [engine, state, clip])
+  useEffect(() => setEngineLibrary(engine, read), [engine, read])
   useEffect(() => setEngineFace(engine, face ?? null), [engine, face])
   useEffect(() => setEnginePose(engine, pose ?? null), [engine, pose])
   useEffect(() => setEngineEmphasis(engine, emphasis), [engine, emphasis])

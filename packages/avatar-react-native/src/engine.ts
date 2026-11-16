@@ -1,7 +1,7 @@
 import {
   advanceEngine,
-  clips,
   createAvatarEngine,
+  engineClipOf,
   engineFrame,
   pauseEngine,
   playEngineClip,
@@ -11,12 +11,14 @@ import {
   setEngineCompact,
   setEngineEmphasis,
   setEngineFace,
+  setEngineLibrary,
   setEngineLookAt,
   setEngineState,
   engineAtRest,
   type AvatarCharacter,
   type AvatarEngine,
   type CharacterScene,
+  type EngineLibrary,
   type GestureName,
 } from '@bible-strong/avatar-core'
 
@@ -46,6 +48,8 @@ export type AvatarCommand = { seq: number } & (
   | { type: 'look'; target: [number, number] | null }
   // Draw again, for a setting that changed outside the engine.
   | { type: 'wake' }
+  // Clips, states and faces of the app's own, read on the JS thread.
+  | { type: 'library'; library: EngineLibrary }
 )
 
 /** One avatar as the UI thread runs it: the engine, and when it was last drawn and asked. */
@@ -105,14 +109,17 @@ export type AvatarStart = {
   face?: string
   lookAt?: [number, number] | null
   paused: boolean
+  /** Clips, states and faces of the app's own, already read: nothing is parsed on the UI thread. */
+  library?: EngineLibrary
 }
 
 /** Start an avatar's run: the engine in the state, or on the clip, it is first given. */
 export const createAvatarRun = (start: AvatarStart): AvatarRun => {
-  const engine = createAvatarEngine({ seed: start.seed, compact: start.compact })
+  const engine = createAvatarEngine({ seed: start.seed, compact: start.compact, ...start.library })
   setEngineEmphasis(engine, start.emphasis)
-  if (start.state === undefined && start.clip !== undefined && clips[start.clip]) {
-    playEngineClip(engine, clips[start.clip])
+  const firstClip = start.clip === undefined ? undefined : engineClipOf(engine, start.clip)
+  if (start.state === undefined && firstClip) {
+    playEngineClip(engine, firstClip)
   } else {
     setEngineState(engine, start.state ?? 'idle')
   }
@@ -185,8 +192,13 @@ export const applyAvatarCommand = (run: AvatarRun, command: AvatarCommand, now: 
     case 'state':
       setEngineState(engine, command.state)
       break
-    case 'clip':
-      if (clips[command.clip]) playEngineClip(engine, clips[command.clip])
+    case 'clip': {
+      const asked = engineClipOf(engine, command.clip)
+      if (asked) playEngineClip(engine, asked)
+      break
+    }
+    case 'library':
+      setEngineLibrary(engine, command.library)
       break
     case 'face':
       setEngineFace(engine, command.face)

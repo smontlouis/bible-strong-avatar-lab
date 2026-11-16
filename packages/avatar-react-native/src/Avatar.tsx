@@ -1,8 +1,11 @@
 import {
   engineFrame,
+  readAvatarLibrary,
   renderCharacterFrame,
   seedOfName,
   type AvatarCharacter,
+  type AvatarLibrary,
+  type EngineLibrary,
   type GestureName,
 } from '@bible-strong/avatar-core'
 import { useEffect, useId, useImperativeHandle, useRef, useState } from 'react'
@@ -56,6 +59,11 @@ export type AvatarHandle = {
 export type AvatarProps = {
   character: AvatarCharacter
   ref?: Ref<AvatarHandle>
+  /**
+   * Clips, states and drawn faces of the app's own, as the Studio exports them, besides the
+   * catalogue's. It is read on the JS thread, again only when what it holds changes.
+   */
+  library?: AvatarLibrary
   /**
    * What the avatar does. A state draws its own clips; a clip plays alone, round and round. A
    * state wins over a clip. With none the avatar is `idle`.
@@ -276,10 +284,34 @@ function MarkPath({ frame, muted, index }: Painted & { index: number }) {
   return <AnimatedPath animatedProps={animatedProps} strokeLinecap="round" strokeLinejoin="round" />
 }
 
+/**
+ * The library read into what the engine plays, once for each content: a new object that holds
+ * the same is not read again.
+ */
+const useReadLibrary = (library: AvatarLibrary | undefined): EngineLibrary => {
+  const cache = useRef<{
+    given: AvatarLibrary | undefined
+    key: string
+    read: EngineLibrary
+  } | null>(null)
+  if (!cache.current || cache.current.given !== library) {
+    const key = library ? JSON.stringify(library) : ''
+    if (!cache.current || cache.current.key !== key) {
+      const read = readAvatarLibrary(library)
+      if (read.problems.length) {
+        console.warn(`@bible-strong/avatar-react-native: library\n${read.problems.join('\n')}`)
+      }
+      cache.current = { given: library, key, read: read.library }
+    } else cache.current = { ...cache.current, given: library }
+  }
+  return cache.current.read
+}
+
 function AvatarInstance(props: AvatarProps): ReactElement {
   const {
     character,
     ref,
+    library,
     state,
     clip,
     face,
@@ -301,8 +333,10 @@ function AvatarInstance(props: AvatarProps): ReactElement {
   // Given as two numbers, so that a new array of the same point is not a new point.
   const lookX = lookAt?.[0]
   const lookY = lookAt?.[1]
+  const read = useReadLibrary(library)
   const [initial] = useState(() => {
     const created = createAvatarRun({
+      library: read,
       seed: seed ?? seedOfName(character.name ?? 'avatar'),
       compact,
       emphasis,
@@ -379,6 +413,15 @@ function AvatarInstance(props: AvatarProps): ReactElement {
     settleAfterMs,
     frameRate,
   })
+  // A library that changes is read here and sent over; the first went with the run.
+  const sentLibrary = useRef(read)
+  useEffect(() => {
+    if (sentLibrary.current === read) return
+    sentLibrary.current = read
+    send({ type: 'library', library: read })
+    // `send` is the same for the life of the avatar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [read])
   useEffect(() => {
     const before = given.current
     given.current = {

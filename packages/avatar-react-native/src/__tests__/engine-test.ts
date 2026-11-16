@@ -1,4 +1,9 @@
-import { engineFrame, renderCharacterFrame, type AvatarCharacter } from '@bible-strong/avatar-core'
+import {
+  engineFrame,
+  readAvatarLibrary,
+  renderCharacterFrame,
+  type AvatarCharacter,
+} from '@bible-strong/avatar-core'
 
 import {
   MARK_SLOTS,
@@ -87,6 +92,34 @@ describe('the avatar run of the UI thread', () => {
     send(run, { type: 'poke', gesture: 'nod', turns: 1 }, 1500)
     expect(run.engine.gestures).toHaveLength(1)
     expect(run.processed).toBe(seq)
+  })
+
+  it('takes a library read on the JS thread, and plays its clips and faces', () => {
+    const { library } = readAvatarLibrary({
+      faces: [
+        {
+          name: 'Dead',
+          eyes: {
+            left: [
+              {
+                d: 'M25 25L75 75M75 25L25 75',
+                fill: false,
+                stroke: { width: 14, cap: 'round' as const },
+              },
+            ],
+          },
+        },
+      ],
+      clips: [{ name: 'Dead_A', duration: 1, tracks: { expression: [{ t: 0, v: 'Dead' }] } }],
+    })
+    const run = createAvatarRun({ ...start, clip: 'Dead_A', library })
+    expect(run.engine.player.clip?.name).toBe('Dead_A')
+    const frame = play(run, 1000, 40)
+    expect(frame.left.match(/M/g)!.length).toBeGreaterThan(1)
+    send(run, { type: 'library', library: readAvatarLibrary(null).library }, 2000)
+    send(run, { type: 'state', state: 'idle' }, 2000)
+    const plain = play(run, 2000, 60)
+    expect(plain.left.match(/M/g)!.length).toBe(1)
   })
 
   it('turns into a spinner for a state that asks for one', () => {
