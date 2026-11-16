@@ -10,7 +10,7 @@ import {
   faceSmiles,
   inspectEyeScales,
   inspectLeanOfTurn,
-  mixEyeShapes,
+  morphEyeShapes,
   resolveFaceName,
   type FaceEye,
   type FaceName,
@@ -203,11 +203,7 @@ const faceProgress = (player: Readonly<AvatarPlayer>) =>
 export const playerEyes = (player: Readonly<AvatarPlayer>): [FaceEye, FaceEye] => {
   const target = faces[player.face].eyes
   if (player.faceTime >= FACE_SECONDS) return [target[0], target[1]]
-  const progress = faceProgress(player)
-  return [
-    mixEyeShapes(player.faceFrom[0], target[0], progress),
-    mixEyeShapes(player.faceFrom[1], target[1], progress),
-  ]
+  return morphEyeShapes(player.faceFrom, target, faceProgress(player))
 }
 
 const inspectWeight = (player: Readonly<AvatarPlayer>) => {
