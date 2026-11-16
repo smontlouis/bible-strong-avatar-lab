@@ -30,7 +30,7 @@ import {
   Undo2,
   Upload,
 } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import {
   AlertDialog,
@@ -69,6 +69,12 @@ import type { Editor } from '@/features/editor/useEditor'
 // every side, small, blinking, and coming and going, which is what to check in one screenshot.
 
 const surface = 'rounded-2xl border border-border bg-card shadow-[0_4px_14px_rgb(24_28_35/5%)]'
+
+// The point editor reads paths with Paper.js: it is loaded when an eye is first edited, not with
+// the Studio.
+const PointEditor = lazy(() =>
+  import('@/features/editor/PointEditor').then(module => ({ default: module.PointEditor }))
+)
 
 const download = (name: string, text: string) => {
   const link = document.createElement('a')
@@ -114,10 +120,6 @@ function Choices<Value extends string>({
   )
 }
 
-/** The built-in neutral eye on the artboard, dashed behind the marks, for the size of an eye. */
-const NEUTRAL_GUIDE =
-  'M50 26.5A21.5 21.5 0 0 1 71.5 48V52A21.5 21.5 0 0 1 28.5 52V48A21.5 21.5 0 0 1 50 26.5Z'
-
 /** What is wrong with path data, or `null`. */
 const pathProblem = (data: string) => {
   try {
@@ -125,69 +127,6 @@ const pathProblem = (data: string) => {
   } catch (error) {
     return (error as Error).message
   }
-}
-
-function Artboard({
-  marks,
-  selected,
-  onSelect,
-  label,
-}: {
-  marks: readonly FaceMark[]
-  selected: number | null
-  onSelect: (index: number) => void
-  label: string
-}) {
-  const lines = Array.from({ length: 9 }, (_, index) => (index + 1) * 10)
-  return (
-    <svg
-      viewBox="-4 -4 108 108"
-      className="aspect-square w-full max-w-64 rounded-xl bg-muted text-foreground"
-      role="img"
-      aria-label={label}
-      data-artboard
-    >
-      <rect x={0} y={0} width={100} height={100} fill="white" />
-      {lines.map(at => (
-        <g key={at} stroke="#e4e7ec" strokeWidth={0.3}>
-          <line x1={at} y1={0} x2={at} y2={100} />
-          <line x1={0} y1={at} x2={100} y2={at} />
-        </g>
-      ))}
-      <path d="M50 46V54M46 50H54" stroke="#9aa1ad" strokeWidth={0.5} />
-      <path
-        d={NEUTRAL_GUIDE}
-        fill="none"
-        stroke="#9aa1ad"
-        strokeWidth={0.6}
-        strokeDasharray="2 2"
-      />
-      {marks.map((mark, index) => (
-        <path
-          key={index}
-          d={pathProblem(mark.d) ? '' : mark.d}
-          fill={mark.fill === false ? 'none' : 'currentColor'}
-          fillRule={mark.fillRule ?? 'nonzero'}
-          stroke={mark.stroke ? 'currentColor' : 'none'}
-          strokeWidth={mark.stroke?.width ?? 0}
-          strokeLinecap={mark.stroke?.cap ?? 'butt'}
-          strokeLinejoin={mark.stroke?.join ?? 'miter'}
-          className="cursor-pointer"
-          onClick={() => onSelect(index)}
-        />
-      ))}
-      {selected !== null && marks[selected] && !pathProblem(marks[selected].d) && (
-        <path
-          d={marks[selected].d}
-          fill="none"
-          stroke="#5b7fe5"
-          strokeWidth={0.8}
-          strokeDasharray="2 1.5"
-          pointerEvents="none"
-        />
-      )}
-    </svg>
-  )
 }
 
 const capOptions: { value: StrokeCap; label: string }[] = [
@@ -243,13 +182,24 @@ function EyeEditor({
   return (
     <div className="flex flex-col gap-2" data-eye-editor={title}>
       <p className="eyebrow">{t(title)}</p>
-      <div className="grid gap-3 @md:grid-cols-[minmax(0,16rem)_1fr]">
-        <Artboard
-          marks={marks}
-          selected={selected}
-          onSelect={setSelected}
-          label={`${t('Plan de travail')} · ${t(title)}`}
-        />
+      <div className="grid gap-3 @2xl:grid-cols-[minmax(0,26rem)_1fr]">
+        <Suspense
+          fallback={
+            <div
+              className="aspect-square w-full max-w-[26rem] rounded-xl bg-muted"
+              data-artboard-loading
+            />
+          }
+        >
+          <PointEditor
+            editor={editor}
+            marks={marks}
+            selected={selected}
+            onSelect={setSelected}
+            onChange={onChange}
+            label={`${t('Plan de travail')} · ${t(title)}`}
+          />
+        </Suspense>
         <div className="flex min-w-0 flex-col gap-2">
           <div className="flex flex-col gap-1">
             {marks.map((mark, index) => (

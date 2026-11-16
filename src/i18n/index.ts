@@ -398,6 +398,25 @@ const english: Record<string, string> = {
   'Aperçu du clip': 'Clip overview',
   'La timeline est en bas, sous la scène.': 'The timeline is at the bottom, under the stage.',
   'La remettre ici': 'Bring it back here',
+  'Sélection (V)': 'Select (V)',
+  'Plume (P) : un clic par point, glisser pour courber, revenir au premier point pour fermer':
+    'Pen (P): one click per point, drag to curve, back on the first point to close',
+  'Main (H, ou Espace) : se déplacer': 'Hand (H, or Space): move about',
+  'Type de point': 'Point type',
+  Angle: 'Corner',
+  Asymétrique: 'Asymmetric',
+  Symétrique: 'Symmetric',
+  'Les poignées bougent chacune de leur côté, ou il n’y en a pas':
+    'Each handle moves on its own, or there are none',
+  'Les poignées restent alignées, chacune de sa longueur':
+    'The handles stay in line, each its own length',
+  'Les poignées restent alignées et de même longueur':
+    'The handles stay in line and the same length',
+  'Retirer le point': 'Remove the point',
+  'Ouvrir le tracé': 'Open the path',
+  'Fermer le tracé': 'Close the path',
+  'Double-clic sur le tracé : ajouter un point · double-clic sur un point : angle ou courbe · Suppr : retirer · Alt en tirant une poignée : angle · Espace en glissant : se déplacer · ⌘ + molette : zoom':
+    'Double-click the path: add a point · double-click a point: corner or curve · Delete: remove · Alt while dragging a handle: corner · Space while dragging: move about · ⌘ + wheel: zoom',
   Angles: 'Corners',
   'Appliquer le SVG': 'Apply the SVG',
   'Aucun visage': 'No face',

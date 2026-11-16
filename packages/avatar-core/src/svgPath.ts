@@ -216,7 +216,7 @@ export const flattenPath = (data: string, step = DEFAULT_STEP): Subpath[] => {
         const second = at(take(), take())
         const to = at(take(), take())
         const from = pen
-        for (const point of cubicPoints(from, first, second, to, DEFAULT_STEP)) lineTo(point)
+        for (const point of cubicPoints(from, first, second, to, step)) lineTo(point)
         control = second
         break
       }
@@ -228,7 +228,7 @@ export const flattenPath = (data: string, step = DEFAULT_STEP): Subpath[] => {
           control && /[CcSs]/.test(previous)
             ? [2 * from[0] - control[0], 2 * from[1] - control[1]]
             : from
-        for (const point of cubicPoints(from, first, second, to, DEFAULT_STEP)) lineTo(point)
+        for (const point of cubicPoints(from, first, second, to, step)) lineTo(point)
         control = second
         break
       }
@@ -236,7 +236,7 @@ export const flattenPath = (data: string, step = DEFAULT_STEP): Subpath[] => {
         const middle = at(take(), take())
         const to = at(take(), take())
         const from = pen
-        for (const point of quadraticPoints(from, middle, to, DEFAULT_STEP)) lineTo(point)
+        for (const point of quadraticPoints(from, middle, to, step)) lineTo(point)
         control = middle
         break
       }
@@ -247,7 +247,7 @@ export const flattenPath = (data: string, step = DEFAULT_STEP): Subpath[] => {
           control && /[QqTt]/.test(previous)
             ? [2 * from[0] - control[0], 2 * from[1] - control[1]]
             : from
-        for (const point of quadraticPoints(from, middle, to, DEFAULT_STEP)) lineTo(point)
+        for (const point of quadraticPoints(from, middle, to, step)) lineTo(point)
         control = middle
         break
       }
@@ -257,7 +257,7 @@ export const flattenPath = (data: string, step = DEFAULT_STEP): Subpath[] => {
         const large = take() === 1
         const sweep = take() === 1
         const to = at(take(), take())
-        for (const point of arcPoints(pen, radii, angle, large, sweep, to, DEFAULT_STEP)) {
+        for (const point of arcPoints(pen, radii, angle, large, sweep, to, step)) {
           lineTo(point)
         }
         control = null

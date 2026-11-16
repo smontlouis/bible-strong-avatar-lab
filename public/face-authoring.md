@@ -7,7 +7,9 @@ filled, stroked, or both. A star with rounded points, crossed eyes for a knocked
 ring, a heart: anything one colour can draw. This page gives the format, how to hand a face to the
 Studio through a link, how to check it, and how an app gets it.
 
-- Studio: https://avatars.bible-strong.app/ (tab Visages / Faces)
+- Studio: https://avatars.bible-strong.app/ (tab Visages / Faces). Its artboard is a small vector editor
+  (points and handles, corner, smooth or symmetric points, a pen, zoom) for the person; an agent
+  writes the JSON or an SVG file instead.
 - JSON Schema of a face: https://avatars.bible-strong.app/face.schema.json
 - Writing a clip, whose face keys can name a drawn face: https://avatars.bible-strong.app/clip-authoring.md
 - Writing a state, which can hold one: https://avatars.bible-strong.app/state-authoring.md
