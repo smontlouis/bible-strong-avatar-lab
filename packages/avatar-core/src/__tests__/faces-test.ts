@@ -110,6 +110,9 @@ describe('faces', () => {
     // A smile is bent: its numbers are mixed, oval or not.
     expect(eyeMorphOf(pair('happy'), pair('calm'))).toBe('numbers')
     expect(eyeMorphOf(pair('sleepy'), pair('neutral'))).toBe('numbers')
+    // Straight eyes turn as capsules.
+    expect(eyeMorphOf(pair('neutral'), pair('squinted'))).toBe('capsule')
+    expect(eyeMorphOf(pair('surprised'), pair('inspecting'))).toBe('capsule')
 
     // Halfway from neutral to calm, the eye swells out of a capsule as wide as both.
     const [half] = morphEyeShapes(pair('neutral'), pair('calm'), 0.5)
@@ -122,15 +125,27 @@ describe('faces', () => {
     expect(middle.width).toBeLessThan(end.width)
   })
 
-  it('goes on from an eye left halfway to an oval without a jump', () => {
-    const halfway: [FaceEye, FaceEye] = morphEyeShapes(pair('neutral'), pair('calm'), 0.5)
-    for (const to of faceNames) {
-      for (const index of [0, 1] as const) {
-        const before = box(eyeOutline(halfway[index]))
-        const after = box(eyeOutline(morphEyeShapes(halfway, pair(to), 0.01)[index]))
-        expect(moved(before, after), `→ ${to}, eye ${index}`).toBeLessThan(0.05)
+  it('turns a straight eye about its middle rather than shrinking it through it', () => {
+    // From upright to lying flat, the eye keeps its length all the way: neutral and squinted
+    // are of one size, only turned.
+    const reach = (eye: FaceEye) =>
+      Math.max(...eyeOutline(eye).map(([x, y]) => Math.hypot(x - eye.off[0], y - eye.off[1])))
+    const [half] = morphEyeShapes(pair('neutral'), pair('squinted'), 0.5)
+    expect(reach(half)).toBeGreaterThan(reach(faces.neutral.eyes[0]) * 0.9)
+  })
+
+  it('goes on from an eye left halfway without a jump', () => {
+    for (const halfway of [
+      morphEyeShapes(pair('neutral'), pair('calm'), 0.5),
+      morphEyeShapes(pair('neutral'), pair('squinted'), 0.5),
+    ])
+      for (const to of faceNames) {
+        for (const index of [0, 1] as const) {
+          const before = box(eyeOutline(halfway[index]))
+          const after = box(eyeOutline(morphEyeShapes(halfway, pair(to), 0.01)[index]))
+          expect(moved(before, after), `→ ${to}, eye ${index}`).toBeLessThan(0.05)
+        }
       }
-    }
   })
 
   it('trades the sizes of the eyes of inspecting from one lean to the other', () => {

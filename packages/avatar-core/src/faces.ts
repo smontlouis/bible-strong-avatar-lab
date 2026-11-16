@@ -163,7 +163,7 @@ export const eyeMorphOf = (
   to: readonly Readonly<FaceEye>[]
 ): EyeMorph => {
   if (from.some(isBent) || to.some(isBent)) return 'numbers'
-  return from.some(hasOval) || to.some(hasOval) ? 'oval' : 'numbers'
+  return from.some(hasOval) || to.some(hasOval) ? 'oval' : 'capsule'
 }
 
 /** A capsule: its middle on the face, the angle of its length from up, its half sizes. */
@@ -250,6 +250,31 @@ const ovalMorph = (from: FaceEye, to: FaceEye, progress: number): FaceEye => {
   )
 }
 
+/**
+ * Between straight eyes: a capsule that turns about its middle the short way, grows or shrinks
+ * its straight part, and changes its width.
+ */
+const capsuleMorph = (from: FaceEye, to: FaceEye, progress: number): FaceEye => {
+  if (progress >= 0.9999) return to
+  const start = capsuleOf(from)
+  const end = capsuleOf(to)
+  const halfWidth = Math.max(1e-4, mix(start.halfWidth, end.halfWidth, progress))
+  const straight = mix(
+    Math.max(0, start.halfLength - start.halfWidth),
+    Math.max(0, end.halfLength - end.halfWidth),
+    progress
+  )
+  return capsuleEye(
+    {
+      ...capsuleBetween(start, end, progress),
+      halfLength: straight + halfWidth,
+      halfWidth,
+    },
+    mix(from.lidY, to.lidY, progress),
+    0
+  )
+}
+
 /** The eyes on their way from one face to another, `progress` from 0 to 1. */
 export const morphEyeShapes = (
   from: readonly [FaceEye, FaceEye],
@@ -261,7 +286,9 @@ export const morphEyeShapes = (
   const one = (index: 0 | 1) =>
     way === 'oval'
       ? ovalMorph(from[index], to[index], progress)
-      : mixEyeShapes(from[index], to[index], progress)
+      : way === 'capsule'
+        ? capsuleMorph(from[index], to[index], progress)
+        : mixEyeShapes(from[index], to[index], progress)
   return [one(0), one(1)]
 }
 
