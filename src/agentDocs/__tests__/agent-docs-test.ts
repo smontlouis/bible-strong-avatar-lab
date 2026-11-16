@@ -1,10 +1,17 @@
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { clipNames, readCharacter, stateNames, states } from '@bible-strong/avatar-core'
+import {
+  clipNames,
+  compileFace,
+  readCharacter,
+  stateNames,
+  states,
+} from '@bible-strong/avatar-core'
 import Ajv2020 from 'ajv/dist/2020.js'
 
 import { agentDocs } from '@/agentDocs/agentDocs'
+import { checkFace } from '@/features/editor/faceLibrary'
 import { checkStateDocument } from '@/features/editor/stateLibrary'
 
 const root = path.join(__dirname, '../../..')
@@ -24,6 +31,8 @@ const files = agentDocs({
   clipSchema: read('public/clip.schema.json'),
   stateGuide: read('public/state-authoring.md'),
   stateSchema: read('public/state.schema.json'),
+  faceGuide: read('public/face-authoring.md'),
+  faceSchema: read('public/face.schema.json'),
   characterGuide: read('public/character-authoring.md'),
 })
 
@@ -77,6 +86,8 @@ describe('the documentation for agents', () => {
       '# Writing a clip',
       '# Writing a state',
       '# Writing a character',
+      '# Writing a face',
+      '# Face schema',
       '# Clip schema',
       '# State schema',
       '# Character schema',
@@ -98,6 +109,32 @@ describe('the guides’ examples', () => {
     const fox = exampleOf('public/character-authoring.md', '## A complete example')
     const read = readCharacter(fox)
     expect(read.ok).toBe(true)
+  })
+
+  it('gives faces the packages draw and the schema accepts, and clips that may name them', () => {
+    const guide = read('public/face-authoring.md')
+    const examples = [...guide.matchAll(/```json\n([\s\S]*?)```/g)].map(match =>
+      JSON.parse(match[1])
+    )
+    expect(examples.length).toBeGreaterThanOrEqual(4)
+    const validate = new Ajv2020({ allErrors: true }).compile(
+      JSON.parse(read('public/face.schema.json'))
+    )
+    for (const face of examples) {
+      expect(validate(face), face.name).toBe(true)
+      expect(checkFace(face).problem, face.name).toBeUndefined()
+      expect(compileFace(face).problems, face.name).toEqual([])
+    }
+    expect(validate({ name: 'x', eyes: { left: [] } })).toBe(false)
+    const clip = new Ajv2020({ allErrors: true }).compile(
+      JSON.parse(read('public/clip.schema.json'))
+    )
+    expect(
+      clip({ name: 'Starry', duration: 1, tracks: { expression: [{ t: 0, v: 'star' }] } })
+    ).toBe(true)
+    expect(clip({ name: 'Starry', duration: 1, tracks: { expression: [{ t: 0, v: '' }] } })).toBe(
+      false
+    )
   })
 
   it('gives a state the Studio reads, and a schema every catalogue state meets', () => {

@@ -154,7 +154,10 @@ Faces: `neutral`, `happy`, `surprised`, `sad`, `sleepy`, `squinted`, `calm`, `in
 `happy`, `sad`, `sleepy`, `squinted`, `calm` and `confused` the eyes stay as the face draws them.
 The engine also reads a few aliases the catalogue uses:
 `strange` (inspecting), `thinking` (sad), `angry` and `idle` (neutral), `squint`, `smile`,
-`sleep`. Any other name falls back to `neutral`; the schema refuses it.
+`sleep`. A key may also name a **drawn face** by its exact name (see
+https://avatars.bible-strong.app/face-authoring.md): it shows where the avatar has that face, in
+the Studio and in an app given it in a library. Any other name falls back to `neutral`, and the
+Studio's key inspector says so.
 
 How faces behave:
 

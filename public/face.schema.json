@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://avatars.bible-strong.app/face.schema.json",
+  "title": "Bible Strong drawn face",
+  "description": "A face drawn as the marks of its eyes, which every avatar of the Bible Strong Avatar Studio can show. Guide: https://avatars.bible-strong.app/face-authoring.md",
+  "type": "object",
+  "required": ["name", "eyes"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S(.*\\S)?$",
+      "description": "Any text without spaces at its ends, but not the name of a built-in face or of one of their other names (neutral, happy, surprised, sad, sleepy, squinted, calm, inspecting, confused, blink, thinking, strange, angry, inspect, squint, idle, smile, sleep), whatever its case. Clips and states name the face by it, exactly."
+    },
+    "blinks": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the eyes close when the avatar blinks."
+    },
+    "smile": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 1,
+      "default": 0,
+      "description": "What the face asks of a mouth drawn as a line: -1 corners down, 0 as the character has it, 1 up."
+    },
+    "eyes": {
+      "type": "object",
+      "required": ["left"],
+      "additionalProperties": false,
+      "properties": {
+        "left": {
+          "description": "The eye on the left of the screen, as it is seen.",
+          "$ref": "#/$defs/marks"
+        },
+        "right": {
+          "description": "The eye on the right of the screen, as it is seen. Left out, it is the left eye's mirror.",
+          "$ref": "#/$defs/marks"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "marks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/mark"
+      }
+    },
+    "mark": {
+      "type": "object",
+      "required": ["d"],
+      "additionalProperties": false,
+      "description": "A path on the artboard of 100 by 100, y down, whose middle (50, 50) is where the eye sits.",
+      "properties": {
+        "d": {
+          "type": "string",
+          "minLength": 1,
+          "description": "SVG path data: M L H V C S Q T A Z, absolute or relative."
+        },
+        "fill": {
+          "type": "boolean",
+          "default": true,
+          "description": "Fill the path; a path that is not closed is filled as if it were."
+        },
+        "fillRule": {
+          "enum": ["nonzero", "evenodd"],
+          "default": "nonzero",
+          "description": "How paths inside the path make holes, as SVG's fill-rule."
+        },
+        "stroke": {
+          "type": "object",
+          "required": ["width"],
+          "additionalProperties": false,
+          "properties": {
+            "width": {
+              "type": "number",
+              "minimum": 0,
+              "description": "In artboard units."
+            },
+            "cap": {
+              "enum": ["round", "butt", "square"],
+              "default": "butt"
+            },
+            "join": {
+              "enum": ["round", "miter", "bevel"],
+              "default": "miter"
+            }
+          }
+        }
+      }
+    }
+  }
+}

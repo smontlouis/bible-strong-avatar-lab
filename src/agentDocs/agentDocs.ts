@@ -27,6 +27,8 @@ export type AgentDocSources = {
   clipSchema: string
   stateGuide: string
   stateSchema: string
+  faceGuide: string
+  faceSchema: string
   characterGuide: string
 }
 
@@ -85,6 +87,7 @@ export const agentDocs = (sources: AgentDocSources): Record<string, string> => {
     ),
     section('clip-authoring.md', localized(sources.clipGuide, origin)),
     section('state-authoring.md', localized(sources.stateGuide, origin)),
+    section('face-authoring.md', localized(sources.faceGuide, origin)),
     section('character-authoring.md', localized(sources.characterGuide, origin)),
     section(
       'clip.schema.json',
@@ -93,6 +96,10 @@ export const agentDocs = (sources: AgentDocSources): Record<string, string> => {
     section(
       'state.schema.json',
       `# State schema\n\n\`\`\`json\n${localized(sources.stateSchema, origin).trim()}\n\`\`\``
+    ),
+    section(
+      'face.schema.json',
+      `# Face schema\n\n\`\`\`json\n${localized(sources.faceSchema, origin).trim()}\n\`\`\``
     ),
     section(
       'schema/avatar-character.json',
