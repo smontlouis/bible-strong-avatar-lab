@@ -1,18 +1,18 @@
-import { faceNames, faces } from '../faces'
-import { clips } from '../catalogue'
+import { faceNames, faces } from '../faces.js'
+import { clips } from '../catalogue/index.js'
 import {
   characterFromLegacyDefinition,
   renderCharacterFrame,
   type AvatarCharacter,
-} from '../character'
+} from '../character.js'
 import {
   advancePlayer,
   createAvatarPlayer,
   playClip,
   playerFrame,
   type PlayerFrame,
-} from '../player'
-import type { AvatarDefinition } from '../avatarDefinition'
+} from '../player.js'
+import type { AvatarDefinition } from '../avatarDefinition.js'
 
 const legacy: AvatarDefinition = {
   schema: 'bible-strong/avatar-definition',

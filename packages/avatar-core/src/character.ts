@@ -4,14 +4,14 @@ import type {
   AvatarDefinition,
   AvatarExpressionDefinition,
   AvatarStyleDefinition,
-} from './avatarDefinition'
-import { eyeOutline, eyePointOnFace, eyeReach } from './faces'
-import { renderAvatar, type AvatarPose, type EyeOutline } from './geometry'
-import type { EngineFrame, SpinnerFrame } from './engine'
-import { REST_ZOOM, type PlayerFrame } from './player'
-import { frameOrientation } from './turn'
-import type { SpinnerMark } from './spinners'
-import { bodyFromDefinition, expressionFromDefinition, type AvatarScene } from './scene'
+} from './avatarDefinition.js'
+import { eyeOutline, eyePointOnFace, eyeReach } from './faces.js'
+import { renderAvatar, type AvatarPose, type EyeOutline } from './geometry.js'
+import type { EngineFrame, SpinnerFrame } from './engine.js'
+import { REST_ZOOM, type PlayerFrame } from './player.js'
+import { frameOrientation } from './turn.js'
+import type { SpinnerMark } from './spinners.js'
+import { bodyFromDefinition, expressionFromDefinition, type AvatarScene } from './scene.js'
 
 // A character is what an avatar is, apart from what it does: its body, its colours, and the
 // build of its face. What it does (clips, faces, states) is the same for every character.

@@ -10,7 +10,7 @@ import {
   type AvatarCommand,
   type AvatarRun,
   type RunSettings,
-} from '../engine'
+} from '../engine.js'
 
 const character: AvatarCharacter = {
   name: 'React Native fixture',

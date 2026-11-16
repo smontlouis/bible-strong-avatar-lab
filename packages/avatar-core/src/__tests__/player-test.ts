@@ -1,4 +1,4 @@
-import { clipNames, clips } from '../catalogue'
+import { clipNames, clips } from '../catalogue/index.js'
 import {
   advancePlayer,
   clipRestPose,
@@ -8,7 +8,7 @@ import {
   playClip,
   playerFrame,
   setPlayerFace,
-} from '../player'
+} from '../player.js'
 
 const run = (player: ReturnType<typeof createAvatarPlayer>, seconds: number, step = 1 / 60) => {
   for (let elapsed = 0; elapsed < seconds - 1e-9; elapsed += step) advancePlayer(player, step)

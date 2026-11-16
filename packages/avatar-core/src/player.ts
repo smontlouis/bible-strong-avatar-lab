@@ -4,7 +4,7 @@ import {
   type ClipDefinition,
   type ClipEase,
   type ClipKey,
-} from './clips'
+} from './clips.js'
 import {
   faces,
   faceSmiles,
@@ -14,7 +14,7 @@ import {
   resolveFaceName,
   type FaceEye,
   type FaceName,
-} from './faces'
+} from './faces.js'
 
 // The player. It plays one clip at a time and joins it to the next: the body does not jump from
 // the pose where one clip stops to the pose where the other starts, it is led there first. The

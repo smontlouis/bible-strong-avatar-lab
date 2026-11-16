@@ -1,6 +1,6 @@
-import { characterFromLegacyDefinition, type AvatarCharacter } from '../character'
-import { characterOf, readCharacter, validateCharacter } from '../characterFile'
-import type { AvatarDefinition } from '../avatarDefinition'
+import { characterFromLegacyDefinition, type AvatarCharacter } from '../character.js'
+import { characterOf, readCharacter, validateCharacter } from '../characterFile.js'
+import type { AvatarDefinition } from '../avatarDefinition.js'
 
 const legacy: AvatarDefinition = {
   schema: 'bible-strong/avatar-definition',

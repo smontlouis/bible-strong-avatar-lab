@@ -1,4 +1,4 @@
-import { multiplyQuaternions, quaternionFromAxisAngle, type Quaternion } from './geometry'
+import { multiplyQuaternions, quaternionFromAxisAngle, type Quaternion } from './geometry.js'
 
 const RADIANS = Math.PI / 180
 

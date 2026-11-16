@@ -1,4 +1,4 @@
-import facesData from './catalogue/faces.json'
+import facesData from './catalogue/faces.json' with { type: 'json' }
 
 // Faces. A face is the shape of the two eyes. An eye is a line with a thickness: the line bends
 // for a smile, shrinks to a point for a round eye, and lies flat for a squint. One face turns

@@ -5,7 +5,7 @@ import { render } from '@testing-library/react'
 import { vi } from 'vitest'
 
 import legacyJson from '../../../../examples/react-vite-consumer/src/strobi.avatar.json'
-import { Avatar, createAvatar, type AvatarHandle } from '../index'
+import { Avatar, createAvatar, type AvatarHandle } from '../index.js'
 
 const character: AvatarCharacter = {
   name: 'Fixture',

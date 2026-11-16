@@ -6,8 +6,8 @@ import {
   surfaceSampleAt,
   surfaceTracePointAt,
   type SurfaceConfig,
-} from './surfaces'
-import type { BodyNode } from './body'
+} from './surfaces.js'
+import type { BodyNode } from './body.js'
 
 export type Quaternion = readonly [number, number, number, number]
 export type Point3 = readonly [number, number, number]

@@ -2,9 +2,9 @@ import type {
   AvatarBodyDefinition,
   AvatarExpressionDefinition,
   ExpressionKey,
-} from './avatarDefinition'
-import type { AvatarBody } from './body'
-import type { AvatarGeometry, Expression } from './geometry'
+} from './avatarDefinition.js'
+import type { AvatarBody } from './body.js'
+import type { AvatarGeometry, Expression } from './geometry.js'
 
 export const expressionFromDefinition = (
   key: ExpressionKey,
