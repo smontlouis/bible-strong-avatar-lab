@@ -13,10 +13,12 @@ import {
 import {
   advanceEngine,
   createAvatarEngine,
+  engineAtRest,
   engineFrame,
   playEngineClip,
   setEngineFace,
   setEngineLibrary,
+  stopEngine,
 } from '../engine.js'
 import { eyeOutline, faces } from '../faces.js'
 import { faceFromSvg, readAvatarLibrary } from '../library.js'
@@ -318,6 +320,19 @@ describe('drawn faces on the player', () => {
     setEngineFace(engine, 'Star')
     watch(engine, 0.6)
     expect(engineFrame(engine).face).toBe('neutral')
+  })
+
+  it('is not at rest while the eyes blink from one face to another', () => {
+    const engine = createAvatarEngine({ seed: 3 })
+    setEngineLibrary(engine, library())
+    stopEngine(engine)
+    watch(engine, 0.5)
+    expect(engineAtRest(engine)).toBe(true)
+    setEngineFace(engine, 'Star')
+    advanceEngine(engine, 0.12)
+    expect(engineAtRest(engine)).toBe(false)
+    watch(engine, 0.3)
+    expect(engineAtRest(engine)).toBe(true)
   })
 
   it('keeps the built-in faces morphing as they did', () => {

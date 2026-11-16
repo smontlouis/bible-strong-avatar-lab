@@ -873,7 +873,7 @@ function Note({ children }: { children: ReactNode }) {
 }
 
 export function FacesPanel({ editor }: { editor: Editor }) {
-  const { t, clipLibrary, setFace, setPlaying } = editor
+  const { t, clipLibrary, holdFaceForFaces, setPlaying } = editor
   const file = useRef<HTMLInputElement>(null)
   const [imported, setImported] = useState<{ problem: string | null; ignored: string[] } | null>(
     null
@@ -890,7 +890,7 @@ export function FacesPanel({ editor }: { editor: Editor }) {
   const draftItem = draft ? `${draft.face.name} (${t('brouillon')})` : null
 
   const show = (shown: string | null) => {
-    setFace(shown)
+    holdFaceForFaces(shown)
     setPlaying(true)
   }
 

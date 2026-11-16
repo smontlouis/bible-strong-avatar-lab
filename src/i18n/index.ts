@@ -243,8 +243,8 @@ const english: Record<string, string> = {
   'Navigateur, sans framework': 'Browser, no framework',
   'Instructions copiées dans le presse-papiers.': 'Instructions copied to the clipboard.',
   'Impossible de copier les instructions.': 'Could not copy the instructions.',
-  'Le corps, les couleurs et le visage. Les états, les clips et les visages viennent avec le paquet.':
-    'The body, the colours and the face. States, clips and faces come with the package.',
+  'Le corps, les couleurs et le visage. Le catalogue d’états, de clips et de visages vient avec le paquet ; les tiens sont dans la bibliothèque.':
+    'The body, the colours and the face. The catalogue of states, clips and faces comes with the package; yours are in the library.',
   'Le Bundle Mode de react-native-worklets est obligatoire : les instructions pour l’IA et le README expliquent comment l’activer.':
     'The Bundle Mode of react-native-worklets is required: the instructions for AI and the README explain how to turn it on.',
   'Taille des yeux': 'Eye size',

@@ -215,23 +215,30 @@ export const renameFace = (
 // Read once for each face as it is written: an edit reads only the face it changes.
 const compiled = new Map<string, CompiledFace>()
 
-/** The faces read into what draws them, by name. */
+// The last record given, and what it was made of: the same faces give the same record, so that
+// what depends on it is not drawn again.
+let lastFaces: { key: string; record: Record<string, CompiledFace> } | null = null
+
+/** The faces read into what draws them, by name: the same record for the same faces. */
 export const compiledFaces = (faces: readonly FaceDefinition[]) => {
+  const keys = faces.map(face => JSON.stringify(face))
+  const key = keys.join('\n')
+  if (lastFaces?.key === key) return lastFaces.record
   const out: Record<string, CompiledFace> = {}
-  for (const face of faces) {
-    const key = JSON.stringify(face)
-    let read = compiled.get(key)
+  faces.forEach((face, index) => {
+    let read = compiled.get(keys[index])
     if (!read) {
       try {
         read = compileFace(face).face
       } catch {
-        continue
+        return
       }
       if (compiled.size > 200) compiled.clear()
-      compiled.set(key, read)
+      compiled.set(keys[index], read)
     }
     out[face.name] = read
-  }
+  })
+  lastFaces = { key, record: out }
   return out
 }
 

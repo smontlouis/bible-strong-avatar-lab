@@ -25,6 +25,7 @@ import {
   playClip,
   playerFrame,
   resumePlayer,
+  playerFaceSettled,
   setPlayerFace,
   setPlayerFaces,
   type AvatarPlayer,
@@ -479,6 +480,8 @@ export const engineAtRest = (engine: Readonly<AvatarEngine>) => {
     !gaze.target ||
     (Math.abs(gaze.target[0] - gaze.at[0]) < 0.005 && Math.abs(gaze.target[1] - gaze.at[1]) < 0.005)
   return (
+    // A face changing (a morph, or the blink to or from a drawn face) is not a pose to hold.
+    playerFaceSettled(engine.player) &&
     engine.gestures.length === 0 &&
     engine.release === null &&
     gaze.hold === wanted &&

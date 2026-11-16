@@ -105,7 +105,12 @@ export const avatarNames = (name: string): AvatarNames => {
  * What to give a coding agent to put the avatar in a project: the package's README, with the
  * example avatar of its code renamed after this one.
  */
-export const agentInstructions = (integration: Integration, names: AvatarNames) => {
+export const agentInstructions = (
+  integration: Integration,
+  names: AvatarNames,
+  /** Whether the person made clips, states or faces of their own, which the app needs too. */
+  ownLibrary = false
+) => {
   const readme = integration.readme
     .replace(/\bstrobi\.avatar\.json\b/g, names.file)
     .replace(/\bStrobi\b/g, names.component)
@@ -115,7 +120,16 @@ export const agentInstructions = (integration: Integration, names: AvatarNames) 
 The avatar's character is the file \`${names.file}\`, exported by Avatar Lab. Put it in the
 project, then follow the package's guide below, from its setup to its checklist. Its examples
 already use this avatar's file and names.
-
+${
+  ownLibrary
+    ? `
+The person also made clips, states or faces of their own in Avatar Lab. They come as the file
+\`avatar-library.json\` (Export tab, Library): put it in the project and give it to every avatar
+as \`library\`, as the guide's « Clips, states and faces of your own » shows. The states, clips and
+faces it holds are then named like the catalogue's.
+`
+    : ''
+}
 ---
 
 ${readme}`
@@ -171,7 +185,13 @@ export function ExportPanel({ editor }: { editor: Editor }) {
   }
   const copyInstructions = async () => {
     try {
-      await navigator.clipboard.writeText(agentInstructions(integration, names))
+      await navigator.clipboard.writeText(
+        agentInstructions(
+          integration,
+          names,
+          clipLibrary.clips.length + clipLibrary.states.length + clipLibrary.faces.length > 0
+        )
+      )
       setCopied('done')
     } catch {
       setCopied('failed')
@@ -184,7 +204,7 @@ export function ExportPanel({ editor }: { editor: Editor }) {
         <PanelTitle
           level={3}
           title="Personnage"
-          subtitle="Le corps, les couleurs et le visage. Les états, les clips et les visages viennent avec le paquet."
+          subtitle="Le corps, les couleurs et le visage. Le catalogue d’états, de clips et de visages vient avec le paquet ; les tiens sont dans la bibliothèque."
         />
         <Button type="button" onClick={saveCharacter}>
           <Download />

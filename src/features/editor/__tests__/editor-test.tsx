@@ -336,9 +336,18 @@ describe('the editor', () => {
     await wait(LINK_WRITE_MS + 50)
     expect(readStudioLink(window.location.hash)).toBeNull()
 
-    // A new clip can show it on a key of its face track.
+    // Left for another tab, the Faces tab lets go of the face it held on the stage.
+    const held = () =>
+      view
+        .getAllByRole('button', { name: 'Visage' })
+        .map(button => button.textContent)
+        .join(' ')
+    expect(held()).toContain('Star')
     fireEvent.click(view.getByRole('button', { name: 'Clips' }))
     frames(2)
+    expect(held()).toContain('Auto')
+    expect(held()).not.toContain('Star')
+    // A new clip can show it on a key of its face track.
     fireEvent.click(view.getByRole('button', { name: 'Nouveau clip' }))
     frames(4)
     fireEvent.click(view.getByRole('button', { name: 'Ajouter une image clé · Visage' }))

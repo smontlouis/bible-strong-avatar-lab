@@ -214,8 +214,8 @@ export const chinese: Record<string, string> = {
   'Navigateur, sans framework': '浏览器，无框架',
   'Instructions copiées dans le presse-papiers.': '说明已复制到剪贴板。',
   'Impossible de copier les instructions.': '无法复制说明。',
-  'Le corps, les couleurs et le visage. Les états, les clips et les visages viennent avec le paquet.':
-    '身体、颜色和面部。状态、片段和表情随包提供。',
+  'Le corps, les couleurs et le visage. Le catalogue d’états, de clips et de visages vient avec le paquet ; les tiens sont dans la bibliothèque.':
+    '身体、颜色和面部。状态、片段和表情的目录随包提供；你自己的在资源库中。',
   'Le Bundle Mode de react-native-worklets est obligatoire : les instructions pour l’IA et le README expliquent comment l’activer.':
     '必须开启 react-native-worklets 的 Bundle Mode：AI 使用说明和 README 会说明如何开启。',
   'Taille des yeux': '眼睛大小',

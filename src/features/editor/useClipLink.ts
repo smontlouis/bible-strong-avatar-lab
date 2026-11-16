@@ -77,7 +77,7 @@ export const useClipLink = (editor: Editor) => {
         clipLibrary.openFaceDraft(face, sameFace ? current.source : undefined)
       }
       // The face is held on the stage, whatever the avatar does.
-      if (editor.face !== face.name) editor.setFace(face.name)
+      if (editor.face !== face.name) editor.holdFaceForFaces(face.name)
       if (opening) editor.setPlaying(true)
       return
     }

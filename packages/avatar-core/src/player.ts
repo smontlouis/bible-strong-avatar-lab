@@ -338,6 +338,10 @@ const smile = (player: Readonly<AvatarPlayer>) => {
   return player.smileFrom + (target - player.smileFrom) * faceProgress(player)
 }
 
+/** Whether the eyes have turned into the face shown: no morph or blink of a change under way. */
+export const playerFaceSettled = (player: Readonly<AvatarPlayer>) =>
+  player.faceTime >= faceSeconds(player)
+
 /** Give the player the drawn faces it knows besides the built-in ones. */
 export const setPlayerFaces = (
   player: AvatarPlayer,
