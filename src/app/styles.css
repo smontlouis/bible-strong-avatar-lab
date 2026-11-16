@@ -2610,6 +2610,83 @@ body {
 .mode-page-header h1 {
   font-size: 28px;
 }
+.mode-page-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab-help-button {
+  color: #7a8394;
+}
+.tab-help-button:hover {
+  color: #17191d;
+}
+.dialog-content.tab-help {
+  width: min(560px, calc(100vw - 32px));
+}
+.tab-help-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.tab-help-chain li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tab-help-arrow {
+  width: 14px;
+  height: 14px;
+  color: #a3abb9;
+}
+.tab-help-link {
+  padding: 4px 10px;
+  border: 1px solid #dfe2e8;
+  border-radius: 999px;
+  background: white;
+  color: #5b6474;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tab-help-link:hover {
+  border-color: #b9c3dc;
+  color: #17191d;
+}
+.tab-help-link[data-current] {
+  border-color: #7796ec;
+  background: #edf1ff;
+  color: #3f63c6;
+  box-shadow: 0 0 0 2px rgb(91 127 229 / 12%);
+}
+.tab-help-body {
+  display: grid;
+  gap: 16px;
+  overflow-y: auto;
+  padding: 20px 28px 24px;
+}
+.tab-help-body h3 {
+  margin: 0 0 4px;
+  color: #17191d;
+  font-size: 13px;
+  font-weight: 800;
+}
+.tab-help-body p {
+  margin: 0;
+  color: #4a5262;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.tab-help-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
 .eyebrow {
   margin: 0 0 6px;
   color: #7185c4;
@@ -3703,6 +3780,7 @@ p {
 
 .panel-stack {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 .control-section {
@@ -5031,4 +5109,58 @@ p {
     width: 22px;
     height: 22px;
   }
+}
+
+/* The faces as a shelf of cards, as the avatars are; it scrolls when there are many. */
+.face-shelf {
+  max-height: min(26rem, 48vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 6px 6px;
+}
+.face-shelf-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 2px 6px;
+}
+.face-shelf-heading:first-child {
+  margin-top: 2px;
+}
+.face-shelf-heading strong {
+  font-size: 11px;
+}
+.face-shelf-heading span {
+  color: #8d929c;
+  font-size: 9px;
+}
+.face-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px;
+}
+.face-grid .face-card {
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 1;
+  flex-direction: column;
+  align-items: stretch;
+  border-radius: 14px;
+  padding: 5px;
+}
+.face-grid .face-card.creation-card {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.face-grid .face-card .avatar-preview {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.face-grid .face-card > span {
+  min-height: 12px;
+  padding: 2px 3px 0;
+  font-size: 9px;
 }

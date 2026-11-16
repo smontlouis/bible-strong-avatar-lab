@@ -16,7 +16,7 @@ export type PointKind = 'corner' | 'smooth' | 'symmetric'
 
 let scope: paper.PaperScope | null = null
 /** A Paper.js scope with a project and no view: geometry only, nothing drawn. */
-const paperScope = () => {
+export const paperScope = () => {
   if (!scope) {
     scope = new paper.PaperScope()
     new scope.Project(null as unknown as HTMLCanvasElement)
@@ -89,7 +89,7 @@ export const writePath = (path: EditPath): string =>
     })
     .join('')
 
-const toPaper = (subpath: EditSubpath) => {
+export const toPaper = (subpath: EditSubpath) => {
   const { Path, Segment, Point } = paperScope()
   return new Path({
     segments: subpath.points.map(
@@ -105,7 +105,7 @@ const toPaper = (subpath: EditSubpath) => {
   })
 }
 
-const fromPaper = (path: paper.Path): EditSubpath => ({
+export const fromPaper = (path: paper.Path): EditSubpath => ({
   closed: path.closed,
   points: path.segments.map(segment => ({
     at: [segment.point.x, segment.point.y] as Vec,
