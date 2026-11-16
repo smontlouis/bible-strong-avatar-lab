@@ -21,15 +21,9 @@ export function Scene({
   const { geometry, colors, bodyColors, transform, spinner } = scene
   // A body that turns into a spinner fades its parts and its face as it becomes a disc.
   const round = spinner?.round ?? 0
+  // The outline goes round the whole silhouette, not round each part: every shape is stroked
+  // underneath, twice as wide, and the fills drawn over it hide all but the outer half.
   const outline = character.style?.outline?.enabled ? character.style.outline : null
-  const stroke = outline
-    ? {
-        stroke: outline.color,
-        strokeWidth: outline.width,
-        strokeOpacity: outline.opacity,
-        strokeLinejoin: 'round' as const,
-      }
-    : {}
   return (
     <svg
       ref={svgRef}
@@ -65,12 +59,30 @@ export function Scene({
             </clipPath>
           ))}
         </defs>
+        {outline && (
+          <g
+            fill="none"
+            stroke={outline.color}
+            strokeWidth={outline.width * 2}
+            strokeLinejoin="round"
+            opacity={outline.opacity * (1 - round)}
+            data-outline
+          >
+            {geometry.backPaths.map((path, index) => (
+              <path d={path} key={`back-${index}`} />
+            ))}
+            {round < 0.999 && <path d={geometry.headPath} />}
+            {geometry.frontPaths.map((path, index) => (
+              <path d={path} key={`front-${index}`} />
+            ))}
+          </g>
+        )}
         <g opacity={1 - round}>
           {geometry.backPaths.map((path, index) => (
-            <path d={path} fill={bodyColors.back[index]} {...stroke} key={index} />
+            <path d={path} fill={bodyColors.back[index]} key={index} />
           ))}
         </g>
-        {round < 0.999 && <path d={geometry.headPath} fill={colors.body} {...stroke} />}
+        {round < 0.999 && <path d={geometry.headPath} fill={colors.body} />}
         <g clipPath={`url(#${id}-head)`} fill={colors.eyes} opacity={1 - round}>
           {geometry.leftVisible && <path d={geometry.leftPath} />}
           {geometry.rightVisible && <path d={geometry.rightPath} />}
@@ -83,7 +95,6 @@ export function Scene({
               d={path}
               fill={bodyColors.front[index]}
               clipPath={geometry.frontClipPaths[index] ? `url(#${id}-front-${index})` : undefined}
-              {...stroke}
               key={index}
             />
           ))}

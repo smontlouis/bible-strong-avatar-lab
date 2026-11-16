@@ -572,11 +572,14 @@ function AvatarInstance(props: AvatarProps): ReactElement {
         <BodyGroup frame={frame}>
           {outline && (
             <FadingGroup frame={frame}>
+              {/* Every shape is stroked underneath, twice as wide: the fills drawn over it leave only
+                  the outer half, round the whole silhouette. The opacity is the group's, so that
+                  strokes crossing each other do not darken. */}
               <G
                 fill="none"
                 stroke={outline.color}
-                strokeWidth={outline.width}
-                strokeOpacity={outline.opacity}
+                strokeWidth={outline.width * 2}
+                opacity={outline.opacity}
                 strokeLinejoin="round"
               >
                 {layers.map(index => (

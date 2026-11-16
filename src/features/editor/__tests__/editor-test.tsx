@@ -732,6 +732,41 @@ describe('the picture of an avatar', () => {
     composition: { x: 0, y: 0, scale: 1, cornerRadius: 0 },
   } as const
 
+  it('outlines the whole silhouette once, not each of its parts', () => {
+    const outlined = {
+      ...character,
+      body: {
+        ...character.body,
+        nodes: [
+          {
+            color: '#333333',
+            surface: { type: 'sphere', width: 90, height: 90, depth: 90, roundness: 1 },
+            position: [-100, -80, 20],
+            rotation: [0, 0, 0],
+          },
+        ],
+      },
+      style: { outline: { enabled: true, color: '#111316', width: 6, opacity: 0.8 } },
+    } as typeof character
+    const svg = new DOMParser().parseFromString(
+      pictureSvg(outlined, createAvatarEngine(), plain),
+      'image/svg+xml'
+    ).documentElement
+    // One group strokes every shape, underneath and twice as wide: the fills over it leave the
+    // outer half, round the whole silhouette, and no line between the parts.
+    const strokes = [...svg.querySelectorAll('[stroke]')].filter(
+      element => element.getAttribute('stroke') !== 'none'
+    )
+    expect(strokes).toHaveLength(1)
+    const [outline] = strokes
+    expect(outline.getAttribute('stroke-width')).toBe('12')
+    expect(outline.getAttribute('fill')).toBe('none')
+    expect(Number(outline.getAttribute('opacity'))).toBeCloseTo(0.8)
+    expect(outline.parentElement!.firstElementChild).toBe(outline)
+    const traced = [...outline.querySelectorAll('path')].filter(path => path.getAttribute('d'))
+    expect(traced.length).toBeGreaterThanOrEqual(2)
+  })
+
   it('is a standalone SVG of the avatar as the engine has it', () => {
     const engine = createAvatarEngine()
     setEnginePose(engine, { rotation: [0, 30, 0] })
