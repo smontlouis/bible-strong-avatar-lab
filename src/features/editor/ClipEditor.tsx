@@ -12,13 +12,19 @@ import {
   ArrowRight,
   Copy,
   Download,
+  MoveHorizontal,
+  PanelBottom,
+  PanelBottomClose,
   Pencil,
   Plus,
   Redo2,
   Trash2,
   Undo2,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 
 import {
   AlertDialog,
@@ -70,6 +76,20 @@ import { ClipSheet } from '@/features/editor/ClipSheet'
 import { DraftBanner } from '@/features/editor/DraftBanner'
 import { EaseEditor } from '@/features/editor/EaseEditor'
 import type { ClipRef } from '@/features/editor/useClipLibrary'
+import {
+  clampView,
+  followView,
+  fullView,
+  isFullView,
+  MIN_VIEW_SECONDS,
+  panView,
+  shareOf,
+  tickStep,
+  tickTimes,
+  timeOfShare,
+  zoomView,
+  type TimelineView,
+} from '@/features/editor/timelineView'
 import type { Editor } from '@/features/editor/useEditor'
 
 // The editor of a custom clip: its settings, its tracks with their keys, which are added,
@@ -565,6 +585,35 @@ export function ClipEditor({
     moved: boolean
   } | null>(null)
   const { root, clock, seek, toggle } = useClipPlayback(editor, clip, { loops })
+  const duration = clip.duration
+  // The window of the clip the timeline shows; `null` shows it whole, whatever its length.
+  const [zoom, setZoom] = useState<TimelineView | null>(null)
+  const view = zoom ? clampView(zoom, duration) : fullView(duration)
+  const span = view.end - view.start
+  const setView = (next: TimelineView) => setZoom(isFullView(next, duration) ? null : next)
+  const viewRef = useRef(view)
+  viewRef.current = view
+  const across = (time: number) => `${shareOf(view, time) * 100}%`
+  // The timeline sits in the panel, or across the bottom of the page under the stage.
+  const dock = editor.timelineDock
+  const docked = editor.timelineDocked && dock !== null
+  const [area, setArea] = useState<HTMLDivElement | null>(null)
+  const overview = useRef<HTMLDivElement>(null)
+  const overviewDrag = useRef<{
+    mode: 'move' | 'start' | 'end'
+    x: number
+    from: TimelineView
+  } | null>(null)
+  /** Seek, and bring the time into the window if it is outside. */
+  const seekShown = (time: number) => {
+    seek(time)
+    if (zoom) setView(followView(view, time, duration))
+  }
+  const zoomBy = (factor: number) => {
+    const now = playheadTime()
+    const about = now >= view.start && now <= view.end ? now : (view.start + view.end) / 2
+    setView(zoomView(view, factor, about, duration))
+  }
 
   // A key the history took away is no longer picked.
   const selected = selection && clip.tracks[selection.track]?.[selection.index] ? selection : null
@@ -572,13 +621,13 @@ export function ClipEditor({
 
   const timeAt = (clientX: number) => {
     const box = lane.current!.getBoundingClientRect()
-    return Math.max(0, Math.min(1, (clientX - box.left) / (box.width || 1))) * clip.duration
+    return timeOfShare(view, Math.max(0, Math.min(1, (clientX - box.left) / (box.width || 1))))
   }
   /** Where a key dragged to a time lands: on a time worth landing on when it is close. */
   const snap = (time: number, track: TrackName, free: boolean) => {
     if (free) return time
     const width = lane.current?.getBoundingClientRect().width || 1
-    const reach = (SNAP_PIXELS / width) * clip.duration
+    const reach = (SNAP_PIXELS / width) * span
     const targets = [
       0,
       clip.duration,
@@ -640,7 +689,56 @@ export function ClipEditor({
       const track = selected?.track ?? shown
       if (track) addKey(track, playheadTime())
     }
+    // The window: closer, further, or the whole clip.
+    if (event.key === '+' || event.key === '=') zoomBy(0.5)
+    if (event.key === '-' || event.key === '_') zoomBy(2)
+    if (event.key.toLowerCase() === 'f') setZoom(null)
   }
+
+  // Zoomed, the window turns its page as the clip plays past it.
+  const zoomed = zoom !== null
+  useEffect(() => {
+    if (!zoomed) return
+    let request = 0
+    const tick = () => {
+      const player = engine.current.player
+      if (player.playing && player.clip?.name === clip.name && !player.join) {
+        const next = followView(viewRef.current, player.time, clip.duration)
+        if (next !== viewRef.current) setZoom(next)
+      }
+      request = requestAnimationFrame(tick)
+    }
+    request = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(request)
+  }, [zoomed, clip, engine])
+
+  // A pinch, or the wheel with Command or Control, zooms about the pointer; a sideways scroll
+  // moves the window along the clip. Listened to natively, to keep the page from scrolling.
+  const wheel = useRef<(event: WheelEvent) => void>(() => {})
+  wheel.current = event => {
+    const box = lane.current?.getBoundingClientRect()
+    if (!box) return
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault()
+      const about = timeOfShare(
+        view,
+        Math.max(0, Math.min(1, (event.clientX - box.left) / box.width))
+      )
+      setView(zoomView(view, Math.exp(event.deltaY * 0.01), about, duration))
+      return
+    }
+    const sideways = event.shiftKey ? event.deltaY : event.deltaX
+    if (zoom && Math.abs(sideways) > Math.abs(event.shiftKey ? 0 : event.deltaY)) {
+      event.preventDefault()
+      setView(panView(view, (sideways / (box.width || 1)) * span, duration))
+    }
+  }
+  useEffect(() => {
+    if (!area) return
+    const listener = (event: WheelEvent) => wheel.current(event)
+    area.addEventListener('wheel', listener, { passive: false })
+    return () => area.removeEventListener('wheel', listener)
+  }, [area])
   useEffect(() => {
     const listener = (event: KeyboardEvent) => keyboard.current(event)
     window.addEventListener('keydown', listener)
@@ -651,257 +749,434 @@ export function ClipEditor({
   const playhead = (
     <span
       className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-ring"
-      style={{ left: 'calc(var(--at, 0) * 100%)' }}
+      style={{ left: 'calc((var(--at, 0) - var(--vs, 0)) / var(--vw, 1) * 100%)' }}
     />
   )
-  const restShare = (clip.workArea?.start ?? 0) / clip.duration
-  const ticks = Array.from({ length: 5 }, (_, index) => index / 4)
+  const ticks = tickTimes(view, tickStep(view, docked ? 16 : 6))
+  const allKeys = trackOrder.flatMap(track =>
+    (clip.tracks[track] ?? []).map(key => ({ t: key.t, color: trackMeta[track].color }))
+  )
+
+  const timelineCard = (
+    <div
+      className={`${surface} group flex flex-col gap-3 p-3${docked ? ' h-full rounded-none border-0 shadow-none' : ''}`}
+      ref={root}
+      data-joining="false"
+      data-timeline
+      style={
+        {
+          '--label': '6.5rem',
+          '--vs': view.start / duration,
+          '--vw': span / duration,
+        } as CSSProperties
+      }
+    >
+      <div
+        className="grid grid-cols-2 rounded-xl bg-muted p-1"
+        role="group"
+        aria-label={t('Affichage du clip')}
+      >
+        {(['timeline', 'frames'] as const).map(mode => (
+          <button
+            type="button"
+            className={`h-7 rounded-lg text-xs font-semibold ${
+              clipLibrary.view.view === mode
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            aria-pressed={clipLibrary.view.view === mode}
+            key={mode}
+            onClick={() => clipLibrary.setView({ ...clipLibrary.view, view: mode })}
+          >
+            {t(mode === 'timeline' ? 'Timeline' : 'Planche')}
+          </button>
+        ))}
+      </div>
+      <ClipTransport
+        editor={editor}
+        clock={clock}
+        toggle={toggle}
+        seek={seek}
+        loops={loops}
+        setLoops={setLoops}
+      >
+        {!sheet && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              type="button"
+              aria-label={t('Dézoomer')}
+              title={`${t('Dézoomer')} (−)`}
+              disabled={!zoom}
+              onClick={() => zoomBy(2)}
+            >
+              <ZoomOut />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              type="button"
+              aria-label={t('Zoomer')}
+              title={`${t('Zoomer')} (+, ⌘ + molette)`}
+              disabled={span <= MIN_VIEW_SECONDS + 1e-6}
+              onClick={() => zoomBy(0.5)}
+            >
+              <ZoomIn />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              type="button"
+              aria-label={t('Tout voir')}
+              title={`${t('Tout voir')} (F)`}
+              disabled={!zoom}
+              onClick={() => setZoom(null)}
+            >
+              <MoveHorizontal />
+            </Button>
+          </>
+        )}
+        {dock && (
+          <Button
+            variant={docked ? 'secondary' : 'ghost'}
+            size="icon-sm"
+            type="button"
+            aria-pressed={docked}
+            aria-label={t(docked ? 'Remettre la timeline dans le panneau' : 'Agrandir la timeline')}
+            title={t(docked ? 'Remettre la timeline dans le panneau' : 'Agrandir la timeline')}
+            onClick={() => editor.setTimelineDocked(!docked)}
+          >
+            {docked ? <PanelBottomClose /> : <PanelBottom />}
+          </Button>
+        )}
+      </ClipTransport>
+
+      {sheet ? (
+        <ClipSheet
+          editor={editor}
+          clip={clip}
+          fps={clipLibrary.view.fps}
+          onFps={fps => clipLibrary.setView({ ...clipLibrary.view, fps })}
+          onPick={seek}
+        />
+      ) : (
+        <>
+          <div
+            className="flex touch-none flex-col gap-1 select-none"
+            ref={setArea}
+            onPointerDown={event => {
+              if ((event.target as HTMLElement).closest('[data-still]')) return
+              // A double press on a lane adds a key there. The scrub captures the pointer, which
+              // takes the browser's own double click away from the lane.
+              const track = (event.target as HTMLElement).closest<HTMLElement>('[data-lane]')
+                ?.dataset.lane as TrackName | undefined
+              const before = lastPress.current
+              const now = event.timeStamp
+              if (
+                track &&
+                before?.track === track &&
+                now - before.at < DOUBLE_PRESS_MS &&
+                Math.abs(event.clientX - before.x) < DOUBLE_PRESS_PIXELS
+              ) {
+                lastPress.current = null
+                addKey(track, snap(timeAt(event.clientX), track, event.altKey))
+                return
+              }
+              lastPress.current = track ? { track, x: event.clientX, at: now } : null
+              scrubbing.current = true
+              seek(timeAt(event.clientX))
+              try {
+                event.currentTarget.setPointerCapture(event.pointerId)
+              } catch {
+                // Without capture the scrub still follows the pointer over the timeline.
+              }
+            }}
+            onPointerMove={event => {
+              if (scrubbing.current) seek(timeAt(event.clientX))
+            }}
+            onPointerUp={() => (scrubbing.current = false)}
+            onPointerCancel={() => (scrubbing.current = false)}
+          >
+            <div className="grid cursor-ew-resize grid-cols-[var(--label)_1fr] items-center">
+              <span />
+              <div className="relative h-6 overflow-x-clip">
+                <div className={laneArea} ref={lane}>
+                  {ticks.map(time => {
+                    const share = shareOf(view, time)
+                    return (
+                      <span
+                        className={`absolute bottom-0 text-[0.6rem] whitespace-nowrap text-muted-foreground tabular-nums ${
+                          share < 0.04
+                            ? ''
+                            : share > 0.96
+                              ? '-translate-x-full'
+                              : '-translate-x-1/2'
+                        }`}
+                        style={{ left: `${share * 100}%` }}
+                        key={time}
+                      >
+                        {seconds(time)}
+                      </span>
+                    )
+                  })}
+                  <span
+                    className="pointer-events-none absolute -top-1 h-2.5 w-px bg-secondary-foreground/60"
+                    style={{ left: across(clip.workArea?.start ?? 0) }}
+                    title={t('Pose de repos')}
+                  />
+                  <span
+                    className="pointer-events-none absolute -bottom-1 size-2 -translate-x-1/2 rotate-45 bg-ring"
+                    style={{ left: 'calc((var(--at, 0) - var(--vs, 0)) / var(--vw, 1) * 100%)' }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-[var(--label)_1fr] items-center" data-still>
+              <span className="pl-1 text-[0.6rem] text-muted-foreground tabular-nums">
+                {zoom ? `${seconds(view.start)} – ${seconds(view.end)}` : ''}
+              </span>
+              <div
+                className="relative mx-2.5 h-3.5 cursor-pointer rounded-full bg-muted"
+                ref={overview}
+                aria-label={t('Aperçu du clip')}
+                data-overview
+                onPointerDown={event => {
+                  const box = overview.current!.getBoundingClientRect()
+                  const time = ((event.clientX - box.left) / (box.width || 1)) * duration
+                  const edge = (8 / (box.width || 1)) * duration
+                  const mode =
+                    Math.abs(time - view.start) < edge && zoom
+                      ? 'start'
+                      : Math.abs(time - view.end) < edge && zoom
+                        ? 'end'
+                        : 'move'
+                  let from = view
+                  if (mode === 'move' && (time < view.start || time > view.end)) {
+                    // A press outside the window brings it there.
+                    from = panView(view, time - (view.start + view.end) / 2, duration)
+                    setView(from)
+                  }
+                  overviewDrag.current = { mode, x: event.clientX, from }
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                }}
+                onPointerMove={event => {
+                  const drag = overviewDrag.current
+                  if (!drag) return
+                  const box = overview.current!.getBoundingClientRect()
+                  const by = ((event.clientX - drag.x) / (box.width || 1)) * duration
+                  if (drag.mode === 'move') setView(panView(drag.from, by, duration))
+                  else if (drag.mode === 'start') {
+                    setView(
+                      clampView(
+                        {
+                          start: Math.min(drag.from.start + by, drag.from.end - MIN_VIEW_SECONDS),
+                          end: drag.from.end,
+                        },
+                        duration
+                      )
+                    )
+                  } else {
+                    setView(
+                      clampView(
+                        {
+                          start: drag.from.start,
+                          end: Math.max(drag.from.end + by, drag.from.start + MIN_VIEW_SECONDS),
+                        },
+                        duration
+                      )
+                    )
+                  }
+                }}
+                onPointerUp={() => (overviewDrag.current = null)}
+                onPointerCancel={() => (overviewDrag.current = null)}
+              >
+                {allKeys.map((key, index) => (
+                  <span
+                    className="pointer-events-none absolute top-1/2 h-1.5 w-px -translate-y-1/2 opacity-70"
+                    style={{ left: `${(key.t / duration) * 100}%`, background: key.color }}
+                    key={index}
+                  />
+                ))}
+                <span
+                  className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-ring"
+                  style={{ left: 'calc(var(--at, 0) * 100%)' }}
+                />
+                <span
+                  className={`absolute inset-y-0 rounded-full ring-1 ring-ring ${zoom ? 'cursor-grab bg-ring/20' : 'bg-transparent'}`}
+                  style={{
+                    left: `${(view.start / duration) * 100}%`,
+                    width: `${(span / duration) * 100}%`,
+                  }}
+                >
+                  {zoom && (
+                    <>
+                      <span className="absolute inset-y-0 left-0 w-2 cursor-ew-resize rounded-l-full bg-ring/50" />
+                      <span className="absolute inset-y-0 right-0 w-2 cursor-ew-resize rounded-r-full bg-ring/50" />
+                    </>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {trackOrder.map(track => {
+              const meta = trackMeta[track]
+              const keys = clip.tracks[track] ?? []
+              const present = keys.length > 0
+              const isShown = curveTrack === track
+              return (
+                <div className="grid grid-cols-[var(--label)_1fr] items-center" key={track}>
+                  <div data-still className="flex items-center gap-0.5 pr-1">
+                    <button
+                      type="button"
+                      className={`min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left text-xs font-semibold ${
+                        present ? '' : 'text-muted-foreground'
+                      } ${isShown ? 'bg-secondary text-secondary-foreground' : ''}`}
+                      aria-pressed={isShown}
+                      disabled={track === 'expression' || !present}
+                      title={track === 'expression' ? undefined : t('Voir les courbes de la piste')}
+                      onClick={() => {
+                        setShown(isShown ? null : (track as NumericTrackName))
+                        if (isShown) setSelection(null)
+                      }}
+                    >
+                      {t(meta.label)}
+                    </button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="size-6"
+                      type="button"
+                      aria-label={`${t('Ajouter une image clé')} · ${t(meta.label)}`}
+                      title={`${t('Ajouter une image clé à la tête de lecture')} (K)`}
+                      onClick={() => addKey(track, playheadTime())}
+                    >
+                      <Plus />
+                    </Button>
+                  </div>
+                  <div
+                    className={`relative h-7 cursor-ew-resize overflow-hidden rounded-md ${
+                      present ? 'bg-muted' : 'bg-transparent ring-1 ring-border ring-inset'
+                    }`}
+                    data-lane={track}
+                    title={present ? undefined : t('Double-clic pour ajouter une image clé')}
+                  >
+                    <div className={laneArea}>
+                      {playhead}
+                      {keys.map((key, index) => {
+                        const chosen = selected?.track === track && selected.index === index
+                        return (
+                          <button
+                            type="button"
+                            data-still
+                            data-key
+                            className="absolute top-1/2 grid size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab place-items-center active:cursor-grabbing"
+                            style={{ left: across(key.t) }}
+                            aria-label={`${t(meta.label)} · ${seconds(key.t)} · ${
+                              typeof key.v === 'string' ? key.v : key.v.map(short).join(', ')
+                            }`}
+                            aria-pressed={chosen}
+                            key={index}
+                            onPointerDown={event => {
+                              event.stopPropagation()
+                              select({ track, index })
+                              seek(key.t)
+                              dragged.current = {
+                                track,
+                                index,
+                                from: clip,
+                                x: event.clientX,
+                                moved: false,
+                              }
+                              event.currentTarget.setPointerCapture(event.pointerId)
+                            }}
+                            onPointerMove={event => {
+                              const drag = dragged.current
+                              if (!drag) return
+                              if (!drag.moved && Math.abs(event.clientX - drag.x) < 3) return
+                              drag.moved = true
+                              const time = snap(timeAt(event.clientX), track, event.altKey)
+                              const moved = moveClipKey(drag.from, drag.track, drag.index, time)
+                              clipLibrary.update(clipRef, moved.clip, `drag-${track}`)
+                              setSelection({ track, index: moved.index })
+                              seek(time)
+                            }}
+                            onPointerUp={() => (dragged.current = null)}
+                            onPointerCancel={() => (dragged.current = null)}
+                          >
+                            <span
+                              className={`rotate-45 ${
+                                chosen ? 'size-3 ring-2 ring-ring ring-offset-1' : 'size-2.5'
+                              }`}
+                              style={{ background: meta.color }}
+                            />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {curveTrack && clip.tracks[curveTrack]?.length ? (
+            <div className="flex flex-col gap-1.5" data-still>
+              {trackMeta[curveTrack].parts.map((part, component) => (
+                <Curve
+                  keys={clip.tracks[curveTrack] as NumericKey[]}
+                  part={component}
+                  label={t(part)}
+                  color={
+                    trackMeta[curveTrack].parts.length > 1
+                      ? partColors[component]
+                      : trackMeta[curveTrack].color
+                  }
+                  duration={clip.duration}
+                  view={view}
+                  selected={selected?.track === curveTrack ? selected.index : null}
+                  key={part}
+                  onPick={index => {
+                    select({ track: curveTrack, index })
+                    seekShown(clip.tracks[curveTrack]![index].t)
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {t(
+                Object.keys(clip.tracks).length
+                  ? 'Choisis une image clé pour la régler. Glisse-la pour la déplacer ; Alt la laisse libre.'
+                  : 'Ajoute une image clé avec + sur une piste, ou double-clique sur la piste.'
+              )}
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  )
 
   return (
     <div className="panel-stack" style={{ ['--label' as string]: '6.5rem' }}>
       <ClipSettings editor={editor} clip={clip} clipRef={clipRef} />
 
-      <div className={`${surface} group flex flex-col gap-3 p-3`} ref={root} data-joining="false">
+      {docked ? createPortal(timelineCard, dock!) : timelineCard}
+      {docked && (
         <div
-          className="grid grid-cols-2 rounded-xl bg-muted p-1"
-          role="group"
-          aria-label={t('Affichage du clip')}
+          className={`${surface} flex items-center justify-between gap-2 p-3 text-xs text-muted-foreground`}
         >
-          {(['timeline', 'frames'] as const).map(mode => (
-            <button
-              type="button"
-              className={`h-7 rounded-lg text-xs font-semibold ${
-                clipLibrary.view.view === mode
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              aria-pressed={clipLibrary.view.view === mode}
-              key={mode}
-              onClick={() => clipLibrary.setView({ ...clipLibrary.view, view: mode })}
-            >
-              {t(mode === 'timeline' ? 'Timeline' : 'Planche')}
-            </button>
-          ))}
+          {t('La timeline est en bas, sous la scène.')}
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            onClick={() => editor.setTimelineDocked(false)}
+          >
+            <PanelBottomClose /> {t('La remettre ici')}
+          </Button>
         </div>
-        <ClipTransport
-          editor={editor}
-          clock={clock}
-          toggle={toggle}
-          seek={seek}
-          loops={loops}
-          setLoops={setLoops}
-        />
-
-        {sheet ? (
-          <ClipSheet
-            editor={editor}
-            clip={clip}
-            fps={clipLibrary.view.fps}
-            onFps={fps => clipLibrary.setView({ ...clipLibrary.view, fps })}
-            onPick={seek}
-          />
-        ) : (
-          <>
-            <div
-              className="flex touch-none flex-col gap-1 select-none"
-              onPointerDown={event => {
-                if ((event.target as HTMLElement).closest('[data-still]')) return
-                // A double press on a lane adds a key there. The scrub captures the pointer, which
-                // takes the browser's own double click away from the lane.
-                const track = (event.target as HTMLElement).closest<HTMLElement>('[data-lane]')
-                  ?.dataset.lane as TrackName | undefined
-                const before = lastPress.current
-                const now = event.timeStamp
-                if (
-                  track &&
-                  before?.track === track &&
-                  now - before.at < DOUBLE_PRESS_MS &&
-                  Math.abs(event.clientX - before.x) < DOUBLE_PRESS_PIXELS
-                ) {
-                  lastPress.current = null
-                  addKey(track, snap(timeAt(event.clientX), track, event.altKey))
-                  return
-                }
-                lastPress.current = track ? { track, x: event.clientX, at: now } : null
-                scrubbing.current = true
-                seek(timeAt(event.clientX))
-                try {
-                  event.currentTarget.setPointerCapture(event.pointerId)
-                } catch {
-                  // Without capture the scrub still follows the pointer over the timeline.
-                }
-              }}
-              onPointerMove={event => {
-                if (scrubbing.current) seek(timeAt(event.clientX))
-              }}
-              onPointerUp={() => (scrubbing.current = false)}
-              onPointerCancel={() => (scrubbing.current = false)}
-            >
-              <div className="grid cursor-ew-resize grid-cols-[var(--label)_1fr] items-center">
-                <span />
-                <div className="relative h-6">
-                  <div className={laneArea} ref={lane}>
-                    {ticks.map(share => (
-                      <span
-                        className={`absolute bottom-0 text-[0.6rem] whitespace-nowrap text-muted-foreground tabular-nums ${
-                          share === 0 ? '' : share === 1 ? '-translate-x-full' : '-translate-x-1/2'
-                        }`}
-                        style={{ left: `${share * 100}%` }}
-                        key={share}
-                      >
-                        {seconds(share * clip.duration)}
-                      </span>
-                    ))}
-                    <span
-                      className="pointer-events-none absolute -top-1 h-2.5 w-px bg-secondary-foreground/60"
-                      style={{ left: `${restShare * 100}%` }}
-                      title={t('Pose de repos')}
-                    />
-                    <span
-                      className="pointer-events-none absolute -bottom-1 size-2 -translate-x-1/2 rotate-45 bg-ring"
-                      style={{ left: 'calc(var(--at, 0) * 100%)' }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {trackOrder.map(track => {
-                const meta = trackMeta[track]
-                const keys = clip.tracks[track] ?? []
-                const present = keys.length > 0
-                const isShown = curveTrack === track
-                return (
-                  <div className="grid grid-cols-[var(--label)_1fr] items-center" key={track}>
-                    <div data-still className="flex items-center gap-0.5 pr-1">
-                      <button
-                        type="button"
-                        className={`min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left text-xs font-semibold ${
-                          present ? '' : 'text-muted-foreground'
-                        } ${isShown ? 'bg-secondary text-secondary-foreground' : ''}`}
-                        aria-pressed={isShown}
-                        disabled={track === 'expression' || !present}
-                        title={
-                          track === 'expression' ? undefined : t('Voir les courbes de la piste')
-                        }
-                        onClick={() => {
-                          setShown(isShown ? null : (track as NumericTrackName))
-                          if (isShown) setSelection(null)
-                        }}
-                      >
-                        {t(meta.label)}
-                      </button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="size-6"
-                        type="button"
-                        aria-label={`${t('Ajouter une image clé')} · ${t(meta.label)}`}
-                        title={`${t('Ajouter une image clé à la tête de lecture')} (K)`}
-                        onClick={() => addKey(track, playheadTime())}
-                      >
-                        <Plus />
-                      </Button>
-                    </div>
-                    <div
-                      className={`relative h-7 cursor-ew-resize rounded-md ${
-                        present ? 'bg-muted' : 'bg-transparent ring-1 ring-border ring-inset'
-                      }`}
-                      data-lane={track}
-                      title={present ? undefined : t('Double-clic pour ajouter une image clé')}
-                    >
-                      <div className={laneArea}>
-                        {playhead}
-                        {keys.map((key, index) => {
-                          const chosen = selected?.track === track && selected.index === index
-                          return (
-                            <button
-                              type="button"
-                              data-still
-                              data-key
-                              className="absolute top-1/2 grid size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab place-items-center active:cursor-grabbing"
-                              style={{ left: `${(key.t / clip.duration) * 100}%` }}
-                              aria-label={`${t(meta.label)} · ${seconds(key.t)} · ${
-                                typeof key.v === 'string' ? key.v : key.v.map(short).join(', ')
-                              }`}
-                              aria-pressed={chosen}
-                              key={index}
-                              onPointerDown={event => {
-                                event.stopPropagation()
-                                select({ track, index })
-                                seek(key.t)
-                                dragged.current = {
-                                  track,
-                                  index,
-                                  from: clip,
-                                  x: event.clientX,
-                                  moved: false,
-                                }
-                                event.currentTarget.setPointerCapture(event.pointerId)
-                              }}
-                              onPointerMove={event => {
-                                const drag = dragged.current
-                                if (!drag) return
-                                if (!drag.moved && Math.abs(event.clientX - drag.x) < 3) return
-                                drag.moved = true
-                                const time = snap(timeAt(event.clientX), track, event.altKey)
-                                const moved = moveClipKey(drag.from, drag.track, drag.index, time)
-                                clipLibrary.update(clipRef, moved.clip, `drag-${track}`)
-                                setSelection({ track, index: moved.index })
-                                seek(time)
-                              }}
-                              onPointerUp={() => (dragged.current = null)}
-                              onPointerCancel={() => (dragged.current = null)}
-                            >
-                              <span
-                                className={`rotate-45 ${
-                                  chosen ? 'size-3 ring-2 ring-ring ring-offset-1' : 'size-2.5'
-                                }`}
-                                style={{ background: meta.color }}
-                              />
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {curveTrack && clip.tracks[curveTrack]?.length ? (
-              <div className="flex flex-col gap-1.5" data-still>
-                {trackMeta[curveTrack].parts.map((part, component) => (
-                  <Curve
-                    keys={clip.tracks[curveTrack] as NumericKey[]}
-                    part={component}
-                    label={t(part)}
-                    color={
-                      trackMeta[curveTrack].parts.length > 1
-                        ? partColors[component]
-                        : trackMeta[curveTrack].color
-                    }
-                    duration={clip.duration}
-                    selected={selected?.track === curveTrack ? selected.index : null}
-                    key={part}
-                    onPick={index => {
-                      select({ track: curveTrack, index })
-                      seek(clip.tracks[curveTrack]![index].t)
-                    }}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {t(
-                  Object.keys(clip.tracks).length
-                    ? 'Choisis une image clé pour la régler. Glisse-la pour la déplacer ; Alt la laisse libre.'
-                    : 'Ajoute une image clé avec + sur une piste, ou double-clique sur la piste.'
-                )}
-              </p>
-            )}
-          </>
-        )}
-      </div>
+      )}
 
       {selected && !sheet && (
         <KeyInspector
@@ -910,7 +1185,7 @@ export function ClipEditor({
           clipRef={clipRef}
           selection={selected}
           onSelect={select}
-          seek={seek}
+          seek={seekShown}
         />
       )}
     </div>

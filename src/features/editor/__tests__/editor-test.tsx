@@ -213,6 +213,43 @@ describe('the editor', () => {
     ).toBe('true')
   })
 
+  it('zooms the timeline in and out, and moves it under the stage and back', () => {
+    const hop = {
+      name: 'Hop',
+      duration: 2,
+      tracks: { position: [0, 0.5, 1, 1.5, 2].map(t => ({ t, v: [0, t === 1 ? 0.2 : 0] })) },
+    }
+    window.history.replaceState(null, '', `/#clip=${JSON.stringify(hop)}`)
+    const view = open()
+    const range = () =>
+      view.container.querySelector('[data-overview]')!.parentElement!.firstElementChild!.textContent
+    expect(range()).toBe('')
+    expect(view.getByRole('button', { name: 'Tout voir' })).toHaveProperty('disabled', true)
+
+    fireEvent.click(view.getByRole('button', { name: 'Zoomer' }))
+    frames(2)
+    expect(range()).toMatch(/ – /)
+    fireEvent.keyDown(window, { key: '+' })
+    frames(2)
+    const [from, to] = range()!
+      .split(' – ')
+      .map(part => parseFloat(part))
+    expect(to - from).toBeCloseTo(0.5, 1)
+    fireEvent.keyDown(window, { key: 'f' })
+    frames(2)
+    expect(range()).toBe('')
+
+    // Across the bottom of the stage, with a note left in the panel to bring it back.
+    fireEvent.click(view.getByRole('button', { name: 'Agrandir la timeline' }))
+    frames(2)
+    expect(view.container.querySelector('.timeline-dock [data-timeline]')).toBeTruthy()
+    expect(view.container.querySelectorAll('[data-timeline]')).toHaveLength(1)
+    fireEvent.click(view.getByRole('button', { name: /La remettre ici/ }))
+    frames(2)
+    expect(view.container.querySelector('.timeline-dock [data-timeline]')).toBeNull()
+    expect(view.container.querySelectorAll('[data-timeline]')).toHaveLength(1)
+  })
+
   it('shows a clip from a link on the avatar the link names, and writes it back', async () => {
     const nod = { name: 'Nod', duration: 1, tracks: { rotation: [{ t: 0, v: [0, 0, 0] }] } }
     window.history.replaceState(null, '', `/#avatar=freddy&clip=${JSON.stringify(nod)}`)

@@ -76,6 +76,9 @@ export const useEditor = () => {
   // Whether a state that hands over goes on to the next one. Off, the state starts again, to be
   // looked at; the choice holds for the session.
   const [handover, setHandover] = useState(false)
+  // The clip timeline, in the panel or across the bottom of the page; and where it goes there.
+  const [timelineDocked, setTimelineDocked] = useState(false)
+  const [timelineDock, setTimelineDock] = useState<HTMLElement | null>(null)
   const [followsPointer, setFollowsPointer] = useState(false)
   const [pose, setPose] = useState<HandPose>(restPose)
   // Held: the avatar was taken in hand. What it does waits, paused, until it is played again.
@@ -315,6 +318,10 @@ export const useEditor = () => {
     setSpeed,
     handover,
     setHandover,
+    timelineDocked,
+    setTimelineDocked,
+    timelineDock,
+    setTimelineDock,
     followsPointer,
     setFollowsPointer,
     pose,

@@ -307,6 +307,35 @@ body {
   transform: translateX(-50%);
   white-space: nowrap;
 }
+/* The clip timeline stretched across the bottom of the stage. */
+.timeline-dock {
+  display: none;
+}
+.timeline-docked .timeline-dock {
+  position: absolute;
+  z-index: 9;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: block;
+  height: 46vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  text-align: left;
+}
+.timeline-docked {
+  padding-bottom: calc(46vh + 12px);
+}
+.timeline-docked .stage-avatar-positioner {
+  width: min(44vh, 72vw, 680px);
+}
+.timeline-docked .photo-capture-bar,
+.timeline-docked .stage-credit {
+  display: none;
+}
 .stage-credit a {
   color: #aeb6c2;
   text-decoration: none;

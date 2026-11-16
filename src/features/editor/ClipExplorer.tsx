@@ -117,6 +117,7 @@ export function Curve({
   label,
   color,
   duration,
+  view = { start: 0, end: duration },
   selected,
   onPick,
 }: {
@@ -125,15 +126,19 @@ export function Curve({
   label: string
   color: string
   duration: number
+  /** The window of the clip the plot shows, as the timeline above it does. */
+  view?: { start: number; end: number }
   selected: number | null
   onPick: (index: number) => void
 }) {
+  const span = view.end - view.start || 1
   const values = Array.from({ length: CURVE_SAMPLES + 1 }, (_, index) => {
-    const time = (index / CURVE_SAMPLES) * duration
+    const time = view.start + (index / CURVE_SAMPLES) * span
     return sampleClipTrack(keys, time)[part]
   })
-  let low = Math.min(...values, ...keys.map(key => key.v[part]))
-  let high = Math.max(...values, ...keys.map(key => key.v[part]))
+  const shown = keys.filter(key => key.t >= view.start - 1e-6 && key.t <= view.end + 1e-6)
+  let low = Math.min(...values, ...shown.map(key => key.v[part]))
+  let high = Math.max(...values, ...shown.map(key => key.v[part]))
   if (high - low < 1e-6) {
     // A number that does not change is drawn in the middle, not along an edge.
     low -= 1
@@ -159,7 +164,7 @@ export function Curve({
         </span>
         <span className="text-right">{short(low)}</span>
       </div>
-      <div className="relative h-20 cursor-ew-resize rounded-md bg-white ring-1 ring-border">
+      <div className="relative h-20 cursor-ew-resize overflow-hidden rounded-md bg-white ring-1 ring-border">
         <div className="absolute inset-y-2 right-2.5 left-2.5">
           <svg
             className="absolute inset-0 size-full overflow-visible"
@@ -177,14 +182,17 @@ export function Curve({
           </svg>
           <span
             className="pointer-events-none absolute -inset-y-2 w-0.5 -translate-x-1/2 bg-ring"
-            style={{ left: 'calc(var(--at, 0) * 100%)' }}
+            style={{ left: 'calc((var(--at, 0) - var(--vs, 0)) / var(--vw, 1) * 100%)' }}
           />
           {keys.map((key, index) => (
             <button
               type="button"
               data-still
               className="absolute grid size-4 -translate-x-1/2 -translate-y-1/2 place-items-center"
-              style={{ left: `${(key.t / duration) * 100}%`, top: `${up(key.v[part])}%` }}
+              style={{
+                left: `${((key.t - view.start) / span) * 100}%`,
+                top: `${up(key.v[part])}%`,
+              }}
               aria-label={`${label} · ${seconds(key.t)} · ${short(key.v[part])}`}
               aria-pressed={selected === index}
               key={index}
@@ -419,7 +427,7 @@ export function ClipTimeline({
   const playhead = (
     <span
       className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-ring"
-      style={{ left: 'calc(var(--at, 0) * 100%)' }}
+      style={{ left: 'calc((var(--at, 0) - var(--vs, 0)) / var(--vw, 1) * 100%)' }}
     />
   )
 
@@ -470,7 +478,7 @@ export function ClipTimeline({
               ))}
               <span
                 className="pointer-events-none absolute -bottom-1 size-2 -translate-x-1/2 rotate-45 bg-ring"
-                style={{ left: 'calc(var(--at, 0) * 100%)' }}
+                style={{ left: 'calc((var(--at, 0) - var(--vs, 0)) / var(--vw, 1) * 100%)' }}
               />
             </div>
           </div>
