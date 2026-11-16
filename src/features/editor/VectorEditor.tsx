@@ -758,12 +758,24 @@ export function VectorEditor({
           local.y + local.y + local.height - corner[1],
         ]
         const anchor = event.altKey ? center : opposite
-        const at = carry(
-          from.toLocal,
-          snap && from.angle === 0 ? snapped(raw, selected ?? undefined) : raw
-        )
         const across = handle.includes('e') || handle.includes('w')
         const upDown = handle.includes('n') || handle.includes('s')
+        let pulled = raw
+        // A box that is not turned lines the side it is pulled by up with the artboard's middle
+        // and edges and with the other marks; a turned one has no side across or up to line up.
+        if (snap && from.angle === 0) {
+          pulled = snapped(raw, selected ?? undefined)
+          const lines = guideLines(otherBoxes(Object.keys(current.from).map(Number)))
+          const lined = alignBox(
+            { x: pulled[0], y: pulled[1], width: 0, height: 0 },
+            across ? lines.xs : [],
+            upDown ? lines.ys : [],
+            reach * 0.6
+          )
+          pulled = [pulled[0] + lined.by[0], pulled[1] + lined.by[1]]
+          setGuides(lined.guides)
+        }
+        const at = carry(from.toLocal, pulled)
         let sx =
           across && Math.abs(corner[0] - anchor[0]) > 1e-6
             ? (at[0] - anchor[0]) / (corner[0] - anchor[0])

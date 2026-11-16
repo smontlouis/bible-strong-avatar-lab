@@ -236,4 +236,17 @@ describe('the vector editor', () => {
     fireEvent.pointerUp(board, { pointerId: 1, pointerType: 'touch' })
     expect(zoom()).toBe('200 %')
   })
+
+  it('lines up the side a mark is scaled by with the other marks, and shows the guide', () => {
+    const { view, board, last } = setup([{ d: 'M10 10H30V30H10Z' }, { d: 'M60 60H80V80H60Z' }])
+    const side = view.container.querySelector('[data-handle="e"]')!
+    fireEvent.pointerDown(side, { pointerId: 1, ...at(30, 20) })
+    // Pulled to 59 across: its right side lands on the other mark's left side, at 60.
+    fireEvent.pointerMove(board, { pointerId: 1, ...at(59, 20) })
+    expect(view.container.querySelectorAll('[data-guide]').length).toBeGreaterThan(0)
+    fireEvent.pointerUp(board, { pointerId: 1 })
+    const scaled = pathBounds(readPath(last()[0].d))!
+    expect(scaled.x + scaled.width).toBeCloseTo(60, 6)
+    expect(scaled.height).toBeCloseTo(20, 6)
+  })
 })
