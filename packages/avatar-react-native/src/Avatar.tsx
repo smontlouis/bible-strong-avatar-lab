@@ -35,6 +35,7 @@ import {
   createAvatarRun,
   greyOf,
   paintCharacterScene,
+  pathOpacity,
   stepAvatarRun,
   type AvatarCommand,
   type AvatarRun,
@@ -142,6 +143,14 @@ const assertRuntime = () => {
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 const AnimatedG = Animated.createAnimatedComponent(G)
 
+// react-native-svg on Android draws a <G> whose opacity is not 1 into a layer, and tests the
+// opacity again at the end of the draw (`GroupView.drawGroup`): when it crosses 1 in between (the
+// body fading in, or turning into a spinner's disc), it restores a canvas it never saved and the
+// app crashes (« Underflow in restore »). On Android the groups whose opacity moves keep an
+// opacity of 1 and each path carries theirs. Where translucent paths overlap during a fade, they
+// show through each other, and an outline shows under the fills.
+const OPACITY_ON_PATHS = Platform.OS === 'android'
+
 // An avatar is rarely on its way to grey: the colour itself is the common case.
 const tint = (color: string, muted: SharedValue<number>) => {
   'worklet'
@@ -155,10 +164,12 @@ type Painted = { frame: SharedValue<PaintedFrame>; muted: SharedValue<number> }
 
 /** The body as a whole: where the clip moves it, and how much of it shows. */
 function BodyGroup({ frame, children }: { frame: SharedValue<PaintedFrame>; children: ReactNode }) {
-  const animatedProps = useAnimatedProps(() => {
+  const animatedProps = useAnimatedProps((): { matrix: number[]; opacity?: number } => {
     'worklet'
     const current = frame.get()
-    return { matrix: current.matrix, opacity: current.bodyOpacity }
+    return OPACITY_ON_PATHS
+      ? { matrix: current.matrix }
+      : { matrix: current.matrix, opacity: current.bodyOpacity }
   })
   return <AnimatedG animatedProps={animatedProps}>{children}</AnimatedG>
 }
@@ -173,9 +184,9 @@ function FadingGroup({
   clipPath?: string
   children: ReactNode
 }) {
-  const animatedProps = useAnimatedProps(() => {
+  const animatedProps = useAnimatedProps((): { opacity?: number } => {
     'worklet'
-    return { opacity: frame.get().fading }
+    return OPACITY_ON_PATHS ? {} : { opacity: frame.get().fading }
   })
   return (
     <AnimatedG animatedProps={animatedProps} clipPath={clipPath}>
@@ -188,7 +199,11 @@ function HeadPath({ frame, muted }: Painted) {
   const animatedProps = useAnimatedProps(() => {
     'worklet'
     const current = frame.get()
-    return { d: current.head, fill: tint(current.body, muted) }
+    return {
+      d: current.head,
+      fill: tint(current.body, muted),
+      opacity: pathOpacity(current, 'head', OPACITY_ON_PATHS),
+    }
   })
   return <AnimatedPath animatedProps={animatedProps} />
 }
@@ -205,7 +220,10 @@ function OutlinePath({
   const animatedProps = useAnimatedProps(() => {
     'worklet'
     const current = frame.get()
-    return { d: layer === 'head' ? current.head : (current[layer][index] ?? '') }
+    return {
+      d: layer === 'head' ? current.head : (current[layer][index] ?? ''),
+      opacity: pathOpacity(current, 'faded', OPACITY_ON_PATHS),
+    }
   })
   return <AnimatedPath animatedProps={animatedProps} />
 }
@@ -232,6 +250,7 @@ function BodyPath({
     return {
       d: shown ? (current[layer][index] ?? '') : '',
       fill: tint(colors[index] ?? current.body, muted),
+      opacity: pathOpacity(current, 'faded', OPACITY_ON_PATHS),
     }
   })
   return <AnimatedPath animatedProps={animatedProps} clipPath={clipPath} />
@@ -249,7 +268,11 @@ function FacePath({ frame, muted, part }: Painted & { part: 'left' | 'right' | '
   const animatedProps = useAnimatedProps(() => {
     'worklet'
     const current = frame.get()
-    return { d: current[part], fill: tint(current.eyes, muted) }
+    return {
+      d: current[part],
+      fill: tint(current.eyes, muted),
+      opacity: pathOpacity(current, 'faded', OPACITY_ON_PATHS),
+    }
   })
   return <AnimatedPath animatedProps={animatedProps} />
 }
@@ -258,7 +281,11 @@ function DiscPath({ frame, muted }: Painted) {
   const animatedProps = useAnimatedProps(() => {
     'worklet'
     const current = frame.get()
-    return { d: current.disc, opacity: current.discOpacity, fill: tint(current.body, muted) }
+    return {
+      d: current.disc,
+      opacity: pathOpacity(current, 'disc', OPACITY_ON_PATHS),
+      fill: tint(current.body, muted),
+    }
   })
   return <AnimatedPath animatedProps={animatedProps} />
 }

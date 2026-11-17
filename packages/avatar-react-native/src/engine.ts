@@ -164,6 +164,24 @@ export const paintCharacterScene = (scene: CharacterScene): PaintedFrame => {
   }
 }
 
+/**
+ * A path the body's opacity reaches: the head, a path inside the fading groups (a part, an outline,
+ * the face), or the spinner's disc.
+ */
+export type OpacityPath = 'head' | 'faded' | 'disc'
+
+/**
+ * The opacity a path carries itself. Without `onPaths` the body group and the fading groups carry
+ * theirs, as SVG composites them. With `onPaths` they keep an opacity of 1 and the path carries
+ * their product: what shows is the same, save where two translucent paths overlap.
+ */
+export const pathOpacity = (frame: PaintedFrame, path: OpacityPath, onPaths: boolean) => {
+  'worklet'
+  const own = path === 'disc' ? frame.discOpacity : 1
+  if (!onPaths) return own
+  return path === 'faded' ? frame.bodyOpacity * frame.fading : own * frame.bodyOpacity
+}
+
 /** The grey of a hex colour at the same lightness. Any other colour is returned unchanged. */
 export const greyOf = (color: string) => {
   'worklet'
