@@ -11,9 +11,12 @@ import {
   createAvatarRun,
   greyOf,
   paintCharacterScene,
+  pathOpacity,
   stepAvatarRun,
   type AvatarCommand,
   type AvatarRun,
+  type OpacityPath,
+  type PaintedFrame,
   type RunSettings,
 } from '../engine.js'
 
@@ -192,5 +195,27 @@ describe('the avatar run of the UI thread', () => {
     expect(greyOf('#ffffff')).toBe('rgb(255, 255, 255)')
     expect(greyOf('#f00')).toBe('rgb(76, 76, 76)')
     expect(greyOf('red')).toBe('red')
+  })
+
+  it('shows each path as opaque whether the groups or the paths carry the opacity', () => {
+    const base = paintCharacterScene(
+      renderCharacterFrame(character, engineFrame(createAvatarRun(start).engine))
+    )
+    // Halfway into a spinner, while the body fades in: no opacity is 1.
+    const frame: PaintedFrame = { ...base, bodyOpacity: 0.8, fading: 0.4, discOpacity: 0.6 }
+    // The groups around each path: the body group, and the fading group for a faded path.
+    const groups = (path: OpacityPath) =>
+      path === 'faded' ? frame.bodyOpacity * frame.fading : frame.bodyOpacity
+    for (const path of ['head', 'faded', 'disc'] as const) {
+      expect(pathOpacity(frame, path, true)).toBeCloseTo(
+        groups(path) * pathOpacity(frame, path, false)
+      )
+    }
+    // Where the groups carry it, a path keeps its own opacity only.
+    expect(pathOpacity(frame, 'head', false)).toBe(1)
+    expect(pathOpacity(frame, 'faded', false)).toBe(1)
+    expect(pathOpacity(frame, 'disc', false)).toBe(0.6)
+    expect(pathOpacity(frame, 'faded', true)).toBeCloseTo(0.32)
+    expect(pathOpacity(frame, 'disc', true)).toBeCloseTo(0.48)
   })
 })
