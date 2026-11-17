@@ -1,5 +1,11 @@
 # @bible-strong/avatar-web
 
+## 1.2.2
+
+### Patch Changes
+
+- @bible-strong/avatar-core@1.2.2
+
 ## 1.2.1
 
 ### Patch Changes
