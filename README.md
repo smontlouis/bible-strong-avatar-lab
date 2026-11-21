@@ -80,6 +80,9 @@ integration. It ships in the npm tarball, so it is readable in `node_modules`. T
 instructions for AI** copies that package's README, with the avatar's file and names in its
 examples.
 
+For SwiftUI on iOS and macOS, use [AvatarSwift](./packages/avatar-swift/README.md). The Swift
+package uses the same catalogue and accepts exported character files.
+
 ### For agents
 
 The Studio serves its documentation as plain text for coding agents, built from the sources it

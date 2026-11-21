@@ -1,0 +1,26 @@
+{
+  "name": "Strobi",
+  "body": {
+    "primary": {
+      "type": "sphere",
+      "width": 240,
+      "height": 240,
+      "depth": 240.03671875,
+      "roundness": 1
+    },
+    "nodes": []
+  },
+  "colors": {
+    "body": "#5b7fe5",
+    "eyes": "#111316"
+  },
+  "face": {
+    "eyes": {
+      "width": 1,
+      "height": 1,
+      "gap": 1,
+      "shiftY": -0.058333333333333334
+    },
+    "perspective": 1
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "Clover",
+  "body": {
+    "primary": { "type": "cube", "width": 192, "height": 172, "depth": 148, "roundness": 0.76 },
+    "nodes": [
+      {
+        "surface": { "type": "sphere", "width": 65, "height": 75, "depth": 32, "roundness": 1 },
+        "position": [-74, -64, -20],
+        "rotation": [0, 0, 22],
+        "color": "#4fab91"
+      },
+      {
+        "surface": { "type": "sphere", "width": 65, "height": 75, "depth": 32, "roundness": 1 },
+        "position": [74, -64, -20],
+        "rotation": [0, 0, -22],
+        "color": "#4fab91"
+      }
+    ]
+  },
+  "colors": { "body": "#a0dabc", "eyes": "#163c37" },
+  "style": { "outline": { "enabled": true, "color": "#3c816c", "width": 2, "opacity": 0.75 } },
+  "face": {
+    "eyes": { "width": 0.85, "height": 0.78, "gap": 1.05, "shiftY": -0.06 },
+    "mouth": {
+      "enabled": true,
+      "shape": "curve",
+      "curve": 40,
+      "width": 22,
+      "height": 4,
+      "x": 0,
+      "y": 22,
+      "angle": 0
+    },
+    "perspective": 1
+  }
+}
