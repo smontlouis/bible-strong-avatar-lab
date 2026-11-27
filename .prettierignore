@@ -8,3 +8,6 @@ public/sitemap.xml
 src/features/studio/defaultStudioDocument.json
 src/features/export/standaloneEngine.generated.ts
 pnpm-lock.yaml
+packages/avatar-swift/parity/frames.json
+packages/avatar-swift/parity/scenes.json
+packages/avatar-swift/Resources/avatarCharacter.schema.json

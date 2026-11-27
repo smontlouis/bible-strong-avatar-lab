@@ -184,7 +184,9 @@ private func validationError(_ data: Data) throws -> AvatarFileError {
     #expect(engine.state == "idle")
 }
 
-@Test @MainActor func renderDefaultAndImportedSurfaceKinds() throws {
+// Skipped on a machine without Metal, such as some continuous integration runners.
+@Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil)) @MainActor
+func renderDefaultAndImportedSurfaceKinds() throws {
     let renderer = try AvatarMetalRenderer()
     let side = 144
     let spec = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: side, height: side,

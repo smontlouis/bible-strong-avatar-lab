@@ -71,52 +71,13 @@ func jsonNumber(_ value: Any?) -> Double? {
 }
 
 private enum CharacterSchemas {
+    // Both are avatar-core's own: the first format's schema, and the character schema it exports
+    // (`avatarCharacterSchema`), written to `Resources/avatarCharacter.schema.json` by
+    // `pnpm swift:parity`.
     static let legacyData = load("avatarDefinition.schema")
-    static let currentData = makeCurrentSchema()
+    static let currentData = load("avatarCharacter.schema")
     static var legacy: JSONObject { object(legacyData) }
     static var current: JSONObject { object(currentData) }
-
-    // The current format reuses the published v1 definitions for body, colors,
-    // outline, nose and mouth, just as the JavaScript runtime does.
-    private static func makeCurrentSchema() -> Data {
-        let legacySchema = object(legacyData)
-        let definitions = legacySchema["$defs"] as? [String: JSONObject] ?? [:]
-
-        func number(_ low: Double, _ high: Double) -> JSONObject {
-            ["type": "number", "minimum": low, "maximum": high]
-        }
-        func reference(_ name: String) -> JSONObject { ["$ref": "#/$defs/" + name] }
-
-        let eyes: JSONObject = [
-            "type": "object", "additionalProperties": false, "required": ["width", "height", "gap", "shiftY"],
-            "properties": [
-                "width": number(0.1, 4), "height": number(0.1, 4), "gap": number(0, 4), "shiftY": number(-1, 1),
-            ],
-        ]
-        let face: JSONObject = [
-            "type": "object", "additionalProperties": false, "required": ["eyes", "perspective"],
-            "properties": ["eyes": eyes, "perspective": number(0, 10), "nose": reference("nose"), "mouth": reference("mouth")],
-        ]
-        let current: JSONObject = [
-            "type": "object", "additionalProperties": false, "required": ["body", "colors", "face"],
-            "properties": ["name": ["type": "string", "maxLength": 120], "body": reference("body"),
-                           "colors": reference("colors"), "style": reference("style"), "face": face],
-            "$defs": definitions,
-        ]
-        do { return try JSONSerialization.data(withJSONObject: current) }
-        catch { preconditionFailure("Unable to build the avatar character schema: \(error)") }
-    }
-
-    private static func edit(_ object: inout JSONObject, _ keys: [String], _ action: (inout Any?) -> Void) {
-        guard let key = keys.first else { return }
-        if keys.count == 1 {
-            action(&object[key])
-        } else {
-            var child = object[key] as? JSONObject ?? [:]
-            edit(&child, Array(keys.dropFirst()), action)
-            object[key] = child
-        }
-    }
 
     private static func load(_ name: String) -> Data {
         do { return try AvatarResources.data(name, extension: "json") }

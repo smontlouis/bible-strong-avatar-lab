@@ -40,6 +40,7 @@ jobs:
         run: pnpm check
 
       - name: Create release pull request or publish
+        id: changesets
         uses: changesets/action@v1
         with:
           publish: pnpm release
@@ -48,3 +49,18 @@ jobs:
           commit: 'chore(release): publish runtime packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Swift Package Manager installs AvatarSwift from a `vX.Y.Z` tag of this repository: the
+      # packages share one version, so each publication gets that tag on the published commit.
+      - name: Tag the version for Swift Package Manager
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          version="v$(node -p "require('./packages/avatar-core/package.json').version")"
+          if git ls-remote --exit-code --tags origin "refs/tags/$version" >/dev/null; then
+            echo "$version already exists."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$version" -m "$version"
+            git push origin "$version"
+          fi

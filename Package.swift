@@ -8,8 +8,7 @@ let package = Package(
     name: "AvatarSwift",
     platforms: [.macOS(.v15), .iOS(.v18)],
     products: [
-        .library(name: "AvatarSwift", targets: ["AvatarSwift"]),
-        .executable(name: "AvatarSwiftDemo", targets: ["AvatarSwiftDemo"])
+        .library(name: "AvatarSwift", targets: ["AvatarSwift"])
     ],
     targets: [
         .target(
@@ -20,15 +19,10 @@ let package = Package(
                 .copy("\(core)/catalogue/faces.json"),
                 .copy("\(core)/catalogue/states.json"),
                 .copy("\(core)/avatarDefinition.schema.json"),
+                .copy("../../Resources/avatarCharacter.schema.json"),
                 .copy("../../Resources/Avatar.metal"),
                 .copy("../../LICENSE")
             ]
-        ),
-        .executableTarget(
-            name: "AvatarSwiftDemo",
-            dependencies: ["AvatarSwift"],
-            path: "packages/avatar-swift/Sources/AvatarSwiftDemo",
-            resources: [.copy("Resources")]
         ),
         .testTarget(
             name: "AvatarSwiftTests",

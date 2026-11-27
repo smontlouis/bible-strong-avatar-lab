@@ -80,8 +80,9 @@ integration. It ships in the npm tarball, so it is readable in `node_modules`. T
 instructions for AI** copies that package's README, with the avatar's file and names in its
 examples.
 
-For SwiftUI on iOS and macOS, use [AvatarSwift](./packages/avatar-swift/README.md). The Swift
-package uses the same catalogue and accepts exported character files.
+For SwiftUI on iOS and macOS, use [AvatarSwift](./packages/avatar-swift/README.md), installed with
+Swift Package Manager from this repository. It reads the same character files, against the same
+schema, and plays the same catalogue.
 
 ### For agents
 

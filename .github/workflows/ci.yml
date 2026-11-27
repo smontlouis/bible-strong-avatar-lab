@@ -31,3 +31,24 @@ jobs:
 
       - name: Validate project
         run: pnpm check
+
+  swift:
+    name: AvatarSwift
+    runs-on: macos-15
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Show the Swift toolchain
+        run: swift --version
+
+      - name: Test on macOS
+        run: swift test
+
+      - name: Build for iOS
+        run: xcodebuild build -quiet -scheme AvatarSwift -destination 'generic/platform=iOS Simulator'
+
+      - name: Build the demo app
+        run: swift build --package-path examples/avatar-swift-demo

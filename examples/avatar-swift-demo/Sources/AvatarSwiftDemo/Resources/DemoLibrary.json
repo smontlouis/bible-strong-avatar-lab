@@ -1,0 +1,30 @@
+{
+  "clips": [
+    {
+      "name": "OwnGreeting",
+      "duration": 2.2,
+      "tracks": {
+        "rotation": [
+          { "t": 0, "v": [0, 0, 0], "ease": [0.4, 0, 0.2, 1] },
+          { "t": 0.52, "v": [-10, 16, -12], "ease": [0.4, 0, 0.2, 1] },
+          { "t": 1.14, "v": [7, -12, 8], "ease": [0.4, 0, 0.2, 1] },
+          { "t": 2.2, "v": [0, 0, 0] }
+        ],
+        "position": [
+          { "t": 0, "v": [0, 0] },
+          { "t": 0.62, "v": [0, 0.1] },
+          { "t": 2.2, "v": [0, 0] }
+        ]
+      }
+    }
+  ],
+  "states": [{ "name": "greeting", "clips": ["OwnGreeting"], "face": "Starwink", "next": "idle" }],
+  "faces": [
+    {
+      "name": "Starwink",
+      "blinks": false,
+      "smile": 1,
+      "svg": "<svg viewBox='0 0 100 100'><path d='M50 6Q54 38 90 50Q55 56 50 94Q44 58 10 50Q45 40 50 6Z'/><g id='right'><path d='M11 61Q50 14 89 61' stroke='black' fill='none' stroke-width='10' stroke-linecap='round'/></g></svg>"
+    }
+  ]
+}

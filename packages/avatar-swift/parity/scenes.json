@@ -1,0 +1,1061 @@
+[
+ {
+  "id": "state-idle",
+  "steps": [
+   [
+    "state",
+    "idle"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-listening",
+  "steps": [
+   [
+    "state",
+    "listening"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-thinking",
+  "steps": [
+   [
+    "state",
+    "thinking"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-streaming",
+  "steps": [
+   [
+    "state",
+    "streaming"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-searching",
+  "steps": [
+   [
+    "state",
+    "searching"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-reading",
+  "steps": [
+   [
+    "state",
+    "reading"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-working",
+  "steps": [
+   [
+    "state",
+    "working"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-coding",
+  "steps": [
+   [
+    "state",
+    "coding"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-running",
+  "steps": [
+   [
+    "state",
+    "running"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-computing",
+  "steps": [
+   [
+    "state",
+    "computing"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-controlling",
+  "steps": [
+   [
+    "state",
+    "controlling"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-waiting",
+  "steps": [
+   [
+    "state",
+    "waiting"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-blocked",
+  "steps": [
+   [
+    "state",
+    "blocked"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-finished",
+  "steps": [
+   [
+    "state",
+    "finished"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-failed",
+  "steps": [
+   [
+    "state",
+    "failed"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-sleeping",
+  "steps": [
+   [
+    "state",
+    "sleeping"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-waking",
+  "steps": [
+   [
+    "state",
+    "waking"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-happy",
+  "steps": [
+   [
+    "state",
+    "happy"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-excited",
+  "steps": [
+   [
+    "state",
+    "excited"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-laughing",
+  "steps": [
+   [
+    "state",
+    "laughing"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-proud",
+  "steps": [
+   [
+    "state",
+    "proud"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-curious",
+  "steps": [
+   [
+    "state",
+    "curious"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-playful",
+  "steps": [
+   [
+    "state",
+    "playful"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-shy",
+  "steps": [
+   [
+    "state",
+    "shy"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-surprised",
+  "steps": [
+   [
+    "state",
+    "surprised"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-suspicious",
+  "steps": [
+   [
+    "state",
+    "suspicious"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-angry",
+  "steps": [
+   [
+    "state",
+    "angry"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-confused",
+  "steps": [
+   [
+    "state",
+    "confused"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-sad",
+  "steps": [
+   [
+    "state",
+    "sad"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-drowsy",
+  "steps": [
+   [
+    "state",
+    "drowsy"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-bored",
+  "steps": [
+   [
+    "state",
+    "bored"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-scared",
+  "steps": [
+   [
+    "state",
+    "scared"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-celebrate",
+  "steps": [
+   [
+    "state",
+    "celebrate"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-approving",
+  "steps": [
+   [
+    "state",
+    "approving"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-progress",
+  "steps": [
+   [
+    "state",
+    "progress"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-spawning",
+  "steps": [
+   [
+    "state",
+    "spawning"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-dictating",
+  "steps": [
+   [
+    "state",
+    "dictating"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-sending",
+  "steps": [
+   [
+    "state",
+    "sending"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-receiving",
+  "steps": [
+   [
+    "state",
+    "receiving"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-uploading",
+  "steps": [
+   [
+    "state",
+    "uploading"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-writing",
+  "steps": [
+   [
+    "state",
+    "writing"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-alerting",
+  "steps": [
+   [
+    "state",
+    "alerting"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-bouncing",
+  "steps": [
+   [
+    "state",
+    "bouncing"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-powering-down",
+  "steps": [
+   [
+    "state",
+    "powering-down"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-humming",
+  "steps": [
+   [
+    "state",
+    "humming"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-notifying",
+  "steps": [
+   [
+    "state",
+    "notifying"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-dragging",
+  "steps": [
+   [
+    "state",
+    "dragging"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-logo",
+  "steps": [
+   [
+    "state",
+    "logo"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-showcase",
+  "steps": [
+   [
+    "state",
+    "showcase"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "state-turntable",
+  "steps": [
+   [
+    "state",
+    "turntable"
+   ],
+   [
+    "run",
+    4,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "compact-thinking",
+  "compact": true,
+  "steps": [
+   [
+    "state",
+    "thinking"
+   ],
+   [
+    "run",
+    3,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "seed-7-idle",
+  "seed": 7,
+  "steps": [
+   [
+    "state",
+    "idle"
+   ],
+   [
+    "run",
+    6,
+    1
+   ]
+  ]
+ },
+ {
+  "id": "nod-bounce-spin",
+  "steps": [
+   [
+    "state",
+    "idle"
+   ],
+   [
+    "run",
+    0.5,
+    0.5
+   ],
+   [
+    "poke",
+    "nod"
+   ],
+   [
+    "run",
+    1,
+    0.25
+   ],
+   [
+    "poke",
+    "bounce"
+   ],
+   [
+    "run",
+    1,
+    0.25
+   ],
+   [
+    "poke",
+    "spin",
+    2
+   ],
+   [
+    "run",
+    2,
+    0.25
+   ]
+  ]
+ },
+ {
+  "id": "gaze",
+  "steps": [
+   [
+    "state",
+    "listening"
+   ],
+   [
+    "gaze",
+    [
+     0.6,
+     -0.3
+    ]
+   ],
+   [
+    "run",
+    1.5,
+    0.25
+   ],
+   [
+    "gazeAlways",
+    true
+   ],
+   [
+    "run",
+    1,
+    0.25
+   ],
+   [
+    "gaze",
+    null
+   ],
+   [
+    "run",
+    1,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "look-at",
+  "steps": [
+   [
+    "state",
+    "idle"
+   ],
+   [
+    "lookAt",
+    [
+     -0.66,
+     0.35
+    ]
+   ],
+   [
+    "run",
+    1.5,
+    0.25
+   ],
+   [
+    "lookAt",
+    null
+   ],
+   [
+    "run",
+    1,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "pose-and-release",
+  "steps": [
+   [
+    "state",
+    "idle"
+   ],
+   [
+    "pose",
+    {
+     "rotation": [
+      12,
+      30,
+      -5
+     ],
+     "position": [
+      0.1,
+      -0.05
+     ],
+     "zoom": 0.7
+    }
+   ],
+   [
+    "run",
+    1,
+    0.25
+   ],
+   [
+    "release"
+   ],
+   [
+    "run",
+    1.5,
+    0.25
+   ]
+  ]
+ },
+ {
+  "id": "held-face-emphasis",
+  "steps": [
+   [
+    "state",
+    "idle"
+   ],
+   [
+    "face",
+    "happy"
+   ],
+   [
+    "run",
+    1,
+    0.25
+   ],
+   [
+    "face",
+    null
+   ],
+   [
+    "emphasis",
+    true
+   ],
+   [
+    "run",
+    1,
+    0.25
+   ],
+   [
+    "emphasis",
+    false
+   ],
+   [
+    "run",
+    1,
+    0.5
+   ]
+  ]
+ },
+ {
+  "id": "morph-switch",
+  "steps": [
+   [
+    "state",
+    "idle"
+   ],
+   [
+    "morph",
+    "thinking"
+   ],
+   [
+    "run",
+    1.5,
+    0.25
+   ],
+   [
+    "morph",
+    "radar"
+   ],
+   [
+    "run",
+    1.5,
+    0.25
+   ],
+   [
+    "morph",
+    null
+   ],
+   [
+    "run",
+    1.5,
+    0.25
+   ]
+  ]
+ },
+ {
+  "id": "clip-seek-pause",
+  "steps": [
+   [
+    "clip",
+    "Marketing_A"
+   ],
+   [
+    "run",
+    0.5,
+    0.25
+   ],
+   [
+    "seek",
+    1.2
+   ],
+   [
+    "run",
+    0.25,
+    0.25
+   ],
+   [
+    "pause"
+   ],
+   [
+    "run",
+    0.5,
+    0.25
+   ],
+   [
+    "resume"
+   ],
+   [
+    "run",
+    1,
+    0.25
+   ]
+  ]
+ },
+ {
+  "id": "no-handover",
+  "steps": [
+   [
+    "handover",
+    false
+   ],
+   [
+    "state",
+    "finished"
+   ],
+   [
+    "run",
+    8,
+    1
+   ]
+  ]
+ },
+ {
+  "id": "library-greeting",
+  "library": true,
+  "steps": [
+   [
+    "state",
+    "greeting"
+   ],
+   [
+    "run",
+    3,
+    0.25
+   ]
+  ]
+ },
+ {
+  "id": "library-clip-face",
+  "library": true,
+  "steps": [
+   [
+    "clip",
+    "OwnGreeting"
+   ],
+   [
+    "face",
+    "Starwink"
+   ],
+   [
+    "run",
+    2.5,
+    0.25
+   ]
+  ]
+ },
+ {
+  "id": "handover-finished",
+  "steps": [
+   [
+    "state",
+    "finished"
+   ],
+   [
+    "run",
+    8,
+    1
+   ]
+  ]
+ }
+]
