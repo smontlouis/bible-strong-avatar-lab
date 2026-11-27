@@ -259,7 +259,9 @@ private func arc(from: SIMD2<Double>, to: SIMD2<Double>, rx: Double, ry: Double,
     let size = simd_length_squared(normalized)
     guard size > 1e-14 else { return [.line(to)] }
     let sign = large == sweep ? -1.0 : 1.0
-    let localCenter = sign * sqrt(max(0, (1 - size) / size)) * SIMD2(normalized.y, -normalized.x)
+    let reach: Double = sign * sqrt(max(0, (1 - size) / size))
+    let across = SIMD2<Double>(normalized.y, -normalized.x)
+    let localCenter: SIMD2<Double> = reach * across
     let initial = normalized - localCenter
     let final = -normalized - localCenter
     let start = atan2(initial.y, initial.x)
