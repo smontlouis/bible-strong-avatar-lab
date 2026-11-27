@@ -8,21 +8,44 @@ Each view receives an explicit character. The demo starts with **Strobi**, the c
 in the [avatar-react example](https://github.com/smontlouis/bible-strong-avatar-lab/blob/main/packages/avatar-react/README.md#minimal-example).
 Apps supply their own definitions and share the animation catalogue.
 
-## Preview
+## Install
 
-From the repository root, use Xcode's Swift toolchain on a Metal-capable Mac:
+AvatarSwift is the `AvatarSwift` library of this repository's Swift package. It is released with
+the npm packages, under the same version, from AvatarSwift's first release, `1.3.0`.
 
-```sh
-swift run AvatarSwiftDemo
-swift test
-swift run -c release AvatarSwiftDemo --export ./new-reel.mp4
+In Xcode, choose **File › Add Package Dependencies…**, enter
+`https://github.com/smontlouis/bible-strong-avatar-lab` and add the `AvatarSwift` library to your
+app's target. In a `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/smontlouis/bible-strong-avatar-lab", from: "1.3.0"),
+],
+targets: [
+    .target(name: "YourApp", dependencies: [
+        .product(name: "AvatarSwift", package: "bible-strong-avatar-lab"),
+    ]),
+]
 ```
 
-The demo loads Strobi, Clover, and a library with a custom clip, state and SVG face. Its exported reel uses the same engine and Metal renderer as the SwiftUI view.
+The package brings the shared catalogue, the character schema and the Metal shader as resources.
+It needs Xcode 16 (Swift 6), and a device with Metal to draw.
+
+Characters come from the Studio: its **Export** tab saves a `.avatar.json`, which you add to your
+app and read with `createAvatar` (see [Import files](#import-files)).
+
+## Preview
+
+The demo app is its own package in `examples/avatar-swift-demo`. From the repository root, with
+Xcode's Swift toolchain on a Mac with Metal:
+
+```sh
+swift run --package-path examples/avatar-swift-demo AvatarSwiftDemo
+swift run --package-path examples/avatar-swift-demo -c release AvatarSwiftDemo --export ./new-reel.mp4
+swift test
+```
 
 ## Embed in SwiftUI
-
-Add the repository root as a Swift package, then link the `AvatarSwift` product.
 
 ```swift
 import AvatarSwift
@@ -107,11 +130,21 @@ BGRA8 texture for embedding in another renderer or exporting frames.
 
 ## Upstream
 
-The Swift target bundles the state, clip and face catalogue and legacy definition schema
-from [avatar-core](../avatar-core/README.md). The demo's Strobi definition preserves the
+The Swift target bundles the state, clip and face catalogue, the character schema and the legacy
+definition schema from [avatar-core](../avatar-core/README.md). The demo's Strobi definition preserves the
 neutral appearance of the [React example](../../examples/react-vite-consumer/src/strobi.avatar.json).
 See [LICENSE](LICENSE).
 The native renderer uses 3D depth and returns a Swift scene. It looks through the same
 perspective as avatar-core, lays the eyes on the head as avatar-core does and rounds a cube with
 the same power. Silhouettes of the other surfaces, face transitions and antialiasing can differ
 from the upstream SVG renderer.
+
+## Parity with avatar-core
+
+AvatarSwift is a second implementation of avatar-core's engine. `parity/frames.json` holds what
+avatar-core's engine gives in the scenes of `parity/scenes.json`, and `swift test` plays the same
+scenes and compares every frame. In this version the Swift engine does not yet match avatar-core
+in 45 of the 63 scenes; they are listed in `Tests/AvatarSwiftTests/ParityTests.swift`.
+
+After a change of avatar-core's engine or character format, run `pnpm swift:parity` at the root to
+write the files again, then change the Swift engine until `swift test` passes.

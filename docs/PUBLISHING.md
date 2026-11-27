@@ -22,7 +22,18 @@ is applied as follows:
 3. The release workflow updates or creates a release pull request containing version and changelog
    changes.
 4. Review and merge that release pull request.
-5. The workflow validates, builds and publishes every unpublished version to npm.
+5. The workflow validates, builds and publishes every unpublished version to npm, then tags the
+   published commit `vX.Y.Z`, the version of the packages.
+
+## AvatarSwift
+
+AvatarSwift is not on npm: Swift Package Manager installs it from a `vX.Y.Z` tag of this
+repository, which the release workflow pushes after each publication. It shares the version of the
+npm packages. A change that touches only AvatarSwift has no npm package to version, so to release
+it, add a changeset for `@bible-strong/avatar-core` that says what changed in AvatarSwift.
+
+The macOS job of CI runs `swift test`, which compares the Swift engine with avatar-core (see
+[the parity section](../packages/avatar-swift/README.md#parity-with-avatar-core)).
 
 Publication uses npm trusted publishing through GitHub Actions OIDC. It does not require a stored
 `NPM_TOKEN`. Each npm package must trust the `release.yml` workflow in the

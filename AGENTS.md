@@ -38,6 +38,9 @@ pnpm check
   directive and reaches `avatar-core` by import only. Keep playback logic in `src/engine.ts`, which
   is tested in Node; verify the component on an iOS simulator and an Android emulator.
 - Add a changeset (`pnpm changeset`) to any change of a published package.
+- `packages/avatar-swift` is a Swift port of avatar-core's engine and reader. After changing the
+  engine, the catalogue or the character format, run `pnpm swift:parity` and port the change to
+  Swift until `swift test` passes (see its README).
 
 ## UI conventions
 

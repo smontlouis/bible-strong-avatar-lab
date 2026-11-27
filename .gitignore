@@ -6,5 +6,5 @@ pnpm-debug.log*
 coverage/
 
 # Swift Package Manager
-/.build/
-/.swiftpm/
+.build/
+.swiftpm/

@@ -25,6 +25,7 @@
     "typecheck": "tsc --noEmit && pnpm --filter @bible-strong/avatar-react-native typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
+    "swift:parity": "SWIFT_PARITY_UPDATE=1 vitest run packages/avatar-swift",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "packages:build": "pnpm --filter './packages/*' build",
