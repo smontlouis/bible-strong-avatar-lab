@@ -116,53 +116,7 @@ private func point(_ text: String) -> SIMD2<Double>? {
 
 /// Scenes in which the Swift engine does not yet do what avatar-core does. Each is a known issue:
 /// the test fails if one of them starts to match, so that it is taken off this list.
-private let notYetMatching: Set<String> = [
-    "clip-seek-pause",
-    "gaze",
-    "handover-finished",
-    "held-face-emphasis",
-    "library-clip-face",
-    "library-greeting",
-    "look-at",
-    "no-handover",
-    "nod-bounce-spin",
-    "pose-and-release",
-    "seed-7-idle",
-    "state-angry",
-    "state-blocked",
-    "state-bored",
-    "state-celebrate",
-    "state-coding",
-    "state-computing",
-    "state-confused",
-    "state-controlling",
-    "state-curious",
-    "state-dragging",
-    "state-drowsy",
-    "state-excited",
-    "state-finished",
-    "state-happy",
-    "state-humming",
-    "state-idle",
-    "state-laughing",
-    "state-listening",
-    "state-logo",
-    "state-playful",
-    "state-progress",
-    "state-proud",
-    "state-reading",
-    "state-running",
-    "state-scared",
-    "state-showcase",
-    "state-shy",
-    "state-sleeping",
-    "state-spawning",
-    "state-streaming",
-    "state-surprised",
-    "state-suspicious",
-    "state-waking",
-    "state-working",
-]
+private let notYetMatching: Set<String> = []
 
 @Test(arguments: try scenes())
 private func engineMatchesAvatarCore(_ scene: ParityScene) throws {
@@ -234,7 +188,8 @@ private func engineMatchesAvatarCore(_ scene: ParityScene) throws {
             }
         }
     }
-    if notYetMatching.contains(scene.id) {
+    // `PARITY_STRICT=1` shows every difference, known or not.
+    if notYetMatching.contains(scene.id), ProcessInfo.processInfo.environment["PARITY_STRICT"] != "1" {
         withKnownIssue("The Swift engine does not yet match avatar-core in this scene.") { compare() }
     } else {
         compare()

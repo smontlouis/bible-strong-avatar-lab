@@ -245,6 +245,13 @@ struct FacePresentation: Equatable, Sendable {
     var name: String
     var artwork: FaceArtwork
     var smile: Double
+    /// How far the eyes are shut while one face gives way to another with a blink, from 0 to 1.
+    var shut = 0.0
+
+    var isDrawn: Bool {
+        if case .drawn = artwork { return true }
+        return false
+    }
 
     var blinks: Bool {
         switch artwork {

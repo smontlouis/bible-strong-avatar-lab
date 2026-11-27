@@ -26,7 +26,7 @@ public func renderCharacterFrame(_ character: AvatarCharacter, _ frame: AvatarFr
     let bodyRadius = (primary.width + primary.height) / 480
     let faceRadius = min(primary.width, primary.height) / 240
     let rotation = rotationQuaternion(frame.pose.rotation)
-    let whole = frame.orientation.map { rotation * normalizedQuaternion($0) } ?? rotation
+    let whole = frame.orientation.map { rotation * worldQuaternion($0) } ?? rotation
     let identity = rotationQuaternion(.zero)
     var parts: [AvatarScene.Part] = []
 
