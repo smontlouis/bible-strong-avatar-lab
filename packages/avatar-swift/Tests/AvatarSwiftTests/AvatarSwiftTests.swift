@@ -60,6 +60,14 @@ import Testing
     #expect(a.state == "waking")
 }
 
+@Test func spinnerTurnsLikeAvatarCore() throws {
+    // avatar-core, seed 26, two seconds into `thinking`: the body has turned +180°.
+    var engine = AvatarEngine(seed: 26)
+    engine.setState("thinking")
+    for _ in 0..<120 { engine.advance(1 / 60) }
+    #expect(abs(engine.frame.pose.rotation.y - 180) < 0.5)
+}
+
 @Test func gazePosePauseAndGesture() throws {
     var engine = AvatarEngine()
     engine.setState("listening")

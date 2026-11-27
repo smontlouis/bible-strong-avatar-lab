@@ -111,5 +111,7 @@ The Swift target bundles the state, clip and face catalogue and legacy definitio
 from [avatar-core](../avatar-core/README.md). The demo's Strobi definition preserves the
 neutral appearance of the [React example](../../examples/react-vite-consumer/src/strobi.avatar.json).
 See [LICENSE](LICENSE).
-The native renderer uses 3D depth and returns a Swift scene. Its primitive silhouettes,
-perspective, face transitions and antialiasing can differ from the upstream SVG renderer.
+The native renderer uses 3D depth and returns a Swift scene. It looks through the same
+perspective as avatar-core, lays the eyes on the head as avatar-core does and rounds a cube with
+the same power. Silhouettes of the other surfaces, face transitions and antialiasing can differ
+from the upstream SVG renderer.

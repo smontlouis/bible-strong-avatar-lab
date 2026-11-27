@@ -26,6 +26,7 @@ func drawAvatarFace(_ face: FaceAtlasKey, in context: CGContext) {
     let spacing = sin(radians(18.38 * build.gap)) * radius
     let height = -build.shiftY * radius
     let blink = max(0.06, 1 - 0.94 * face.lids)
+    let wrap = EyeWrap(radius: radius, gap: build.gap, shiftY: build.shiftY)
     context.setFillColor(gray: 1, alpha: 1)
     context.setStrokeColor(gray: 1, alpha: 1)
 
@@ -45,14 +46,14 @@ func drawAvatarFace(_ face: FaceAtlasKey, in context: CGContext) {
             if build.neutralShape == .circle, face.art.name == "neutral" {
                 let dot = eye.wid * width
                 let center = side * max(spacing, 0.02 * radius + dot)
-                context.fillEllipse(in: CGRect(x: center - dot, y: height - dot * blink,
-                                               width: 2 * dot, height: 2 * dot * blink))
+                wrappedFill(CGPath(ellipseIn: CGRect(x: center - dot, y: height - dot * blink,
+                                                     width: 2 * dot, height: 2 * dot * blink), transform: nil),
+                            .identity, side: side, wrap: wrap, in: context)
             } else {
                 let minimumGap = max(spacing, 0.02 * radius - path.boundingBoxOfPath.minX * width)
-                context.translateBy(x: side * minimumGap, y: height)
-                context.scaleBy(x: side * width, y: radius * build.height * eyeSize * blink)
-                context.addPath(path)
-                context.fillPath()
+                let placed = CGAffineTransform(scaleX: side * width, y: radius * build.height * eyeSize * blink)
+                    .concatenating(CGAffineTransform(translationX: side * minimumGap, y: height))
+                wrappedFill(path, placed, side: side, wrap: wrap, in: context)
             }
         case .drawn(let drawing):
             let marks = index == 0 ? drawing.left : drawing.right ?? drawing.left
@@ -62,10 +63,10 @@ func drawAvatarFace(_ face: FaceAtlasKey, in context: CGContext) {
             let heightScale = -unit * build.height * blink
             let inmost = marks.map { $0.path.cgPath.boundingBoxOfPath }.reduce(CGRect.null) { $0.union($1) }
             let reach = side < 0 ? inmost.maxX - 50 : (mirror ? inmost.maxX - 50 : 50 - inmost.minX)
-            context.translateBy(x: side * max(spacing, 0.02 * radius + width * reach), y: height)
-            context.scaleBy(x: (mirror ? -1 : 1) * width, y: heightScale)
-            context.translateBy(x: -50, y: -50)
-            for mark in marks { paint(mark, in: context) }
+            let placed = CGAffineTransform(translationX: -50, y: -50)
+                .concatenating(CGAffineTransform(scaleX: (mirror ? -1 : 1) * width, y: heightScale))
+                .concatenating(CGAffineTransform(translationX: side * max(spacing, 0.02 * radius + width * reach), y: height))
+            for mark in marks { paintWrapped(mark, placed, side: side, wrap: wrap, in: context) }
         }
         context.restoreGState()
     }
@@ -133,29 +134,6 @@ private func eyePath(_ eye: AvatarFaceShape.Eye) -> CGPath {
     shape.addCurve(to: middle, control1: handle(4, first), control2: handle(8, middle))
     shape.addCurve(to: last, control1: handle(10, middle), control2: handle(14, last))
     return shape.copy(strokingWithWidth: max(0.001, 2 * eye.wid), lineCap: .round, lineJoin: .round, miterLimit: 2)
-}
-
-private func paint(_ mark: AvatarCompiledFace.Mark, in context: CGContext) {
-    let path = mark.path.cgPath
-    if mark.fill {
-        context.addPath(path)
-        context.fillPath(using: mark.rule == .evenodd ? .evenOdd : .winding)
-    }
-    if let stroke = mark.stroke, stroke.width > 0 {
-        switch stroke.cap ?? .butt {
-        case .round: context.setLineCap(.round)
-        case .square: context.setLineCap(.square)
-        case .butt: context.setLineCap(.butt)
-        }
-        switch stroke.join ?? .miter {
-        case .round: context.setLineJoin(.round)
-        case .bevel: context.setLineJoin(.bevel)
-        case .miter: context.setLineJoin(.miter)
-        }
-        context.setLineWidth(stroke.width)
-        context.addPath(path)
-        context.strokePath()
-    }
 }
 
 private func centered(_ size: CGSize) -> CGRect {
@@ -240,4 +218,64 @@ func drawSpinnerMarks(_ marks: [AvatarSpinnerMark], radius: Double, in context: 
         context.restoreGState()
     }
     context.restoreGState()
+}
+
+
+/// Lays an eye drawn flat around its place on the ball of the head, as avatar-core's
+/// `eyePointOnFace` does, and gives where it lands seen from the front.
+private struct EyeWrap {
+    let radius: Double
+    let gap: Double
+    let shiftY: Double
+
+    func apply(_ point: CGPoint, side: Double) -> CGPoint {
+        let turn = radians(18.38) * gap
+        let placeX = side * sin(turn)
+        let placeZ = cos(turn)
+        // The flat drawing puts the eye at sin(turn) across: what is beyond is the eye's own frame.
+        let outward = side * point.x / radius - sin(turn)
+        let up = point.y / radius + shiftY
+        let reach = hypot(outward, up)
+        guard reach > 1e-9 else { return CGPoint(x: placeX * radius, y: -shiftY * radius) }
+        let along = sin(reach) / reach
+        let x = cos(reach) * placeX + along * outward * side * placeZ
+        return CGPoint(x: x * radius, y: (along * up - shiftY) * radius)
+    }
+
+    func wrapped(_ path: CGPath, side: Double) -> CGPath {
+        let flat = path.flattened(threshold: 0.0015 * radius)
+        let result = CGMutablePath()
+        flat.applyWithBlock { element in
+            let e = element.pointee
+            switch e.type {
+            case .moveToPoint: result.move(to: apply(e.points[0], side: side))
+            case .addLineToPoint: result.addLine(to: apply(e.points[0], side: side))
+            case .closeSubpath: result.closeSubpath()
+            default: break
+            }
+        }
+        return result
+    }
+}
+
+private func wrappedFill(_ path: CGPath, _ placed: CGAffineTransform, side: Double, wrap: EyeWrap,
+                         rule: CGPathFillRule = .winding, in context: CGContext) {
+    var transform = placed
+    guard let onFace = path.copy(using: &transform) else { return }
+    context.addPath(wrap.wrapped(onFace, side: side))
+    context.fillPath(using: rule)
+}
+
+private func paintWrapped(_ mark: AvatarCompiledFace.Mark, _ placed: CGAffineTransform, side: Double,
+                          wrap: EyeWrap, in context: CGContext) {
+    let path = mark.path.cgPath
+    if mark.fill {
+        wrappedFill(path, placed, side: side, wrap: wrap, rule: mark.rule == .evenodd ? .evenOdd : .winding, in: context)
+    }
+    if let stroke = mark.stroke, stroke.width > 0 {
+        let cap: CGLineCap = switch stroke.cap ?? .butt { case .round: .round; case .square: .square; case .butt: .butt }
+        let join: CGLineJoin = switch stroke.join ?? .miter { case .round: .round; case .bevel: .bevel; case .miter: .miter }
+        let outline = path.copy(strokingWithWidth: stroke.width, lineCap: cap, lineJoin: join, miterLimit: 10)
+        wrappedFill(outline, placed, side: side, wrap: wrap, in: context)
+    }
 }
