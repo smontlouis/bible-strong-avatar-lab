@@ -80,43 +80,17 @@ private enum CharacterSchemas {
     // outline, nose and mouth, just as the JavaScript runtime does.
     private static func makeCurrentSchema() -> Data {
         let legacySchema = object(legacyData)
-        var definitions = legacySchema["$defs"] as? [String: JSONObject] ?? [:]
+        let definitions = legacySchema["$defs"] as? [String: JSONObject] ?? [:]
 
         func number(_ low: Double, _ high: Double) -> JSONObject {
             ["type": "number", "minimum": low, "maximum": high]
         }
         func reference(_ name: String) -> JSONObject { ["$ref": "#/$defs/" + name] }
 
-        func addBeak(_ word: inout Any?) {
-            var options = word as? [String] ?? []
-            options.append("tapered-beak")
-            word = options
-        }
-        var surface = definitions["surface"] ?? [:]
-        edit(&surface, ["properties", "type", "enum"], addBeak)
-        definitions["surface"] = surface
-
-        var node = definitions["nodeSurface"] ?? [:]
-        if var rules = node["allOf"] as? [JSONObject] {
-            for index in rules.indices where rules[index]["properties"] != nil {
-                edit(&rules[index], ["properties", "type", "enum"], addBeak)
-            }
-            node["allOf"] = rules
-        }
-        definitions["nodeSurface"] = node
-
-        var body = definitions["body"] ?? [:]
-        edit(&body, ["properties", "nodes", "items", "properties", "blend"]) { $0 = number(0, 120) }
-        definitions["body"] = body
-        var style = definitions["style"] ?? [:]
-        edit(&style, ["properties", "lighting"]) { $0 = ["enum": ["flat", "studio"]] }
-        definitions["style"] = style
-
         let eyes: JSONObject = [
             "type": "object", "additionalProperties": false, "required": ["width", "height", "gap", "shiftY"],
             "properties": [
                 "width": number(0.1, 4), "height": number(0.1, 4), "gap": number(0, 4), "shiftY": number(-1, 1),
-                "neutralShape": ["enum": ["circle"]],
             ],
         ]
         let face: JSONObject = [

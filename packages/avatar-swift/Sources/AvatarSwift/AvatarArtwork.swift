@@ -43,18 +43,10 @@ func drawAvatarFace(_ face: FaceAtlasKey, in context: CGContext) {
             let eye = expression.eyes[index]
             let path = eyePath(eye)
             let width = radius * build.width * eyeSize
-            if build.neutralShape == .circle, face.art.name == "neutral" {
-                let dot = eye.wid * width
-                let center = side * max(spacing, 0.02 * radius + dot)
-                wrappedFill(CGPath(ellipseIn: CGRect(x: center - dot, y: height - dot * blink,
-                                                     width: 2 * dot, height: 2 * dot * blink), transform: nil),
-                            .identity, side: side, wrap: wrap, in: context)
-            } else {
-                let minimumGap = max(spacing, 0.02 * radius - path.boundingBoxOfPath.minX * width)
-                let placed = CGAffineTransform(scaleX: side * width, y: radius * build.height * eyeSize * blink)
-                    .concatenating(CGAffineTransform(translationX: side * minimumGap, y: height))
-                wrappedFill(path, placed, side: side, wrap: wrap, in: context)
-            }
+            let minimumGap = max(spacing, 0.02 * radius - path.boundingBoxOfPath.minX * width)
+            let placed = CGAffineTransform(scaleX: side * width, y: radius * build.height * eyeSize * blink)
+                .concatenating(CGAffineTransform(translationX: side * minimumGap, y: height))
+            wrappedFill(path, placed, side: side, wrap: wrap, in: context)
         case .drawn(let drawing):
             let marks = index == 0 ? drawing.left : drawing.right ?? drawing.left
             let mirror = index == 1 && drawing.right == nil

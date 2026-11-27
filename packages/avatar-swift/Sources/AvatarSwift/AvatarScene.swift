@@ -10,7 +10,6 @@ public struct AvatarScene: Equatable, Sendable {
         /// Quaternion in w, x, y, z order.
         public var orientation: SIMD4<Double>
         public var color: String
-        public var blend: Double
     }
 
     public let character: AvatarCharacter
@@ -32,18 +31,18 @@ public func renderCharacterFrame(_ character: AvatarCharacter, _ frame: AvatarFr
     var parts: [AvatarScene.Part] = []
 
     func append(_ surface: AvatarSurface, at center: SIMD3<Double>, with quaternion: simd_quatd,
-                color: String, blend: Double = 0) {
+                color: String) {
         let value = SIMD4(quaternion.real, quaternion.imag.x, quaternion.imag.y, quaternion.imag.z)
-        parts.append(.init(surface: surface, center: center, orientation: value, color: color, blend: blend))
+        parts.append(.init(surface: surface, center: center, orientation: value, color: color))
     }
 
     func expanded(_ surface: AvatarSurface, at center: SIMD3<Double>, with quaternion: simd_quatd,
-                  color: String, blend: Double = 0) {
+                  color: String) {
         switch surface.type {
         case .mickey:
             var main = surface
             main.type = .sphere
-            append(main, at: center, with: quaternion, color: color, blend: blend)
+            append(main, at: center, with: quaternion, color: color)
             let ear = AvatarSurface(type: .sphere, width: surface.width * 0.47, height: surface.width * 0.47,
                                     depth: surface.depth * 0.51)
             for side in [-1.0, 1.0] {
@@ -57,13 +56,13 @@ public func renderCharacterFrame(_ character: AvatarCharacter, _ frame: AvatarFr
             main.depth *= 0.62
             main.height *= 0.64
             let down = SIMD3(0.0, -surface.height * 0.18 / 120, 0.0)
-            append(main, at: center + quaternion.act(down), with: quaternion, color: color, blend: blend)
+            append(main, at: center + quaternion.act(down), with: quaternion, color: color)
             let tip = AvatarSurface(type: .cone, width: surface.width, height: surface.height * 0.36,
                                     depth: surface.depth, roundness: surface.roundness)
             let up = SIMD3(0.0, surface.height * 0.32 / 120, 0.0)
-            append(tip, at: center + quaternion.act(up), with: quaternion, color: color, blend: blend)
+            append(tip, at: center + quaternion.act(up), with: quaternion, color: color)
         default:
-            append(surface, at: center, with: quaternion, color: color, blend: blend)
+            append(surface, at: center, with: quaternion, color: color)
         }
     }
 
@@ -74,7 +73,7 @@ public func renderCharacterFrame(_ character: AvatarCharacter, _ frame: AvatarFr
         let offset = SIMD3(node.position[0], -node.position[1], node.position[2]) / 120
         let angle = SIMD3(node.rotation[0], node.rotation[1], node.rotation[2])
         expanded(node.surface, at: parent.act(offset), with: parent * rotationQuaternion(angle),
-                 color: node.color ?? character.colors.body, blend: (node.blend ?? 0) / 120)
+                 color: node.color ?? character.colors.body)
     }
 
     let zoom = clamp(frame.pose.zoom, 0.05, 8) / AvatarPose.restZoom

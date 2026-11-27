@@ -54,8 +54,7 @@ public final class AvatarMetalRenderer {
     /// The texture must be BGRA8Unorm with shader-write usage. Commit the returned command buffer.
     public func encode(_ scene: AvatarScene, into texture: any MTLTexture,
                        options: AvatarRenderOptions = .init()) throws -> any MTLCommandBuffer {
-        let studio = scene.character.style?.lighting == .studio
-        let extent = (studio ? 3.95 * 0.292 : 1.25) * clamp(options.viewportScale, 0.1, 6)
+        let extent = 1.25 * clamp(options.viewportScale, 0.1, 6)
         let faceExtent = max(0.6, 1.4 * scene.faceRadius)
         let spinner = scene.frame.spinner
         let faceVisibility = spinner.map { $0.amount >= 0.5 ? 0 : 1 - $0.round } ?? 1
@@ -144,7 +143,7 @@ private struct PartUniform {
     var axisX: SIMD4<Float>
     var axisY: SIMD4<Float>
     var axisZ: SIMD4<Float>
-    var colorBlend: SIMD4<Float>
+    var color: SIMD4<Float>
     var profile: SIMD4<Float>
     var extra: SIMD4<Float>
 
@@ -161,14 +160,13 @@ private struct PartUniform {
         case .cone: kind = 4
         case .diamond: kind = 5
         case .trapezoid: kind = 6
-        case .taperedBeak: kind = 7
         }
         centerKind = SIMD4(SIMD3<Float>(part.center), kind)
         radiiRoundness = SIMD4(simd_max(radii, SIMD3(repeating: 0.001)), Float(shape.roundness))
         axisX = SIMD4(SIMD3<Float>(matrix.columns.0), 0)
         axisY = SIMD4(SIMD3<Float>(matrix.columns.1), 0)
         axisZ = SIMD4(SIMD3<Float>(matrix.columns.2), 0)
-        colorBlend = SIMD4(color(part.color), Float(max(0, part.blend)))
+        color = SIMD4(linearColor(part.color), 0)
         profile = SIMD4(Float(shape.morphRoundness ?? 0), Float(shape.tipRoundness ?? 0),
                         Float(shape.baseRoundness ?? 0), Float(shape.topScale ?? 0.82))
         extra = SIMD4(Float(shape.bottomScale ?? 1.08), 0, 0, 0)
@@ -195,10 +193,10 @@ private struct SceneUniform {
         let scale = scene.scale * interpolate(1, radius, amount)
         let spinCenter = scene.translation + (drawing?.core.position ?? .zero) * SIMD2(scene.bodyRadius, -scene.bodyRadius)
         transform = SIMD4(Float(spinCenter.x), Float(spinCenter.y), Float(scale.x), Float(scale.y))
-        bodyPaint = SIMD4(color(scene.character.colors.body), Float(clamp(scene.frame.pose.opacity)))
-        eyePaint = SIMD4(color(scene.character.colors.eyes), Float(scene.character.face.perspective))
-        outline = SIMD4(color(line?.color ?? "#000000"), line?.enabled == true ? Float((line?.width ?? 0) / 120) : 0)
-        display = SIMD4(Float(extent), style?.lighting == .studio ? 1 : 0, options.background == .studio ? 1 : 0,
+        bodyPaint = SIMD4(linearColor(scene.character.colors.body), Float(clamp(scene.frame.pose.opacity)))
+        eyePaint = SIMD4(linearColor(scene.character.colors.eyes), Float(scene.character.face.perspective))
+        outline = SIMD4(linearColor(line?.color ?? "#000000"), line?.enabled == true ? Float((line?.width ?? 0) / 120) : 0)
+        display = SIMD4(Float(extent), 0, options.background == .studio ? 1 : 0,
                         Float(line?.opacity ?? 0))
         textures = SIMD4(Float(faceExtent), Float(faceVisibility), Float(extent), Float(clamp(options.grayscale)))
         spinner = SIMD4(Float(spinCenter.x), Float(spinCenter.y), Float(radius * scene.bodyRadius),
@@ -209,13 +207,13 @@ private struct SceneUniform {
             let surface = part.surface
             let radii = SIMD3(surface.width, surface.height, surface.depth) / 240
             let box = surface.type == .sphere ? max(radii.x, radii.y, radii.z) : simd_length(radii) * 1.35
-            return max(far, simd_length(part.center) + box + part.blend)
+            return max(far, simd_length(part.center) + box)
         }
         geometry = SIMD4(Float(scene.parts.count), Float(bound + 0.035), 0, 0)
     }
 }
 
-private func color(_ hex: String) -> SIMD3<Float> {
+private func linearColor(_ hex: String) -> SIMD3<Float> {
     let digits = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
     guard digits.count == 6, let number = UInt32(digits, radix: 16) else { return .zero }
     func channel(_ shift: UInt32) -> Float {
