@@ -4,3 +4,7 @@ pnpm-debug.log*
 *.local
 .DS_Store
 coverage/
+
+# Swift Package Manager
+/.build/
+/.swiftpm/
