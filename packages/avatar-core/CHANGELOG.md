@@ -1,5 +1,12 @@
 # @bible-strong/avatar-core
 
+## 1.3.0
+
+### Minor Changes
+
+- f72df04: AvatarSwift, the SwiftUI and Metal renderer, is released with this version: Swift Package Manager
+  installs it from this repository's `v` tag. It reads exactly the character format of avatar-core.
+
 ## 1.2.1
 
 ### Patch Changes

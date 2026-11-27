@@ -1,5 +1,12 @@
 # @bible-strong/avatar-web
 
+## 1.3.0
+
+### Patch Changes
+
+- Updated dependencies [f72df04]
+  - @bible-strong/avatar-core@1.3.0
+
 ## 1.2.1
 
 ### Patch Changes
