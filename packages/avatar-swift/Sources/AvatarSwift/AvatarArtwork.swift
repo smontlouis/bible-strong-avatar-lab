@@ -25,7 +25,7 @@ func drawAvatarFace(_ face: FaceAtlasKey, in context: CGContext) {
     let radius = face.radius
     let spacing = sin(radians(18.38 * build.gap)) * radius
     let height = -build.shiftY * radius
-    let blink = max(0.06, 1 - 0.94 * face.lids)
+    let blink = max(0.06, 1 - 0.94 * max(face.lids, face.art.shut))
     let wrap = EyeWrap(radius: radius, gap: build.gap, shiftY: build.shiftY)
     context.setFillColor(gray: 1, alpha: 1)
     context.setStrokeColor(gray: 1, alpha: 1)

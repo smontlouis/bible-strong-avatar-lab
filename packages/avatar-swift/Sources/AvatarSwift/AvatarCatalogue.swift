@@ -257,22 +257,37 @@ func smooth(_ value: Double) -> Double {
 func radians(_ degrees: Double) -> Double { degrees * .pi / 180 }
 
 public func clipEaseAt(_ ease: [Double], _ time: Double) -> Double {
-    let time = clamp(time)
-    guard ease.count == 4, time > 0, time < 1, ease[0] != ease[1] || ease[2] != ease[3] else { return time }
+    if time <= 0 { return 0 }
+    if time >= 1 { return 1 }
+    guard ease.count == 4, ease[0] != ease[1] || ease[2] != ease[3] else { return time }
+    let (x1, y1, x2, y2) = (ease[0], ease[1], ease[2], ease[3])
     func bezier(_ a: Double, _ b: Double, _ t: Double) -> Double {
         let rest = 1 - t
         return 3 * rest * rest * t * a + 3 * rest * t * t * b + t * t * t
     }
+    func slope(_ a: Double, _ b: Double, _ t: Double) -> Double {
+        let rest = 1 - t
+        return 3 * rest * rest * a + 6 * rest * t * (b - a) + 3 * t * t * (1 - b)
+    }
+    // As avatar-core: Newton's steps first, then halving where they do not settle.
+    var t = time
+    for _ in 0..<8 {
+        let error = bezier(x1, x2, t) - time
+        if abs(error) < 1e-6 { return bezier(y1, y2, t) }
+        let rate = slope(x1, x2, t)
+        if abs(rate) < 1e-6 { break }
+        t -= error / rate
+    }
     var lower = 0.0
     var upper = 1.0
-    var t = time
+    t = time
     for _ in 0..<24 {
-        let x = bezier(ease[0], ease[2], t)
-        if abs(x - time) < 0.000_001 { break }
+        let x = bezier(x1, x2, t)
+        if abs(x - time) < 1e-6 { break }
         if x < time { lower = t } else { upper = t }
         t = (lower + upper) / 2
     }
-    return bezier(ease[1], ease[3], t)
+    return bezier(y1, y2, t)
 }
 
 public func sampleClipTrack(_ keys: [AvatarKeyframe], at time: Double) -> [Double]? {
@@ -285,49 +300,4 @@ public func sampleClipTrack(_ keys: [AvatarKeyframe], at time: Double) -> [Doubl
     let portion = (time - from.t) / (to.t - from.t)
     let progress = from.ease.map { clipEaseAt($0, portion) } ?? portion
     return zip(from.v, to.v).map { interpolate($0, $1, progress) }
-}
-
-struct PlaybackClip: Sendable {
-    let definition: AvatarClip
-    let lids: [AvatarKeyframe]
-    let faces: [AvatarFaceKeyframe]
-    var restTime: Double { clamp(definition.workArea?.start ?? 0, 0, definition.duration) }
-
-    init(_ clip: AvatarClip) {
-        definition = clip
-        let blinkEase = [0.42, 0.0, 0.58, 1.0]
-        var lidKeys = clip.tracks.lids ?? []
-        var faceKeys: [AvatarFaceKeyframe] = []
-        for key in clip.tracks.expression ?? [] {
-            if key.v == "blink" {
-                lidKeys.append(.init(t: key.t, v: [0], ease: blinkEase))
-                lidKeys.append(.init(t: key.t + 0.117, v: [1], ease: blinkEase))
-                lidKeys.append(.init(t: key.t + 0.26, v: [0], ease: blinkEase))
-            } else {
-                faceKeys.append(key)
-            }
-        }
-        lids = lidKeys.sorted { $0.t < $1.t }
-        faces = faceKeys.sorted { $0.t < $1.t }
-    }
-
-    func pose(at time: Double, zoom: Double) -> AvatarPose {
-        let track = definition.tracks
-        func values(_ keys: [AvatarKeyframe]?, _ fallback: [Double]) -> [Double] {
-            guard let sampled = sampleClipTrack(keys ?? [], at: time), sampled.count == fallback.count else {
-                return fallback
-            }
-            return sampled
-        }
-        let position = values(track.position, [0, 0])
-        let rotation = values(track.rotation, [0, 0, 0])
-        let squash = values(track.squash, [1, 1])
-        return AvatarPose(position: SIMD2(position[0], position[1]),
-                          rotation: SIMD3(rotation[0], rotation[1], rotation[2]),
-                          squash: SIMD2(squash[0], squash[1]), zoom: clamp(values(track.scale, [zoom])[0], 0.25, 2.5),
-                          lids: clamp(values(lids, [0])[0]), opacity: clamp(values(track.opacity, [1])[0]),
-                          eyeSize: clamp(values(track.eyeSize, [1])[0], 0.2, 3))
-    }
-
-    func face(at time: Double) -> AvatarFaceKeyframe? { faces.last { $0.t <= time } }
 }

@@ -143,8 +143,7 @@ from the upstream SVG renderer.
 
 AvatarSwift is a second implementation of avatar-core's engine. `parity/frames.json` holds what
 avatar-core's engine gives in the scenes of `parity/scenes.json`, and `swift test` plays the same
-scenes and compares every frame. In this version the Swift engine does not yet match avatar-core
-in 45 of the 63 scenes; they are listed in `Tests/AvatarSwiftTests/ParityTests.swift`.
+scenes and compares every frame. The Swift engine matches avatar-core in all 63 scenes.
 
 After a change of avatar-core's engine or character format, run `pnpm swift:parity` at the root to
 write the files again, then change the Swift engine until `swift test` passes.

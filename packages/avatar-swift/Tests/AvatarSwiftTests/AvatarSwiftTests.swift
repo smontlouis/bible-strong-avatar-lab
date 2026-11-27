@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import simd
 import Testing
 @testable import AvatarSwift
 
@@ -75,22 +76,41 @@ import Testing
     let clipTime = engine.clipTime
     engine.setLookAt(SIMD2(1, 0.5))
     for _ in 0..<36 { engine.advance(1 / 60) }
-    #expect(engine.clipTime == clipTime)
+    // As in avatar-core, the clip goes on under a pose set by hand.
+    #expect(engine.clipTime != clipTime)
     #expect(engine.frame.pose.rotation.y > 14)
     #expect(engine.frame.pose.zoom == 0.8)
     engine.poke(.nod)
     engine.advance(0.1)
     #expect(!engine.isAtRest)
+    // Paused, the clip stays where it is; the nod laid over it goes on.
     engine.pause()
+    #expect(engine.isPaused)
     let frozen = engine.frame
+    let pausedAt = engine.clipTime
     engine.advance(0.09)
-    #expect(engine.frame == frozen)
+    #expect(engine.clipTime == pausedAt)
+    #expect(engine.frame != frozen)
     engine.resume()
+    #expect(!engine.isPaused)
     engine.setLookAt(nil)
     engine.releasePose()
     for _ in 0..<60 { engine.advance(1 / 60) }
     #expect(engine.clipTime != clipTime)
     #expect(engine.isAtRest)
+}
+
+@Test func orientationsAreAvatarCoresTurnsInSwiftsWorld() throws {
+    // A frame's orientation is counted as avatar-core counts a clip's turn; the scene turns it into
+    // Swift's world, where the same rotation is `rotationQuaternion`.
+    let turns: [SIMD3<Double>] = [SIMD3(12, 30, -5), SIMD3(-40, 0, 0), SIMD3(0, 75, 0), SIMD3(0, 0, 33),
+                                  SIMD3(170, -95, 260)]
+    for turn in turns {
+        let world = worldQuaternion(clipOrientation(turn)).vector
+        let expected = rotationQuaternion(turn).vector
+        let same = simd_length(world - expected) < 1e-9 || simd_length(world + expected) < 1e-9
+        #expect(same, "\(turn)")
+    }
 }
 
 @Test func validationAndLegacyMigration() throws {
