@@ -512,7 +512,7 @@ private struct SpinnerMotion: Sendable {
         }
         if showing != displays {
             showing = displays
-            if showing { way = random.next() < 0.5 ? -1 : 1 }
+            if showing { way = random.next() < 0.5 ? 1 : -1 }
             spinTarget += 180 * way
         }
         fullness.pull(to: showing ? 1 : 0, stiffness: 14, step: step)

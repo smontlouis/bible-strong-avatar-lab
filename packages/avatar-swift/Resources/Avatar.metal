@@ -68,7 +68,7 @@ static float primitive(float3 world, constant Part &part) {
 
     switch (uint(part.centerKind.w)) {
     case 1: // cube
-        return powerField(p / r, mix(24.0, 2.0, roundness)) * small;
+        return powerField(p / r, 2.0 / (0.04 + clamp(part.radiiRoundness.w, 0.0, 2.0) * 0.5 * 0.96)) * small;
     case 2: { // capsule
         float cap = min(r.x, r.y);
         p.y = copysign(max(0.0, abs(p.y) - (r.y - cap)), p.y);
@@ -223,6 +223,12 @@ kernel void renderAvatar(texture2d<float, access::write> output [[texture(0)]],
         float2 point = (plane - scene.transform.xy) / scale;
         float3 origin = float3(point, z);
         float3 ray = float3(0, 0, -1);
+        float perspective = scene.eyePaint.w;
+        if (!studio && perspective > 0.0001) {
+            float focal = (620.0 / 120.0) / perspective;
+            origin = float3(0, 0, focal);
+            ray = normalize(float3(point, -focal));
+        }
         if (studio) {
             origin.xy = (float2(0, 0.032) - scene.transform.xy) / scale;
             ray = normalize(float3(plane / (scale * z), -1));
@@ -264,9 +270,6 @@ kernel void renderAvatar(texture2d<float, access::write> output [[texture(0)]],
                 float3 local = toLocal(p - parts[0].centerKind.xyz, parts[0]);
                 if (local.z > 0.0) {
                     float2 position = local.xy;
-                    float curve = saturate(scene.eyePaint.w / 3.0);
-                    float lateral = saturate(abs(local.x) / parts[0].radiiRoundness.x);
-                    position.x *= 1.0 + 0.22 * curve * lateral * lateral;
                     float2 faceUV = float2(0.5) + float2(position.x, -position.y) / (2.0 * scene.textures.x);
                     color = mix(color, scene.eyePaint.xyz, face.sample(atlasSampler, faceUV).r * scene.textures.y);
                 }
