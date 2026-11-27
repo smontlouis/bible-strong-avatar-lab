@@ -135,9 +135,20 @@ definition schema from [avatar-core](../avatar-core/README.md). The demo's Strob
 neutral appearance of the [React example](../../examples/react-vite-consumer/src/strobi.avatar.json).
 See [LICENSE](LICENSE).
 The native renderer uses 3D depth and returns a Swift scene. It looks through the same
-perspective as avatar-core, lays the eyes on the head as avatar-core does and rounds a cube with
-the same power. Silhouettes of the other surfaces, face transitions and antialiasing can differ
-from the upstream SVG renderer.
+perspective as avatar-core and rounds a cube with the same power. The face is avatar-core's,
+outline for outline: the eyes, their morphs from one face to another and the blink that swaps a
+drawn face are those of `faces.ts`, `drawnFaces.ts` and `player.ts`, wrapped on the head by
+`eyePointOnFace`; the nose and the mouth are laid on it as `renderCharacterFrame` lays them. They
+are drawn into a mask atlas, one slice per mark, as fine as the pixels they cover (up to 2048
+texels) and drawn again only when a mark changes. The SVG renderer projects every point of a mark,
+also past the horizon of the head, and fills each mark under the nonzero rule: a mark turned
+almost out of sight shows through the head as a thin sliver, and a mark that faces away on the
+whole is not drawn. The renderer does the same, by sampling the far side of the head too when a
+mark reaches past the horizon. Silhouettes of the other surfaces and antialiasing can differ from
+the upstream SVG renderer. Drawn eyes are flattened and their strokes outlined by CoreGraphics
+rather than by avatar-core's own code, which can move an edge by a fraction of a pixel. Whether a
+mark faces the viewer is decided from the exact surface of a sphere, capsule, cube or diamond
+head; other heads are taken as the ellipsoid of their size.
 
 ## Parity with avatar-core
 
