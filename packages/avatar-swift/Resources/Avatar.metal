@@ -22,7 +22,12 @@ struct Scene {
     float4 spinner;      // center x/y, disk radius, blend
     float4 spinnerStyle; // opacity, drop, turn, reserved
     float4 geometry;     // part count, bound radius
+    float4 features;     // shown share of each face slice: left eye, right eye, nose, mouth
 };
+
+// Whether a face mark lies past the horizon of the head, so that the far side is sampled too. A
+// second kernel: the march it needs costs ordinary frames even when it is skipped.
+constant bool farSide [[function_constant(0)]];
 
 struct Surface {
     float distance;
@@ -128,6 +133,36 @@ static float ellipseEntry(float3 origin, float3 ray, constant Part &part) {
     return d >= 0.0 ? (-b - sqrt(d)) / a : INFINITY;
 }
 
+// Where a ray leaves an ellipsoid part, or INFINITY.
+static float ellipseExit(float3 origin, float3 ray, constant Part &part) {
+    float3 o = toLocal(origin - part.centerKind.xyz, part) / part.radiiRoundness.xyz;
+    float3 v = toLocal(ray, part) / part.radiiRoundness.xyz;
+    float a = dot(v, v);
+    float b = dot(o, v);
+    float d = b * b - a * (dot(o, o) - 1.0);
+    return d >= 0.0 ? (-b + sqrt(d)) / a : INFINITY;
+}
+
+// Where a ray leaves the head, found from the far side, or INFINITY.
+static float headExit(float3 origin, float3 ray, float from, float to, constant Part &head) {
+    if (uint(head.centerKind.w) == 0) return ellipseExit(origin, ray, head);
+    float travel = to;
+    for (uint step = 0; step < 76 && travel > from; ++step) {
+        float d = primitive(origin + ray * travel, head);
+        if (d < 0.00092) return travel;
+        travel -= max(d * 0.80, 0.0005);
+    }
+    return INFINITY;
+}
+
+// The face atlas at a point of the head, one value per slice; zero off its front sheet.
+static float4 faceAt(float3 local, texture2d_array<float> face, float extent) {
+    if (local.z <= 0.0) return float4(0);
+    float2 uv = float2(0.5) + float2(local.x, -local.y) / (2.0 * extent);
+    return float4(face.sample(atlasSampler, uv, 0).r, face.sample(atlasSampler, uv, 1).r,
+                  face.sample(atlasSampler, uv, 2).r, face.sample(atlasSampler, uv, 3).r);
+}
+
 static float4 premultiply(float3 color, float alpha) {
     return float4(color * alpha, alpha);
 }
@@ -152,7 +187,7 @@ static float3 gray(float3 rgb, float share) {
 }
 
 kernel void renderAvatar(texture2d<float, access::write> output [[texture(0)]],
-                         texture2d<float> face [[texture(1)]],
+                         texture2d_array<float> face [[texture(1)]],
                          texture2d<float> marks [[texture(2)]],
                          constant Part *parts [[buffer(0)]],
                          constant Scene &scene [[buffer(1)]],
@@ -219,12 +254,21 @@ kernel void renderAvatar(texture2d<float, access::write> output [[texture(0)]],
             float3 p = origin + ray * travel;
             float3 color = parts[index].color.xyz;
             if (index == 0 && scene.textures.y > 0.0) {
-                float3 local = toLocal(p - parts[0].centerKind.xyz, parts[0]);
-                if (local.z > 0.0) {
-                    float2 position = local.xy;
-                    float2 faceUV = float2(0.5) + float2(position.x, -position.y) / (2.0 * scene.textures.x);
-                    color = mix(color, scene.eyePaint.xyz, face.sample(atlasSampler, faceUV).r * scene.textures.y);
+                // The marks are drawn as the SVG renderer draws them: every point of the front
+                // sheet is projected, also past the horizon, so a mark seen there shows through
+                // the head. Each mark is one path filled under the nonzero rule, so where its
+                // front and its back land on the same pixel they cancel.
+                float4 marks = faceAt(toLocal(p - parts[0].centerKind.xyz, parts[0]), face, scene.textures.x);
+                if (farSide) {
+                    float exit = headExit(origin, ray, travel, limits.y, parts[0]);
+                    if (isfinite(exit)) {
+                        float3 back = toLocal(origin + ray * exit - parts[0].centerKind.xyz, parts[0]);
+                        marks = abs(marks - faceAt(back, face, scene.textures.x));
+                    }
                 }
+                float4 shown = saturate(marks) * scene.features;
+                float ink = 1.0 - (1.0 - shown.x) * (1.0 - shown.y) * (1.0 - shown.z) * (1.0 - shown.w);
+                color = mix(color, scene.eyePaint.xyz, ink);
             }
             avatar = over(premultiply(color, bodyAlpha), avatar);
         } else if (scene.outline.w > 0 && isfinite(closest)) {

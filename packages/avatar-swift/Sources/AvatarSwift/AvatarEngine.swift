@@ -726,20 +726,38 @@ private struct Player: Sendable {
         let target = Self.faceOf(face, library)
         if faceSettled { return target }
         if faceWay == .blink {
+            // Halfway through a blink from one face to another: the eye that shuts and the one
+            // that opens meet, shut, in a box between the two (avatar-core's `swapEyes`).
             let progress = min(1, faceTime / faceSwapSeconds)
-            if progress < swapShutAt {
-                let closing = clipEaseAt(swapEase, progress / swapShutAt)
-                var leaving = faceFrom
-                leaving.shut = faceFrom.shut + (1 - faceFrom.shut) * closing
-                return leaving
+            var shown = progress < swapShutAt ? faceFrom : target
+            shown.eyes = (0..<2).map { index in
+                let leaving = asDrawn(faceFrom.eyes[index])
+                let coming = asDrawn(target.eyes[index])
+                let a = boundsOf(leaving)
+                let b = boundsOf(coming)
+                let middle = EyeBounds(center: (a.center + b.center) / 2, width: (a.width + b.width) / 2)
+                if progress < swapShutAt {
+                    let closing = clipEaseAt(swapEase, progress / swapShutAt)
+                    let from = leaving.shut ?? 0
+                    var eye = towards(leaving, from: a, to: middle, amount: closing)
+                    eye.shut = from + (1 - from) * closing
+                    return .drawn(eye)
+                }
+                let opening = clipEaseAt(swapEase, (progress - swapShutAt) / (1 - swapShutAt))
+                var eye = towards(coming, from: b, to: middle, amount: 1 - opening)
+                eye.shut = 1 - opening
+                return .drawn(eye)
             }
-            let opening = clipEaseAt(swapEase, (progress - swapShutAt) / (1 - swapShutAt))
-            var coming = target
-            coming.shut = 1 - opening
-            return coming
+            return shown
         }
-        guard case .builtin(let a) = faceFrom.artwork, case .builtin(let b) = target.artwork else { return target }
-        return .init(name: target.name, artwork: .builtin(.mix(a, b, faceProgress)), smile: target.smile)
+        // Between built-in faces: avatar-core's `morphEyeShapes`, through a capsule or an oval
+        // where the eyes are straight.
+        let from = faceFrom.eyes.compactMap { eye -> FaceEye? in if case .builtin(let face) = eye { face } else { nil } }
+        let to = target.eyes.compactMap { eye -> FaceEye? in if case .builtin(let face) = eye { face } else { nil } }
+        guard from.count == 2, to.count == 2 else { return target }
+        var shown = target
+        shown.eyes = morphEyeShapes(from, to, faceProgress).map { .builtin($0) }
+        return shown
     }
 
     /// What a renderer draws: the eyes now, under the name of the face shown, with its smile now.

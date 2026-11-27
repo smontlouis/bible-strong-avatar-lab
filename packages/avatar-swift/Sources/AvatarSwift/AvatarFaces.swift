@@ -77,6 +77,20 @@ public struct AvatarCompiledFace: Equatable, Sendable {
     public let smile: Double
     public let left: [Mark]
     public let right: [Mark]?
+    /// The marks read into filled polygons in each eye's own frame, as avatar-core reads them.
+    let eyes: [DrawnEye]
+
+    init(name: String, blinks: Bool, smile: Double, left: [Mark], right: [Mark]?) {
+        self.name = name
+        self.blinks = blinks
+        self.smile = smile
+        self.left = left
+        self.right = right
+        let leftShapes = drawnEyeShapes(left, side: -1)
+        // The right eye mirrors the left: in the eye's own frame, outward is the same for both.
+        let rightShapes = right.map { drawnEyeShapes($0, side: 1) } ?? leftShapes
+        eyes = [DrawnEye(shapes: leftShapes), DrawnEye(shapes: rightShapes)]
+    }
 }
 
 public struct AvatarFaceError: LocalizedError, Equatable, Sendable {
@@ -224,47 +238,26 @@ struct AvatarFaceShape: Codable, Equatable, Sendable {
         var oval: [Double]
         var path: [Double]
     }
-
-    static func mix(_ a: Self, _ b: Self, _ t: Double) -> Self {
-        Self(blinks: t < 0.5 ? a.blinks : b.blinks,
-             eyes: zip(a.eyes, b.eyes).map { x, y in
-                 Eye(off: zip(x.off, y.off).map { interpolate($0, $1, t) },
-                     wid: interpolate(x.wid, y.wid, t),
-                     oval: zip(x.oval, y.oval).map { interpolate($0, $1, t) },
-                     path: zip(x.path, y.path).map { interpolate($0, $1, t) })
-             })
-    }
-}
-
-enum FaceArtwork: Equatable, Sendable {
-    case builtin(AvatarFaceShape)
-    case drawn(AvatarCompiledFace)
 }
 
 struct FacePresentation: Equatable, Sendable {
     var name: String
-    var artwork: FaceArtwork
+    /// The eye on the left of the screen, then the one on the right.
+    var eyes: [PlayerEye]
     var smile: Double
-    /// How far the eyes are shut while one face gives way to another with a blink, from 0 to 1.
-    var shut = 0.0
+    var blinks: Bool
 
-    var isDrawn: Bool {
-        if case .drawn = artwork { return true }
-        return false
-    }
-
-    var blinks: Bool {
-        switch artwork {
-        case .builtin(let face): face.blinks
-        case .drawn(let face): face.blinks
-        }
-    }
+    var isDrawn: Bool { eyes.first?.isDrawn ?? false }
 
     static func resolve(_ name: String, library: AvatarLibrary) -> Self {
-        if let face = library.faces[name] { return .init(name: name, artwork: .drawn(face), smile: face.smile) }
+        if let face = library.faces[name] {
+            return .init(name: name, eyes: face.eyes.map { .drawn($0) }, smile: face.smile, blinks: face.blinks)
+        }
         let key = AvatarCatalogue.resolveFaceName(name)
         let smiles = ["happy": 1.0, "sad": -1.0, "sleepy": 0.15, "squinted": -0.1,
                       "calm": 0.4, "confused": -0.35]
-        return .init(name: key, artwork: .builtin(AvatarCatalogue.builtinFaces[key]!), smile: smiles[key] ?? 0)
+        let shape = AvatarCatalogue.builtinFaces[key]!
+        return .init(name: key, eyes: shape.eyes.map { .builtin(FaceEye($0)) }, smile: smiles[key] ?? 0,
+                     blinks: shape.blinks)
     }
 }
