@@ -32,18 +32,15 @@ public struct AvatarCharacter: Codable, Equatable, Sendable {
         public var rotation: [Double]
         public var color: String?
         public var followsHead: Bool?
-        /// Optional smooth join, in the character's drawing units.
-        public var blend: Double?
 
         public init(surface: AvatarSurface, position: [Double] = [0, 0, 0],
                     rotation: [Double] = [0, 0, 0], color: String? = nil,
-                    followsHead: Bool? = nil, blend: Double? = nil) {
+                    followsHead: Bool? = nil) {
             self.surface = surface
             self.position = position
             self.rotation = rotation
             self.color = color
             self.followsHead = followsHead
-            self.blend = blend
         }
     }
 
@@ -57,17 +54,11 @@ public struct AvatarCharacter: Codable, Equatable, Sendable {
         }
     }
 
-    public enum Lighting: String, Codable, Sendable {
-        case flat, studio
-    }
-
     public struct Style: Codable, Equatable, Sendable {
         public var outline: Outline?
-        public var lighting: Lighting?
 
-        public init(outline: Outline? = nil, lighting: Lighting? = nil) {
+        public init(outline: Outline? = nil) {
             self.outline = outline
-            self.lighting = lighting
         }
     }
 
@@ -100,22 +91,17 @@ public struct AvatarCharacter: Codable, Equatable, Sendable {
     }
 
     public struct Eyes: Codable, Equatable, Sendable {
-        public enum NeutralShape: String, Codable, Sendable { case circle }
-
         public var width: Double
         public var height: Double
         public var gap: Double
         /// Downward shift, in face radii.
         public var shiftY: Double
-        public var neutralShape: NeutralShape?
 
-        public init(width: Double = 1, height: Double = 1, gap: Double = 1, shiftY: Double = 0,
-                    neutralShape: NeutralShape? = nil) {
+        public init(width: Double = 1, height: Double = 1, gap: Double = 1, shiftY: Double = 0) {
             self.width = width
             self.height = height
             self.gap = gap
             self.shiftY = shiftY
-            self.neutralShape = neutralShape
         }
     }
 
@@ -179,7 +165,6 @@ public struct AvatarCharacter: Codable, Equatable, Sendable {
 public struct AvatarSurface: Codable, Equatable, Sendable {
     public enum Kind: String, Codable, CaseIterable, Sendable {
         case sphere, mickey, cursor, cube, capsule, cylinder, cone, diamond, trapezoid
-        case taperedBeak = "tapered-beak"
     }
 
     public var type: Kind

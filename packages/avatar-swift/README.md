@@ -88,8 +88,8 @@ format. The library reader reports individual invalid or duplicate entries witho
 their valid neighbors. Drawn faces accept artboard paths or supported SVG shapes, transforms,
 fill rules and stroked marks.
 
-Character definitions can opt into AvatarSwift extensions for studio lighting, round
-neutral eyes, smooth joins and tapered beaks.
+A character file is the one the Studio exports and the web renderers read: AvatarSwift accepts
+exactly the avatar-core format and refuses what avatar-core refuses.
 
 ## Advance without a view
 

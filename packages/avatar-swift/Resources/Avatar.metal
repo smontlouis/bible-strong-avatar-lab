@@ -7,7 +7,7 @@ struct Part {
     float4 axisX;
     float4 axisY;
     float4 axisZ;
-    float4 colorBlend;
+    float4 color;
     float4 surfaceProfile; // morph, tip, base, top scale
     float4 extra;          // bottom scale
 };
@@ -17,7 +17,7 @@ struct Scene {
     float4 bodyPaint;    // linear RGB, opacity
     float4 eyePaint;     // linear RGB, perspective
     float4 outline;      // linear RGB, design width
-    float4 display;      // viewport radius, studio material, studio background, outline opacity
+    float4 display;      // viewport radius, reserved, studio background, outline opacity
     float4 textures;     // face atlas radius, face visible, mark atlas radius, grayscale
     float4 spinner;      // center x/y, disk radius, blend
     float4 spinnerStyle; // opacity, drop, turn, reserved
@@ -29,7 +29,6 @@ struct Surface {
     uint index;
 };
 
-constant float3 key = float3(-0.405, 0.710, 0.576);
 constexpr sampler atlasSampler(coord::normalized, address::clamp_to_zero, filter::linear);
 
 static float3 toLocal(float3 vector, constant Part &part) {
@@ -98,12 +97,6 @@ static float primitive(float3 world, constant Part &part) {
         float sz = mix(0.92, 1.04, t);
         return powerField(p / (r * float3(sx, 1.0, sz)), mix(24.0, 2.0, roundness)) * small * 0.65;
     }
-    case 7: { // tapered beak
-        float f = clamp(p.z / r.z, -1.0, 1.0);
-        r.x *= (1.0 + 0.32 * y) * (1.0 - 0.43 * f);
-        r.y *= 1.0 - 0.38 * f;
-        return ellipsoid(p, r);
-    }
     default:
         return ellipsoid(p, r);
     }
@@ -113,14 +106,7 @@ static Surface sample(float3 p, constant Part *parts, uint count) {
     Surface nearest = {primitive(p, parts[0]), 0};
     for (uint index = 1; index < count; ++index) {
         float d = primitive(p, parts[index]);
-        float blend = parts[index].colorBlend.w;
-        if (blend > 0.0001) {
-            float k = max(blend - abs(nearest.distance - d), 0.0) / blend;
-            if (d < nearest.distance) nearest.index = index;
-            nearest.distance = min(nearest.distance, d) - k * k * blend * 0.25;
-        } else if (d < nearest.distance) {
-            nearest = {d, index};
-        }
+        if (d < nearest.distance) nearest = {d, index};
     }
     return nearest;
 }
@@ -140,35 +126,6 @@ static float ellipseEntry(float3 origin, float3 ray, constant Part &part) {
     float b = dot(o, v);
     float d = b * b - a * (dot(o, o) - 1.0);
     return d >= 0.0 ? (-b - sqrt(d)) / a : INFINITY;
-}
-
-static float3 normalAt(float3 p, constant Part *parts, uint count) {
-    float2 h = float2(0.0015, -0.0015);
-    return normalize(h.xyy * sample(p + h.xyy, parts, count).distance
-                   + h.yyx * sample(p + h.yyx, parts, count).distance
-                   + h.yxy * sample(p + h.yxy, parts, count).distance
-                   + h.xxx * sample(p + h.xxx, parts, count).distance);
-}
-
-static float3 studioLight(float3 p, float3 view, uint index, constant Part *parts, uint count) {
-    const float3 base = parts[index].colorBlend.xyz;
-    float3 n = normalAt(p, parts, count);
-    float top = saturate(dot(n, key));
-    float fill = saturate(dot(n, float3(0.794, 0.202, 0.573)));
-    float rim = saturate(dot(n, float3(0.60, 0.22, -0.77)));
-    float near = saturate(1.0 - sample(p + n * 0.047, parts, count).distance / 0.047);
-    float wide = saturate(1.0 - sample(p + n * 0.112, parts, count).distance / 0.112);
-    float occlusion = 1.0 - 0.18 * near - 0.19 * wide;
-    if (uint(parts[index].centerKind.w) == 7) {
-        float sheen = pow(saturate(dot(n, normalize(key + view))), 18.0) * 0.038;
-        return (base * (0.64 + 0.37 * top + 0.12 * fill) + sheen * float3(1.0, 0.83, 0.52)) * occlusion;
-    }
-    float visibility = 1.0;
-    if (index == 0) {
-        float clearance = sample(p + n * 0.004 + key * 0.082, parts, count).distance;
-        visibility = mix(0.88, 1.0, saturate(clearance / 0.035));
-    }
-    return base * (0.73 + 0.34 * top + 0.10 * fill + 0.14 * rim) * occlusion * visibility;
 }
 
 static float4 premultiply(float3 color, float alpha) {
@@ -217,21 +174,16 @@ kernel void renderAvatar(texture2d<float, access::write> output [[texture(0)]],
     float4 avatar = premultiply(scene.bodyPaint.xyz, mark);
 
     if (bodyAlpha > 0.0001 && count > 0) {
-        bool studio = scene.display.y > 0.5;
         float z = max(scene.geometry.y + 0.15, 3.95);
         float2 scale = scene.transform.zw;
         float2 point = (plane - scene.transform.xy) / scale;
         float3 origin = float3(point, z);
         float3 ray = float3(0, 0, -1);
         float perspective = scene.eyePaint.w;
-        if (!studio && perspective > 0.0001) {
+        if (perspective > 0.0001) {
             float focal = (620.0 / 120.0) / perspective;
             origin = float3(0, 0, focal);
             ray = normalize(float3(point, -focal));
-        }
-        if (studio) {
-            origin.xy = (float2(0, 0.032) - scene.transform.xy) / scale;
-            ray = normalize(float3(plane / (scale * z), -1));
         }
         float2 limits = rayBounds(origin, ray, scene.geometry.y + scene.outline.w);
         float travel = max(0.0, limits.x);
@@ -265,7 +217,7 @@ kernel void renderAvatar(texture2d<float, access::write> output [[texture(0)]],
         }
         if (hit) {
             float3 p = origin + ray * travel;
-            float3 color = studio ? studioLight(p, -ray, index, parts, count) : parts[index].colorBlend.xyz;
+            float3 color = parts[index].color.xyz;
             if (index == 0 && scene.textures.y > 0.0) {
                 float3 local = toLocal(p - parts[0].centerKind.xyz, parts[0]);
                 if (local.z > 0.0) {

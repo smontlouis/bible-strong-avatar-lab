@@ -102,6 +102,30 @@ import Testing
     let error = try validationError(JSONSerialization.data(withJSONObject: decoded))
     #expect(error.errors.contains { $0.path == "/bad~1name~0" && $0.code == "additionalProperties" })
 
+    // The file format is avatar-core's: what the Studio and the web renderers refuse, Swift refuses.
+    func rejects(_ path: [String], _ value: Any, at pointer: String) throws {
+        var file = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        func set(_ object: inout [String: Any], _ keys: ArraySlice<String>) {
+            guard let key = keys.first else { return }
+            if keys.count == 1 { object[key] = value; return }
+            if var array = object[key] as? [[String: Any]], let index = Int(keys.dropFirst().first ?? "") {
+                set(&array[index], keys.dropFirst(2))
+                object[key] = array
+            } else {
+                var child = object[key] as? [String: Any] ?? [:]
+                set(&child, keys.dropFirst())
+                object[key] = child
+            }
+        }
+        set(&file, path[...])
+        let issues = try validationError(JSONSerialization.data(withJSONObject: file)).errors
+        #expect(issues.contains { $0.path == pointer }, "\(pointer): \(issues)")
+    }
+    try rejects(["style", "lighting"], "studio", at: "/style/lighting")
+    try rejects(["face", "eyes", "neutralShape"], "circle", at: "/face/eyes/neutralShape")
+    try rejects(["body", "nodes", "0", "blend"], 12, at: "/body/nodes/0/blend")
+    try rejects(["body", "primary", "type"], "tapered-beak", at: "/body/primary/type")
+
     let legacy = """
     {"schema":"bible-strong/avatar-definition","schemaVersion":1,"name":"Legacy",
       "body":{"primary":{"type":"sphere","width":240,"height":240,"depth":240,"roundness":1},"nodes":[]},
@@ -221,5 +245,5 @@ private let sampleCharacter = AvatarCharacter(
               position: [73, 43, 70], color: "#ffd730")
     ]),
     colors: .init(body: "#6194d1", eyes: "#040405"),
-    face: .init(eyes: .init(width: 0.69, height: 0.36, gap: 0.83, shiftY: -0.08, neutralShape: .circle))
+    face: .init(eyes: .init(width: 0.69, height: 0.36, gap: 0.83, shiftY: -0.08))
 )
